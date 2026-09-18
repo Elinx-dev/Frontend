@@ -7,7 +7,6 @@ import { Banner, DataTable, Field, Panel, StatusPill, formatCell } from '../ui'
 
 interface PartyForm {
   side: string
-  role: string
   partyType: string
   name: string
   aadhaarNumber: string
@@ -21,7 +20,6 @@ interface PartyForm {
 
 const emptyParty = (side: string): PartyForm => ({
   side,
-  role: side === 'SIDE_1' ? 'SELLER' : 'BUYER',
   partyType: 'INDIVIDUAL',
   name: '',
   aadhaarNumber: '',
@@ -49,6 +47,7 @@ export default function TransactionDetail() {
   const [witnessOne, setWitnessOne] = useState('')
   const [witnessTwo, setWitnessTwo] = useState('')
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
+  const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
 
   const load = useCallback(async () => {
@@ -124,7 +123,7 @@ export default function TransactionDetail() {
           `/api/transactions/${txnRef}/parties`,
           parties.map((p) => ({
             side: p.side,
-            role: p.role,
+            role: p.side === 'SIDE_1' ? 'SELLER' : 'BUYER',
             partyType: p.partyType,
             name: p.name,
             aadhaarNumber: p.aadhaarNumber.length === 0 ? undefined : p.aadhaarNumber,
@@ -169,17 +168,7 @@ export default function TransactionDetail() {
 
   const calculateFees = () =>
     guard(
-      () =>
-        post('/api/fees/calculate', {
-          transactionId: Number(txn?.id),
-          stateCode: formatCell(txn?.state_code ?? txn?.stateCode),
-          deedTypeCode: txn?.deed_type_code,
-          relationshipCategory: relationshipCategory || undefined,
-          transferNature: txn?.transfer_scope,
-          valuationBasis: formatCell(txn?.property?.guideline_value ?? txn?.property?.guidelineValue),
-          valuationAmountUsed: txn?.feeCalculation?.valuation_amount_used,
-          otherCharges: 0,
-        }),
+      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {}),
       'Fees calculated.',
     )
 
@@ -189,7 +178,7 @@ export default function TransactionDetail() {
       () =>
         post(
           `/api/transactions/${txnRef}/payments`,
-          { mode: 'CHALLAN', referenceNo: paymentRef, amount: Number(payable) },
+          { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable) },
           true,
         ),
       'Payment recorded.',
@@ -203,6 +192,71 @@ export default function TransactionDetail() {
     )
 
   const validationMessages = ((txn.validation?.messages as Row[] | undefined) ?? []).map((m) => formatCell(m.message))
+
+  const latestRuleResults = Array.from(
+    txn.ruleCheckResults.reduce((latest, result) => {
+      const engine = formatCell(result.engine)
+      const current = latest.get(engine)
+      const currentDate = current === undefined ? '' : formatCell(current.checked_at)
+      const resultDate = formatCell(result.checked_at)
+      if (current === undefined || resultDate > currentDate) {
+        latest.set(engine, result)
+      }
+      return latest
+    }, new Map<string, Row>()).values(),
+  )
+
+  const renderPartyGroup = (side: string, title: string) => {
+    const group = parties
+      .map((party, index) => ({ party, index }))
+      .filter(({ party }) => party.side === side)
+
+    return (
+      <section className="party-group">
+        <div className="section-heading">
+          <h3>{title}</h3>
+          <button className="party-add-button" onClick={() => setParties([...parties, emptyParty(side)])}>
+            <span aria-hidden="true">+</span> Add {title.toLowerCase()}
+          </button>
+        </div>
+        {group.map(({ party, index }) => (
+          <div className="row party-row" key={`${side}-${index}`}>
+            <Field
+              label="Name"
+              value={party.name}
+              required
+              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, name: v } : p)))}
+            />
+            <Field
+              label="Aadhaar (12 digits)"
+              value={party.aadhaarNumber}
+              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, aadhaarNumber: v } : p)))}
+            />
+            <Field
+              label="PAN"
+              value={party.pan}
+              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, pan: v } : p)))}
+            />
+            <Field
+              label="Existing share %"
+              value={party.existingSharePct}
+              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, existingSharePct: v } : p)))}
+            />
+            <Field
+              label="Share transferred %"
+              value={party.shareTransferredPct}
+              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, shareTransferredPct: v } : p)))}
+            />
+            <Field
+              label="Resulting share %"
+              value={party.resultingSharePct}
+              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, resultingSharePct: v } : p)))}
+            />
+          </div>
+        ))}
+      </section>
+    )
+  }
 
   return (
     <>
@@ -274,63 +328,13 @@ export default function TransactionDetail() {
       <Panel
         title="2. Parties"
         actions={
-          <>
-            <button onClick={() => setParties([...parties, emptyParty('SIDE_2')])}>Add party</button>
-            <button className="primary" onClick={() => void saveParties()}>
-              Save parties
-            </button>
-          </>
+          <button className="primary" onClick={() => void saveParties()}>
+            Save parties
+          </button>
         }
       >
-        {parties.map((party, index) => (
-          <div className="row party-row" key={index}>
-            <Field
-              label="Side"
-              value={party.side}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, side: v } : p)))}
-              options={[
-                { value: 'SIDE_1', label: 'SIDE_1 (transferor)' },
-                { value: 'SIDE_2', label: 'SIDE_2 (transferee)' },
-              ]}
-            />
-            <Field
-              label="Role"
-              value={party.role}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, role: v } : p)))}
-            />
-            <Field
-              label="Name"
-              value={party.name}
-              required
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, name: v } : p)))}
-            />
-            <Field
-              label="Aadhaar (12 digits)"
-              value={party.aadhaarNumber}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, aadhaarNumber: v } : p)))}
-            />
-            <Field
-              label="PAN"
-              value={party.pan}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, pan: v } : p)))}
-            />
-            <Field
-              label="Existing share %"
-              value={party.existingSharePct}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, existingSharePct: v } : p)))}
-            />
-            <Field
-              label="Share transferred %"
-              value={party.shareTransferredPct}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, shareTransferredPct: v } : p)))}
-            />
-            <Field
-              label="Resulting share %"
-              value={party.resultingSharePct}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, resultingSharePct: v } : p)))}
-            />
-          </div>
-        ))}
+        {renderPartyGroup('SIDE_1', 'Seller')}
+        {renderPartyGroup('SIDE_2', 'Buyer')}
         <DataTable
           rows={txn.parties}
           columns={[
@@ -383,7 +387,7 @@ export default function TransactionDetail() {
       <Panel title="5. Rule checks" actions={<button onClick={() => void runRules()}>Run rule checks</button>}>
         <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
         <DataTable
-          rows={txn.ruleCheckResults}
+          rows={latestRuleResults}
           columns={[
             { key: 'engine', label: 'Engine' },
             { key: 'overall_outcome', label: 'Outcome' },
@@ -395,7 +399,7 @@ export default function TransactionDetail() {
         />
       </Panel>
 
-      <Panel title="6. Fees and payment" actions={<button onClick={() => void calculateFees()}>Calculate fees</button>}>
+      <Panel title="6. Fees and payment" actions={<button onClick={() => void calculateFees()}>Calculate fee</button>}>
         {txn.feeCalculation === null ? (
           <p className="muted">No fee calculation yet.</p>
         ) : (
@@ -408,6 +412,10 @@ export default function TransactionDetail() {
             <dd>{formatCell(txn.feeCalculation.stamp_duty)}</dd>
             <dt>Registration fee</dt>
             <dd>{formatCell(txn.feeCalculation.registration_fee)}</dd>
+            <dt>TDS</dt>
+            <dd>{formatCell(txn.feeCalculation.tds_amount)}</dd>
+            <dt>Other charges</dt>
+            <dd>{formatCell(txn.feeCalculation.other_charges)}</dd>
             <dt>Total payable</dt>
             <dd>
               <b>{formatCell(txn.feeCalculation.total_payable)}</b>
@@ -415,7 +423,18 @@ export default function TransactionDetail() {
           </dl>
         )}
         <div className="row">
-          <Field label="Challan / payment reference" value={paymentRef} onChange={setPaymentRef} />
+          <Field
+            label="Payment mode"
+            value={paymentMode}
+            onChange={setPaymentMode}
+            options={[
+              { value: 'E_CHALLAN', label: 'E-Challan' },
+              { value: 'UPI', label: 'UPI' },
+              { value: 'CARD', label: 'Card' },
+              { value: 'DD', label: 'Demand draft' },
+            ]}
+          />
+          <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
           <button
             className="primary"
             disabled={txn.feeCalculation === null || paymentRef.length === 0}
@@ -440,10 +459,11 @@ export default function TransactionDetail() {
           rows={txn.registrationResult}
           columns={[
             { key: 'registered_document_no', label: 'Document no' },
-            { key: 'book_no', label: 'Book' },
-            { key: 'volume_no', label: 'Volume' },
-            { key: 'page_no', label: 'Page' },
-            { key: 'registered_at', label: 'Registered at' },
+            { key: 'registration_year', label: 'Year' },
+            { key: 'registration_date', label: 'Registration date' },
+            { key: 'registering_sro', label: 'Registering SRO' },
+            { key: 'registration_status', label: 'Status' },
+            { key: 'registration_reference', label: 'Reference' },
           ]}
           empty="Not registered yet."
         />
