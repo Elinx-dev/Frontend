@@ -1,5 +1,6 @@
 export type Json = Record<string, unknown>
 
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
