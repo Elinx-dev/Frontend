@@ -8,8 +8,7 @@ interface AuthState {
   user: UserProfile | null
   bootstrap: Bootstrap | null
   loading: boolean
-  login: (username: string, password: string) => Promise<LoginResponse>
-  verifyOtp: (challengeId: string, otp: string) => Promise<UserProfile>
+  login: (username: string, password: string) => Promise<UserProfile>
   logout: () => Promise<void>
 }
 
@@ -52,19 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadBootstrap])
 
   const login = useCallback(async (username: string, password: string) => {
+    storeToken(null)
     const result = await post<LoginResponse>('/api/auth/login', { username, password })
-    if (typeof result.accessToken === 'string') {
-      storeToken(result.accessToken)
-      const profile = result.user ?? (await get<UserProfile>('/api/auth/me'))
-      setUser(profile)
-      await loadBootstrap()
+    if (result.mfaRequired === true || typeof result.accessToken !== 'string') {
+      throw new Error('Login requires an unsupported multi-factor authentication step.')
     }
-    return result
-  }, [loadBootstrap])
-
-  const verifyOtp = useCallback(async (challengeId: string, otp: string) => {
-    const result = await post<LoginResponse>('/api/auth/verify-otp', { challengeId, otp })
-    storeToken(result.accessToken ?? null)
+    storeToken(result.accessToken)
     const profile = result.user ?? (await get<UserProfile>('/api/auth/me'))
     setUser(profile)
     await loadBootstrap()
@@ -82,8 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthState>(
-    () => ({ user, bootstrap, loading, login, verifyOtp, logout }),
-    [user, bootstrap, loading, login, verifyOtp, logout],
+    () => ({ user, bootstrap, loading, login, logout }),
+    [user, bootstrap, loading, login, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

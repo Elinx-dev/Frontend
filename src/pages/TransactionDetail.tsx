@@ -53,7 +53,32 @@ export default function TransactionDetail() {
 
   const load = useCallback(async () => {
     try {
-      setTxn(await get<Txn>(`/api/transactions/${txnRef}`))
+      let result: Txn
+      try {
+        result = await get<Txn>(`/api/transactions/ref/${encodeURIComponent(txnRef)}`)
+      } catch {
+        result = await get<Txn>(`/api/transactions/${encodeURIComponent(txnRef)}`)
+      }
+      setTxn({
+        ...result,
+        txn_ref: String(result.txn_ref ?? result.txnRef ?? txnRef),
+        status: String(result.status ?? 'DRAFT'),
+        deed_type_code: String(result.deed_type_code ?? result.deedTypeCode ?? ''),
+        property: result.property ?? {},
+        parties: Array.isArray(result.parties) ? result.parties : [],
+        witnesses: Array.isArray(result.witnesses) ? result.witnesses : [],
+        consents: Array.isArray(result.consents) ? result.consents : [],
+        ruleCheckResults: Array.isArray(result.ruleCheckResults) ? result.ruleCheckResults : [],
+        payments: Array.isArray(result.payments) ? result.payments : [],
+        registeredOwners: Array.isArray(result.registeredOwners) ? result.registeredOwners : [],
+        surveyParcels: Array.isArray(result.surveyParcels) ? result.surveyParcels : [],
+        availableActions: Array.isArray(result.availableActions) ? result.availableActions : [],
+        stages: Array.isArray(result.stages) ? result.stages : [],
+        registrationResult: Array.isArray(result.registrationResult) ? result.registrationResult : [],
+        mutation: Array.isArray(result.mutation) ? result.mutation : [],
+        validation: result.validation ?? {},
+        feeCalculation: result.feeCalculation ?? null,
+      })
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     }
@@ -136,9 +161,27 @@ export default function TransactionDetail() {
       'Consent captured.',
     )
 
-  const runRules = () => guard(() => post(`/api/transactions/${txnRef}/rule-checks`, {}), 'Rule checks executed.')
+  const runRules = () =>
+    guard(
+      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/rule-checks`, {}),
+      'Rule checks executed.',
+    )
 
-  const calculateFees = () => guard(() => post(`/api/transactions/${txnRef}/fees`), 'Fees calculated.')
+  const calculateFees = () =>
+    guard(
+      () =>
+        post('/api/fees/calculate', {
+          transactionId: Number(txn?.id),
+          stateCode: formatCell(txn?.state_code ?? txn?.stateCode),
+          deedTypeCode: txn?.deed_type_code,
+          relationshipCategory: relationshipCategory || undefined,
+          transferNature: txn?.transfer_scope,
+          valuationBasis: formatCell(txn?.property?.guideline_value ?? txn?.property?.guidelineValue),
+          valuationAmountUsed: txn?.feeCalculation?.valuation_amount_used,
+          otherCharges: 0,
+        }),
+      'Fees calculated.',
+    )
 
   const recordPayment = () => {
     const payable = txn.feeCalculation?.total_payable
@@ -153,7 +196,11 @@ export default function TransactionDetail() {
     )
   }
 
-  const register = () => guard(() => post(`/api/transactions/${txnRef}/registration`, {}, true), 'Registered.')
+  const register = () =>
+    guard(
+      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/registration`, {}, true),
+      'Transaction registered.',
+    )
 
   const validationMessages = ((txn.validation?.messages as Row[] | undefined) ?? []).map((m) => formatCell(m.message))
 

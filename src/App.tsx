@@ -5,6 +5,7 @@ import { AuthProvider, homeRouteFor, useAuth } from './auth'
 import Admin from './pages/Admin'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
+import PropertyCreate from './pages/PropertyCreate'
 import PropertyDetail from './pages/PropertyDetail'
 import PropertySearch from './pages/PropertySearch'
 import PublicView from './pages/PublicView'
@@ -13,6 +14,7 @@ import Survey from './pages/Survey'
 import SurveyorQueue from './pages/SurveyorQueue'
 import TransactionDetail from './pages/TransactionDetail'
 import TransactionQueue from './pages/TransactionQueue'
+import TransactionStart from './pages/TransactionStart'
 
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -28,30 +30,34 @@ function Shell({ children }: { children: ReactNode }) {
   const has = (role: string) => user.roles.includes(role)
   return (
     <div className="app">
-      <header className="topbar">
+      <aside className="sidebar">
         <Link className="brand" to={homeRouteFor(user)}>
-          SLATE
+          <strong>SLATE</strong>
+          <small>SECURED LAND ASSET TOKEN<br />EXCHANGE</small>
         </Link>
-        <nav>
-          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Registration</Link> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/properties">Properties</Link> : null}
-          {has('SURVEYOR') ? <Link to="/surveyor">Survey</Link> : null}
-          {has('VAO') ? <Link to="/vao">VAO</Link> : null}
-          {has('TAHSILDAR') ? <Link to="/tahsildar">Tahsildar</Link> : null}
-          {has('STATE_ADMIN') ? <Link to="/admin">Admin</Link> : null}
-          <Link to="/public">Public</Link>
-          <Link to="/profile">{user.fullName}</Link>
-        </nav>
-        <button
-          className="link"
-          onClick={() => {
-            void logout().then(() => navigate('/login'))
-          }}
-        >
-          Sign out
-        </button>
-      </header>
-      <main>{children}</main>
+        <div className="side-section">
+          <span>Registration</span>
+          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Dashboard</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/properties/new">Property Entry</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/transactions/new">Initiate Transaction</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Pending Queue</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/properties">Property List</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Audit Trail</Link> : null}
+        </div>
+        <div className="side-section">
+          <span>Network</span>
+          <p>Besu QBFT · chainId 2026<br />Block #18,442</p>
+          <small className="network-up">● 4/4 validators up</small>
+        </div>
+        <button className="side-signout" onClick={() => void logout().then(() => navigate('/login'))}>Sign out</button>
+      </aside>
+      <div className="workspace">
+        <header className="topbar">
+          <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>
+          <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
+        </header>
+        <main>{children}</main>
+      </div>
     </div>
   )
 }
@@ -72,7 +78,9 @@ export default function App() {
           <Route path="/public" element={<PublicView />} />
           <Route path="/ro" element={<Protected><TransactionQueue /></Protected>} />
           <Route path="/properties" element={<Protected><PropertySearch /></Protected>} />
+          <Route path="/properties/new" element={<Protected><PropertyCreate /></Protected>} />
           <Route path="/properties/:propertyRef" element={<Protected><PropertyDetail /></Protected>} />
+          <Route path="/transactions/new" element={<Protected><TransactionStart /></Protected>} />
           <Route path="/transactions/:txnRef" element={<Protected><TransactionDetail /></Protected>} />
           <Route path="/surveyor" element={<Protected><SurveyorQueue /></Protected>} />
           <Route path="/survey/:txnRef" element={<Protected><Survey /></Protected>} />

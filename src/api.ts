@@ -39,7 +39,8 @@ export async function api<T>(
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = storedToken()
-  if (token !== null) {
+  const isLoginRequest = path === '/api/auth/login'
+  if (token !== null && !isLoginRequest) {
     headers.Authorization = `Bearer ${token}`
   }
   if (body !== undefined) {

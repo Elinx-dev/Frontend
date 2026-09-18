@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const target = process.env.SLATE_API_URL ?? 'http://localhost:8080'
+const target = process.env.SLATE_API_URL ?? 'http://localhost:8081'
 
 export default defineConfig({
   plugins: [react()],
