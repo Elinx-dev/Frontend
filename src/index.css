@@ -321,8 +321,28 @@ button:disabled {
 
 .login-card h1 {
   margin: 0;
-  letter-spacing: 4px;
   color: var(--accent);
+}
+
+.auth-links {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 13px;
+}
+
+.auth-note {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.auth-demo-link {
+  padding: 9px 11px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--accent-soft);
+  text-align: center;
 }
 
 .demo-users ul {

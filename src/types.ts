@@ -16,9 +16,16 @@ export interface UserProfile {
 export interface LoginResponse {
   mfaRequired?: boolean
   challengeId?: string
+  maskedEmail?: string
+  demoOtp?: string
   accessToken?: string
   expiresAt?: string
   user?: UserProfile
+}
+
+export interface PasswordResetResponse {
+  message: string
+  demoResetUrl?: string
 }
 
 export type Row = Record<string, unknown>

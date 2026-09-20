@@ -18,6 +18,13 @@ interface PartyForm {
   resultingSharePct: string
 }
 
+type PartyField = keyof PartyForm
+type PartyErrors = Record<number, Partial<Record<PartyField, string>>>
+
+const AADHAAR_PATTERN = /^\d{12}$/
+const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+const SHARE_EPSILON = 0.01
+
 const emptyParty = (side: string): PartyForm => ({
   side,
   partyType: 'INDIVIDUAL',
@@ -44,6 +51,7 @@ export default function TransactionDetail() {
   const [extentUnit, setExtentUnit] = useState('SQ_FT')
   const [relationshipCategory, setRelationshipCategory] = useState('')
   const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_1'), emptyParty('SIDE_2')])
+  const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
   const [witnessOne, setWitnessOne] = useState('')
   const [witnessTwo, setWitnessTwo] = useState('')
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
@@ -116,8 +124,76 @@ export default function TransactionDetail() {
       'Transaction details saved.',
     )
 
-  const saveParties = () =>
-    guard(
+  const updateParty = (index: number, field: PartyField, value: string) => {
+    setParties((current) => current.map((party, i) => (i === index ? { ...party, [field]: value } : party)))
+    setPartyErrors((current) => {
+      if (current[index]?.[field] === undefined) return current
+      const next = { ...current, [index]: { ...current[index], [field]: undefined } }
+      return next
+    })
+  }
+
+  const validateParties = (): boolean => {
+    const validationErrors: PartyErrors = {}
+    const transferredTotals: Record<string, number> = { SIDE_1: 0, SIDE_2: 0 }
+
+    const addError = (index: number, field: PartyField, message: string) => {
+      validationErrors[index] = {
+        ...validationErrors[index],
+        [field]: validationErrors[index]?.[field] ?? message,
+      }
+    }
+
+    parties.forEach((party, index) => {
+      if (party.name.trim().length === 0) {
+        addError(index, 'name', 'Name is required.')
+      }
+      if (!AADHAAR_PATTERN.test(party.aadhaarNumber)) {
+        addError(index, 'aadhaarNumber', 'Aadhaar must contain exactly 12 digits.')
+      }
+      if (party.pan.length > 0 && !PAN_PATTERN.test(party.pan)) {
+        addError(index, 'pan', 'PAN must match AAAAA9999A.')
+      }
+      if (party.address.trim().length === 0) {
+        addError(index, 'address', 'Address is required.')
+      }
+
+      const percentages: Array<[PartyField, string, boolean]> = [
+        ['existingSharePct', 'Existing share', false],
+        ['shareTransferredPct', 'Transferred share', true],
+        ['resultingSharePct', 'Resulting share', false],
+      ]
+      for (const [field, label, required] of percentages) {
+        const value = party[field].trim()
+        if (value.length === 0) {
+          if (required) addError(index, field, `${label} is required.`)
+          continue
+        }
+        const numericValue = Number(value)
+        if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
+          addError(index, field, `${label} must be between 0 and 100.`)
+        } else if (field === 'shareTransferredPct') {
+          transferredTotals[party.side] = (transferredTotals[party.side] ?? 0) + numericValue
+        }
+      }
+    })
+
+    if (Math.abs(transferredTotals.SIDE_1 - transferredTotals.SIDE_2) > SHARE_EPSILON) {
+      const message = `Transferred shares must balance (seller ${transferredTotals.SIDE_1}%, buyer ${transferredTotals.SIDE_2}%).`
+      parties.forEach((_, index) => addError(index, 'shareTransferredPct', message))
+    }
+
+    setPartyErrors(validationErrors)
+    return Object.keys(validationErrors).length === 0
+  }
+
+  const saveParties = () => {
+    if (!validateParties()) {
+      setInfo('')
+      setError('Please correct the highlighted party details before saving.')
+      return
+    }
+    return guard(
       () =>
         put(
           `/api/transactions/${txnRef}/parties`,
@@ -137,6 +213,7 @@ export default function TransactionDetail() {
         ),
       'Parties saved.',
     )
+  }
 
   const saveWitnesses = () =>
     guard(
@@ -221,37 +298,79 @@ export default function TransactionDetail() {
         </div>
         {group.map(({ party, index }) => (
           <div className="row party-row" key={`${side}-${index}`}>
-            <Field
-              label="Name"
-              value={party.name}
-              required
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, name: v } : p)))}
-            />
-            <Field
-              label="Aadhaar (12 digits)"
-              value={party.aadhaarNumber}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, aadhaarNumber: v } : p)))}
-            />
-            <Field
-              label="PAN"
-              value={party.pan}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, pan: v } : p)))}
-            />
-            <Field
-              label="Existing share %"
-              value={party.existingSharePct}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, existingSharePct: v } : p)))}
-            />
-            <Field
-              label="Share transferred %"
-              value={party.shareTransferredPct}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, shareTransferredPct: v } : p)))}
-            />
-            <Field
-              label="Resulting share %"
-              value={party.resultingSharePct}
-              onChange={(v) => setParties(parties.map((p, i) => (i === index ? { ...p, resultingSharePct: v } : p)))}
-            />
+            <div>
+              <Field
+                label="Name"
+                value={party.name}
+                required
+                onChange={(v) => updateParty(index, 'name', v)}
+              />
+              {partyErrors[index]?.name ? <span className="field-error">{partyErrors[index].name}</span> : null}
+            </div>
+            <div>
+              <Field
+                label="Aadhaar (12 digits)"
+                value={party.aadhaarNumber}
+                required
+                onChange={(v) => updateParty(index, 'aadhaarNumber', v.replace(/\D/g, '').slice(0, 12))}
+              />
+              {partyErrors[index]?.aadhaarNumber ? (
+                <span className="field-error">{partyErrors[index].aadhaarNumber}</span>
+              ) : null}
+            </div>
+            <div>
+              <Field
+                label="PAN"
+                value={party.pan}
+                onChange={(v) => updateParty(index, 'pan', v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
+              />
+              {partyErrors[index]?.pan ? <span className="field-error">{partyErrors[index].pan}</span> : null}
+            </div>
+            <div>
+              <Field
+                label="Address"
+                value={party.address}
+                required
+                onChange={(v) => updateParty(index, 'address', v)}
+              />
+              {partyErrors[index]?.address ? (
+                <span className="field-error">{partyErrors[index].address}</span>
+              ) : null}
+            </div>
+            <div>
+              <Field
+                label="Existing share %"
+                value={party.existingSharePct}
+                type="number"
+                onChange={(v) => updateParty(index, 'existingSharePct', v)}
+              />
+              {partyErrors[index]?.existingSharePct ? (
+                <span className="field-error">{partyErrors[index].existingSharePct}</span>
+              ) : null}
+            </div>
+            <div>
+              <Field
+                label="Share transferred %"
+                value={party.shareTransferredPct}
+                type="number"
+                required
+                onChange={(v) => updateParty(index, 'shareTransferredPct', v)}
+              />
+              {partyErrors[index]?.shareTransferredPct ? (
+                <span className="field-error">{partyErrors[index].shareTransferredPct}</span>
+              ) : null}
+            </div>
+            <div>
+              <Field
+                label="Resulting share %"
+                value={party.resultingSharePct}
+                type="number"
+                onChange={(v) => updateParty(index, 'resultingSharePct', v)}
+              />
+              {partyErrors[index]?.resultingSharePct ? (
+                <span className="field-error">{partyErrors[index].resultingSharePct}</span>
+              ) : null}
+            </div>
           </div>
         ))}
       </section>

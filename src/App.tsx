@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { AuthProvider, homeRouteFor, useAuth } from './auth'
 import Admin from './pages/Admin'
+import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
 import PropertyCreate from './pages/PropertyCreate'
@@ -10,6 +11,7 @@ import PropertyDetail from './pages/PropertyDetail'
 import PropertySearch from './pages/PropertySearch'
 import PublicView from './pages/PublicView'
 import RevenueQueue from './pages/RevenueQueue'
+import ResetPassword from './pages/ResetPassword'
 import Survey from './pages/Survey'
 import SurveyorQueue from './pages/SurveyorQueue'
 import TransactionDetail from './pages/TransactionDetail'
@@ -75,6 +77,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingRedirect />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/public" element={<PublicView />} />
           <Route path="/ro" element={<Protected><TransactionQueue /></Protected>} />
           <Route path="/properties" element={<Protected><PropertySearch /></Protected>} />

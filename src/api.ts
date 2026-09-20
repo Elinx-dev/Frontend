@@ -15,17 +15,43 @@ export class ApiError extends Error {
 }
 
 const TOKEN_KEY = 'slate.accessToken'
+const TOKEN_EXPIRY_KEY = 'slate.accessTokenExpiresAt'
+const LAST_ACTIVITY_KEY = 'slate.lastActivityAt'
+export const SESSION_EXPIRED_EVENT = 'slate:session-expired'
 
 export function storedToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }
 
-export function storeToken(token: string | null): void {
+export function storeToken(token: string | null, expiresAt?: string): void {
   if (token === null) {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(TOKEN_EXPIRY_KEY)
+    localStorage.removeItem(LAST_ACTIVITY_KEY)
   } else {
     localStorage.setItem(TOKEN_KEY, token)
+    if (expiresAt !== undefined) {
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt)
+    }
   }
+}
+
+export function storedTokenExpiry(): number | null {
+  const value = localStorage.getItem(TOKEN_EXPIRY_KEY)
+  if (value === null) return null
+  const timestamp = Date.parse(value)
+  return Number.isNaN(timestamp) ? null : timestamp
+}
+
+export function recordActivity(): void {
+  localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()))
+}
+
+export function storedLastActivity(): number | null {
+  const value = localStorage.getItem(LAST_ACTIVITY_KEY)
+  if (value === null) return null
+  const timestamp = Number(value)
+  return Number.isFinite(timestamp) ? timestamp : null
 }
 
 function newIdempotencyKey(): string {
@@ -40,8 +66,12 @@ export async function api<T>(
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = storedToken()
-  const isLoginRequest = path === '/api/auth/login'
-  if (token !== null && !isLoginRequest) {
+  const isPublicAuthRequest = path === '/api/auth/public-key'
+    || path === '/api/auth/login'
+    || path === '/api/auth/mfa/verify'
+    || path === '/api/auth/password-reset/request'
+    || path === '/api/auth/password-reset/confirm'
+  if (token !== null && !isPublicAuthRequest) {
     headers.Authorization = `Bearer ${token}`
   }
   if (body !== undefined) {
@@ -56,8 +86,19 @@ export async function api<T>(
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const text = await response.text()
-  const payload: unknown = text.length === 0 ? null : JSON.parse(text)
+  let payload: unknown = null
+  if (text.length > 0) {
+    try {
+      payload = JSON.parse(text)
+    } catch (e) {
+      if (response.ok || !(e instanceof SyntaxError)) throw e
+    }
+  }
   if (!response.ok) {
+    if (response.status === 401 && token !== null && !isPublicAuthRequest) {
+      storeToken(null)
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+    }
     const problem = (payload ?? {}) as { code?: string; message?: string; details?: unknown }
     throw new ApiError(
       response.status,
