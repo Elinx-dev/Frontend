@@ -25,6 +25,14 @@ function Protected({ children }: { children: ReactNode }) {
   return <Shell>{children}</Shell>
 }
 
+function AdminOnly() {
+  const { user, loading } = useAuth()
+  if (loading) return <p className="muted">Loading…</p>
+  if (user === null) return <Navigate to="/login" replace />
+  if (!user.roles.includes('STATE_ADMIN')) return <Navigate to={homeRouteFor(user)} replace />
+  return <Shell><Admin /></Shell>
+}
+
 function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -46,6 +54,7 @@ function Shell({ children }: { children: ReactNode }) {
           {has('REGISTRATION_OFFICER') ? <Link to="/properties">Property List</Link> : null}
           {has('REGISTRATION_OFFICER') ? <Link to="/ro">Audit Trail</Link> : null}
         </div>
+        {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><Link to="/admin">Users and configuration</Link></div> : null}
         <div className="side-section">
           <span>Network</span>
           <p>Besu QBFT · chainId 2026<br />Block #18,442</p>
@@ -90,7 +99,7 @@ export default function App() {
           <Route path="/survey/:txnRef" element={<Protected><Survey /></Protected>} />
           <Route path="/vao" element={<Protected><RevenueQueue role="VAO" /></Protected>} />
           <Route path="/tahsildar" element={<Protected><RevenueQueue role="TAHSILDAR" /></Protected>} />
-          <Route path="/admin" element={<Protected><Admin /></Protected>} />
+          <Route path="/admin" element={<AdminOnly />} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
