@@ -66,6 +66,19 @@ export default function TransactionDetail() {
       } catch {
         result = await get<Txn>(`/api/transactions/${encodeURIComponent(txnRef)}`)
       }
+      const registeredOwners = Array.isArray(result.registeredOwners) ? result.registeredOwners : []
+      const sellerParties = registeredOwners.map((owner) => ({
+        ...emptyParty('SIDE_1'),
+        name: String(owner.owner_name ?? owner.ownerName ?? ''),
+        aadhaarNumber: String(owner.aadhaar_number ?? owner.aadhaarNumber ?? ''),
+        pan: String(owner.pan ?? ''),
+        address: String(owner.address ?? ''),
+        existingSharePct: String(owner.share_pct ?? owner.sharePct ?? ''),
+        resultingSharePct: String(owner.share_pct ?? owner.sharePct ?? ''),
+      }))
+      if (sellerParties.length > 0) {
+        setParties((current) => current.some((party) => party.name || party.aadhaarNumber || party.address) ? current : [...sellerParties, emptyParty('SIDE_2')])
+      }
       setTxn({
         ...result,
         txn_ref: String(result.txn_ref ?? result.txnRef ?? txnRef),
@@ -77,7 +90,7 @@ export default function TransactionDetail() {
         consents: Array.isArray(result.consents) ? result.consents : [],
         ruleCheckResults: Array.isArray(result.ruleCheckResults) ? result.ruleCheckResults : [],
         payments: Array.isArray(result.payments) ? result.payments : [],
-        registeredOwners: Array.isArray(result.registeredOwners) ? result.registeredOwners : [],
+        registeredOwners,
         surveyParcels: Array.isArray(result.surveyParcels) ? result.surveyParcels : [],
         availableActions: Array.isArray(result.availableActions) ? result.availableActions : [],
         stages: Array.isArray(result.stages) ? result.stages : [],
