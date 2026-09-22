@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { ApiError, post } from '../api'
 import type { PasswordResetResponse } from '../types'
-import { Banner, Field } from '../ui'
+import { AuthShell, Banner, Field } from '../ui'
 
 export default function ForgotPassword() {
   const [loginId, setLoginId] = useState('')
@@ -28,7 +28,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="login-page">
+    <AuthShell>
       <div className="login-card">
         <h1>Reset password</h1>
         <p className="muted">Enter your username or registered email address.</p>
@@ -51,6 +51,6 @@ export default function ForgotPassword() {
           <Link to="/login">Back to sign in</Link>
         </div>
       </div>
-    </div>
+    </AuthShell>
   )
 }

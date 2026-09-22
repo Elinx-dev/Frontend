@@ -2,6 +2,24 @@ import type { ChangeEvent, ReactNode } from 'react'
 
 import type { Row } from './types'
 
+export function AuthShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="login-page">
+      <aside className="login-brand">
+        <div className="login-brand-inner">
+          <div className="login-mark">S</div>
+          <div className="login-brand-text">
+            <div className="login-wordmark">SLATE</div>
+            <div className="login-tagline">Secured Land Asset Token Exchange</div>
+          </div>
+          <div className="login-rule" />
+        </div>
+      </aside>
+      <div className="login-form-side">{children}</div>
+    </div>
+  )
+}
+
 export function Panel({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <section className="panel">
