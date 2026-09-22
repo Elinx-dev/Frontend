@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError, post } from '../api'
 import { encryptPassword } from '../passwordCrypto'
-import { Banner, Field } from '../ui'
+import { AuthShell, Banner, Field } from '../ui'
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/
 
@@ -46,7 +46,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="login-page">
+    <AuthShell>
       <div className="login-card">
         <h1>Set new password</h1>
         <Banner kind="error" message={error} />
@@ -72,6 +72,6 @@ export default function ResetPassword() {
           </>
         )}
       </div>
-    </div>
+    </AuthShell>
   )
 }

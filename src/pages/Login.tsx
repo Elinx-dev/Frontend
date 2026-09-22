@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api'
 import { homeRouteFor, useAuth } from '../auth'
 import type { LoginResponse } from '../types'
-import { Banner, Field } from '../ui'
+import { AuthShell, Banner, Field } from '../ui'
 
 const DEMO_USERS = [
   ['ro.adyar', 'Sub-Registrar, Adyar (TN)'],
@@ -71,9 +71,9 @@ export default function Login() {
   }
 
   return (
-    <div className="login-page">
+    <AuthShell>
       <div className="login-card">
-        <h1>SLATE</h1>
+        <h1>Sign in to SLATE</h1>
         <p className="muted">Secure Land Administration &amp; Title Exchange — pilot environment</p>
         <Banner kind="error" message={error} />
         {challenge === null ? (
@@ -133,6 +133,6 @@ export default function Login() {
           <Link to="/public">Continue to the public property search without signing in</Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   )
 }

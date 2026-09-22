@@ -1,7 +1,17 @@
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import { AuthProvider, homeRouteFor, useAuth } from './auth'
+import {
+  AdminIcon,
+  AuditIcon,
+  DashboardIcon,
+  ListIcon,
+  PropertyIcon,
+  QueueIcon,
+  SignOutIcon,
+  TransferIcon,
+} from './icons'
 import Admin from './pages/Admin'
 import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
@@ -42,35 +52,53 @@ function Shell({ children }: { children: ReactNode }) {
     <div className="app">
       <aside className="sidebar">
         <Link className="brand" to={homeRouteFor(user)}>
-          <strong>SLATE</strong>
-          <small>SECURED LAND ASSET TOKEN<br />EXCHANGE</small>
+          <span className="brand-mark">S</span>
+          <span className="brand-text">
+            <strong>SLATE</strong>
+            <small>Secured Land Asset Token Exchange</small>
+          </span>
         </Link>
         <div className="side-section">
           <span>Registration</span>
-          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Dashboard</Link> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/properties/new">Property Entry</Link> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/transactions/new">Initiate Transaction</Link> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Pending Queue</Link> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/properties">Property List</Link> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/ro">Audit Trail</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro"><DashboardIcon />Dashboard</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/properties/new"><PropertyIcon />Property Entry</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/transactions/new"><TransferIcon />Initiate Transaction</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro"><QueueIcon />Pending Queue</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro"><AuditIcon />Audit Trail</NavLink> : null}
         </div>
-        {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><Link to="/admin">Users and configuration</Link></div> : null}
+        {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><NavLink to="/admin"><AdminIcon />Users and configuration</NavLink></div> : null}
         <div className="side-section">
           <span>Network</span>
           <p>Besu QBFT · chainId 2026<br />Block #18,442</p>
           <small className="network-up">● 4/4 validators up</small>
         </div>
-        <button className="side-signout" onClick={() => void logout().then(() => navigate('/login'))}>Sign out</button>
+        <button className="side-signout" onClick={() => void logout().then(() => navigate('/login'))}>
+          <SignOutIcon />
+          Sign out
+        </button>
       </aside>
       <div className="workspace">
         <header className="topbar">
           <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>
-          <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
+          <div className="topbar-user">
+            <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
+            <span className="avatar">{initials(user.fullName)}</span>
+          </div>
         </header>
         <main>{children}</main>
       </div>
     </div>
   )
+}
+
+function initials(fullName: string) {
+  return fullName
+    .split(/\s+/)
+    .filter((part) => part.length > 0)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('')
 }
 
 function LandingRedirect() {
