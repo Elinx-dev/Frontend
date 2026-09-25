@@ -15,8 +15,6 @@ export default function TransactionStart() {
   const [deedTypeCode, setDeedTypeCode] = useState('')
   const [subtype, setSubtype] = useState('')
   const [transferScope, setTransferScope] = useState('FULL_PROPERTY')
-  const [workflowId, setWorkflowId] = useState('')
-  const [configVersion, setConfigVersion] = useState('')
   const [declaredConsideration, setDeclaredConsideration] = useState('')
   const [modeOfConsideration, setModeOfConsideration] = useState('BANK_TRANSFER')
   const [extentOrShareTransferred, setExtentOrShareTransferred] = useState('')
@@ -53,7 +51,7 @@ export default function TransactionStart() {
         propertyRef: String(property?.property_ref ?? property?.propertyRef ?? propertyRef),
         stateCode: String(property?.stateCode ?? property?.state_code ?? 'TN'),
         propertyId: Number(propertyId), deedTypeCode, subtype: subtype || undefined,
-        workflowId: Number(workflowId), configVersion: Number(configVersion), transferScope,
+        transferScope,
         sroCode: String(property?.sroCode ?? property?.sro_code ?? ''),
         declaredConsideration: declaredConsideration ? Number(declaredConsideration) : undefined,
         modeOfConsideration: declaredConsideration ? modeOfConsideration : undefined,
@@ -87,8 +85,6 @@ export default function TransactionStart() {
           <Field label="Deed type" value={deedTypeCode} onChange={setDeedTypeCode} options={(bootstrap?.deedTypes ?? []).map((d) => ({ value: d.code, label: `${d.code} — ${d.name}` }))} required />
           <Field label="Subtype" value={subtype} onChange={setSubtype} placeholder="Optional" />
           <Field label="Transfer scope" value={transferScope} onChange={setTransferScope} options={[{ value: 'FULL_PROPERTY', label: 'Full property' }, { value: 'UNDIVIDED_SHARE', label: 'Undivided share' }, { value: 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION', label: 'Partial extent / subdivision' }]} required />
-          <Field label="Workflow ID" value={workflowId} onChange={setWorkflowId} type="number" required />
-          <Field label="Config version" value={configVersion} onChange={setConfigVersion} type="number" required />
           <Field label="Declared consideration" value={declaredConsideration} onChange={setDeclaredConsideration} type="number" />
           <Field label="Mode of consideration" value={modeOfConsideration} onChange={setModeOfConsideration} options={[{ value: 'BANK_TRANSFER', label: 'Bank transfer' }, { value: 'CASH', label: 'Cash' }, { value: 'MIXED', label: 'Mixed' }]} />
           <Field label="Extent / share transferred" value={extentOrShareTransferred} onChange={setExtentOrShareTransferred} type="number" />
@@ -99,7 +95,7 @@ export default function TransactionStart() {
           <Field label="Share being released" value={shareBeingReleased} onChange={setShareBeingReleased} type="number" />
           <Field label="Resulting subparcel count" value={resultingSubparcelCount} onChange={setResultingSubparcelCount} type="number" />
         </div>
-        <div className="next-step"><span><strong>Next:</strong> parties, witnesses, consent, rule checks, fees and registration.</span><button className="primary" disabled={busy || !propertyId || !deedTypeCode || !workflowId || !configVersion} onClick={() => void create()}>{busy ? 'Creating…' : 'Create transaction'}</button></div>
+        <div className="next-step"><span><strong>Next:</strong> parties, witnesses, consent, rule checks, fees and registration.</span><button className="primary" disabled={busy || !propertyId || !deedTypeCode || !transferScope} onClick={() => void create()}>{busy ? 'Creating…' : 'Create transaction'}</button></div>
       </Panel>
     </div>
   )

@@ -53,7 +53,9 @@ export default function TransactionDetail() {
   const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_1'), emptyParty('SIDE_2')])
   const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
   const [witnessOne, setWitnessOne] = useState('')
+  const [witnessOneAadhaar, setWitnessOneAadhaar] = useState('')
   const [witnessTwo, setWitnessTwo] = useState('')
+  const [witnessTwoAadhaar, setWitnessTwoAadhaar] = useState('')
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
@@ -228,15 +230,26 @@ export default function TransactionDetail() {
     )
   }
 
-  const saveWitnesses = () =>
-    guard(
+  const saveWitnesses = () => {
+    if (witnessOne.trim().length === 0 || witnessTwo.trim().length === 0) {
+      setInfo('')
+      setError('Both witness names are required.')
+      return
+    }
+    if (!AADHAAR_PATTERN.test(witnessOneAadhaar) || !AADHAAR_PATTERN.test(witnessTwoAadhaar)) {
+      setInfo('')
+      setError('Each witness Aadhaar number must contain exactly 12 digits.')
+      return
+    }
+    return guard(
       () =>
         put(`/api/transactions/${txnRef}/witnesses`, [
-          { name: witnessOne, address: 'Recorded at SRO', idProofType: 'AADHAAR', idProofRef: 'XXXX-1' },
-          { name: witnessTwo, address: 'Recorded at SRO', idProofType: 'AADHAAR', idProofRef: 'XXXX-2' },
+          { name: witnessOne, address: 'Recorded at SRO', idProofType: 'AADHAAR', idProofRef: witnessOneAadhaar },
+          { name: witnessTwo, address: 'Recorded at SRO', idProofType: 'AADHAAR', idProofRef: witnessTwoAadhaar },
         ]),
       'Witnesses saved.',
     )
+  }
 
   const transition = (actionCode: string) =>
     guard(() => post(`/api/transactions/${txnRef}/transitions`, { actionCode }, true), `${actionCode} applied.`)
@@ -485,7 +498,9 @@ export default function TransactionDetail() {
       <Panel title="3. Witnesses" actions={<button onClick={() => void saveWitnesses()}>Save witnesses</button>}>
         <div className="row">
           <Field label="Witness 1" value={witnessOne} onChange={setWitnessOne} required />
+          <Field label="Witness 1 Aadhaar (12 digits)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} required />
           <Field label="Witness 2" value={witnessTwo} onChange={setWitnessTwo} required />
+          <Field label="Witness 2 Aadhaar (12 digits)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} required />
         </div>
         <DataTable
           rows={txn.witnesses}
