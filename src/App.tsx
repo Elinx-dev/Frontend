@@ -13,6 +13,7 @@ import {
   TransferIcon,
 } from './icons'
 import Admin from './pages/Admin'
+import AuditTrail from './pages/AuditTrail'
 import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
@@ -65,7 +66,7 @@ function Shell({ children }: { children: ReactNode }) {
           {has('REGISTRATION_OFFICER') ? <NavLink to="/transactions/new"><TransferIcon />Initiate Transaction</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <Link to="/ro"><QueueIcon />Pending Queue</Link> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
-          {has('REGISTRATION_OFFICER') ? <Link to="/ro"><AuditIcon />Audit Trail</Link> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink> : null}
         </div>
         {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><NavLink to="/admin"><AdminIcon />Users and configuration</NavLink></div> : null}
         <div className="side-section">
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/public" element={<PublicView />} />
           <Route path="/ro" element={<Protected><TransactionQueue /></Protected>} />
+          <Route path="/audit" element={<Protected><AuditTrail /></Protected>} />
           <Route path="/properties" element={<Protected><PropertySearch /></Protected>} />
           <Route path="/properties/new" element={<Protected><PropertyCreate /></Protected>} />
           <Route path="/properties/:propertyRef" element={<Protected><PropertyDetail /></Protected>} />
