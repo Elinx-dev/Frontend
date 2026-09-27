@@ -72,6 +72,22 @@ export const post = <T,>(path: string, body?: unknown, idempotent = false) =>
   api<T>('POST', path, body ?? {}, { idempotent })
 export const put = <T,>(path: string, body: unknown) => api<T>('PUT', path, body)
 
+/** Fetches a non-JSON payload, such as a CSV export. */
+export async function getText(path: string, accept = 'text/csv'): Promise<string> {
+  const headers: Record<string, string> = { Accept: accept }
+  const token = storedToken()
+  if (token !== null) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const response = await fetch(path, { method: 'GET', headers })
+  const text = await response.text()
+  if (!response.ok) {
+    const problem = (text.length === 0 ? {} : JSON.parse(text)) as { code?: string; message?: string }
+    throw new ApiError(response.status, problem.code ?? 'ERROR', problem.message ?? `GET ${path} failed`, null)
+  }
+  return text
+}
+
 export function qs(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {

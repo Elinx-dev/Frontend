@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError, get, qs } from '../api'
+import { usePageAudit } from '../audit'
 import type { Row } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 
@@ -27,6 +28,8 @@ export default function PropertySearch() {
     // initial load only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  usePageAudit('PROPERTY_SEARCH_VIEWED', '/properties')
 
   return (
     <Panel title="Property register" actions={<button onClick={() => void search()}>Search</button>}>

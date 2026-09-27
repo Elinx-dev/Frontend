@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { ApiError, get, post, qs } from '../api'
 import { useAuth } from '../auth'
+import { usePageAudit } from '../audit'
 import type { Row } from '../types'
 import { Banner, DataTable, Field, Panel, formatCell } from '../ui'
 
@@ -31,6 +32,8 @@ export default function RevenueQueue({ role }: { role: 'VAO' | 'TAHSILDAR' }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  usePageAudit('REVENUE_QUEUE_VIEWED', '/revenue')
 
   const open = async (mutationId: number) => {
     setError('')

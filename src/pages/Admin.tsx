@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { ApiError, get, qs } from '../api'
 import { useAuth } from '../auth'
+import { usePageAudit } from '../audit'
 import type { Row } from '../types'
 import { Banner, DataTable, Field, Panel, formatCell } from '../ui'
 
@@ -31,6 +32,8 @@ export default function Admin() {
       })
       .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
   }, [deedTypeCode])
+
+  usePageAudit('ADMIN_CONSOLE_VIEWED', '/admin')
 
   return (
     <>

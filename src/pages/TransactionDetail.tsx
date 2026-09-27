@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ApiError, get, post, put } from '../api'
+import { AuditTimeline, usePageAudit } from '../audit'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel, StatusPill, formatCell } from '../ui'
 
@@ -62,6 +63,8 @@ export default function TransactionDetail() {
   useEffect(() => {
     void load()
   }, [load])
+
+  usePageAudit('TRANSACTION_VIEWED', `/transactions/${txnRef}`, { transactionRef: txnRef })
 
   const guard = async (action: () => Promise<unknown>, message: string) => {
     setError('')
@@ -415,6 +418,8 @@ export default function TransactionDetail() {
           empty="No revenue mutation proposed yet."
         />
       </Panel>
+
+      <AuditTimeline transactionRef={txn.txn_ref} title="8. Audit trail for this transaction" />
     </>
   )
 }

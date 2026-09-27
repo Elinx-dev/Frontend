@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError, get, qs } from '../api'
+import { usePageAudit } from '../audit'
 import type { Row } from '../types'
 import { Banner, DataTable, Panel } from '../ui'
 
@@ -22,6 +23,8 @@ export default function SurveyorQueue() {
   useEffect(() => {
     void load()
   }, [load])
+
+  usePageAudit('SURVEY_QUEUE_VIEWED', '/surveyor')
 
   return (
     <Panel title="Survey queue" actions={<button onClick={() => void load()}>Refresh</button>}>

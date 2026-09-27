@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, get, post } from '../api'
+import { AuditTimeline, usePageAudit } from '../audit'
 import { useAuth } from '../auth'
 import type { Bootstrap, Row } from '../types'
 import { Banner, DataTable, Field, Panel, formatCell } from '../ui'
@@ -26,6 +27,8 @@ export default function PropertyDetail() {
   useEffect(() => {
     void load()
   }, [load])
+
+  usePageAudit('PROPERTY_VIEWED', `/properties/${propertyRef}`, { propertyRef })
 
   const startTransaction = async () => {
     setError('')
@@ -126,6 +129,8 @@ export default function PropertyDetail() {
           ]}
         />
       </Panel>
+
+      <AuditTimeline propertyRef={propertyRef} title="Audit trail for this property" />
 
       {canCreate ? (
         <Panel title="Start a new transaction">
