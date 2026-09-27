@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { AuthProvider, homeRouteFor, useAuth } from './auth'
 import Admin from './pages/Admin'
+import AuditTrail from './pages/AuditTrail'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
 import PropertyDetail from './pages/PropertyDetail'
@@ -39,6 +40,7 @@ function Shell({ children }: { children: ReactNode }) {
           {has('VAO') ? <Link to="/vao">VAO</Link> : null}
           {has('TAHSILDAR') ? <Link to="/tahsildar">Tahsildar</Link> : null}
           {has('STATE_ADMIN') ? <Link to="/admin">Admin</Link> : null}
+          <Link to="/audit">Audit trail</Link>
           <Link to="/public">Public</Link>
           <Link to="/profile">{user.fullName}</Link>
         </nav>
@@ -79,6 +81,7 @@ export default function App() {
           <Route path="/vao" element={<Protected><RevenueQueue role="VAO" /></Protected>} />
           <Route path="/tahsildar" element={<Protected><RevenueQueue role="TAHSILDAR" /></Protected>} />
           <Route path="/admin" element={<Protected><Admin /></Protected>} />
+          <Route path="/audit" element={<Protected><AuditTrail /></Protected>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

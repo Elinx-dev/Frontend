@@ -15,6 +15,41 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
+function encodeBase64(bytes: ArrayBuffer): string {
+  let binary = ''
+  for (const byte of new Uint8Array(bytes)) {
+    binary += String.fromCharCode(byte)
+  }
+  return btoa(binary)
+}
+
+/**
+ * The password never leaves the browser in clear text: it is sealed with the
+ * server's RSA-OAEP-256 key, which is issued per server start and therefore
+ * fetched on every sign-in rather than cached.
+ */
+async function encryptPassword(password: string): Promise<string> {
+  const { publicKey } = await get<{ algorithm: string; publicKey: string }>('/api/auth/public-key')
+  const key = await crypto.subtle.importKey(
+    'spki',
+    decodeBase64(publicKey),
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['encrypt'],
+  )
+  const sealed = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, new TextEncoder().encode(password))
+  return encodeBase64(sealed)
+}
+
 export function homeRouteFor(user: UserProfile): string {
   if (typeof user.homeRoute === 'string' && user.homeRoute.length > 0) {
     return user.homeRoute
@@ -52,7 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadBootstrap])
 
   const login = useCallback(async (username: string, password: string) => {
-    const result = await post<LoginResponse>('/api/auth/login', { username, password })
+    const result = await post<LoginResponse>('/api/auth/login', {
+      loginId: username,
+      encryptedPassword: await encryptPassword(password),
+    })
     if (typeof result.accessToken === 'string') {
       storeToken(result.accessToken)
       const profile = result.user ?? (await get<UserProfile>('/api/auth/me'))
@@ -63,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadBootstrap])
 
   const verifyOtp = useCallback(async (challengeId: string, otp: string) => {
-    const result = await post<LoginResponse>('/api/auth/verify-otp', { challengeId, otp })
+    const result = await post<LoginResponse>('/api/auth/mfa/verify', { challengeId, otp })
     storeToken(result.accessToken ?? null)
     const profile = result.user ?? (await get<UserProfile>('/api/auth/me'))
     setUser(profile)
