@@ -35,6 +35,9 @@ export interface DeedType {
   name: string
   survey_rule?: string
   allowed_transfer_scopes?: string[] | string
+  requires_relationship_category?: boolean
+  side1_role?: string
+  side2_role?: string
 }
 
 export interface Bootstrap {
@@ -66,7 +69,7 @@ export interface TransactionDetail extends Row {
   registeredOwners: Row[]
   surveyParcels: Row[]
   availableActions: Row[]
-  validation: Row
+  validation: Row[]
   stages: Row[]
   registrationResult: Row[]
   mutation: Row[]

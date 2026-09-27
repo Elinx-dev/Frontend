@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError, post } from '../api'
@@ -31,6 +31,18 @@ type OwnerErrors = Record<number, Partial<Record<OwnerField, string>>>
 const emptyOwner = (): OwnerForm => ({ ownerName: '', aadhaarNumber: '', pan: '', address: '', sharePct: '' })
 const AADHAAR_PATTERN = /^\d{12}$/
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+const CITY_CENTER = { latitude: 13.0827, longitude: 80.2707 }
+
+type MapLocation = typeof CITY_CENTER
+type MapStatus = 'fallback' | 'loading' | 'located'
+
+const mapEmbedUrl = ({ latitude, longitude }: MapLocation) => {
+  const west = longitude - 0.025
+  const east = longitude + 0.025
+  const south = latitude - 0.018
+  const north = latitude + 0.018
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${latitude}%2C${longitude}`
+}
 
 export default function PropertyCreate() {
   const navigate = useNavigate()
@@ -41,6 +53,64 @@ export default function PropertyCreate() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [ownerErrors, setOwnerErrors] = useState<OwnerErrors>({})
   const [busy, setBusy] = useState(false)
+  const [mapLocation, setMapLocation] = useState<MapLocation>(CITY_CENTER)
+  const [mapStatus, setMapStatus] = useState<MapStatus>('fallback')
+  const [mapLocationName, setMapLocationName] = useState('Chennai, Tamil Nadu')
+
+  useEffect(() => {
+    const hasLocationDetails = [property.villageCode, property.talukCode, property.street, property.doorNo]
+      .some((value) => value.trim().length > 0)
+    if (!hasLocationDetails) {
+      setMapLocation(CITY_CENTER)
+      setMapLocationName('Chennai, Tamil Nadu')
+      setMapStatus('fallback')
+      return
+    }
+
+    const query = [
+      property.doorNo,
+      property.street,
+      property.villageCode.replaceAll('_', ' '),
+      property.talukCode.replaceAll('_', ' '),
+      property.districtCode.replaceAll('_', ' '),
+      'Tamil Nadu',
+      'India',
+    ].filter((part) => part.trim().length > 0).join(', ')
+    const controller = new AbortController()
+    setMapStatus('loading')
+    const timeout = window.setTimeout(() => {
+      void fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error('Location search failed')
+          return await response.json() as Array<{ lat: string; lon: string; display_name: string }>
+        })
+        .then((results) => {
+          const result = results[0]
+          if (!result || !Number.isFinite(Number(result.lat)) || !Number.isFinite(Number(result.lon))) {
+            setMapLocation(CITY_CENTER)
+            setMapLocationName('Chennai, Tamil Nadu')
+            setMapStatus('fallback')
+            return
+          }
+          setMapLocation({ latitude: Number(result.lat), longitude: Number(result.lon) })
+          setMapLocationName(result.display_name)
+          setMapStatus('located')
+        })
+        .catch((reason: unknown) => {
+          if (reason instanceof DOMException && reason.name === 'AbortError') return
+          setMapLocation(CITY_CENTER)
+          setMapLocationName('Chennai, Tamil Nadu')
+          setMapStatus('fallback')
+        })
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [property.districtCode, property.doorNo, property.street, property.talukCode, property.villageCode])
 
   const update = (key: keyof PropertyState, value: string) => setProperty((current) => ({ ...current, [key]: value }))
   const options = (key: string, fallback: { value: string; label: string }[]) => {
@@ -144,19 +214,45 @@ export default function PropertyCreate() {
         ))}
       </Panel>
       <Panel title="Location & Survey">
-        <div className="form-grid three">
-          <div><Field label="Sub-Registrar Office (SRO)" value={property.sroCode} onChange={(v) => update('sroCode', v)} required />{fieldError('sroCode')}</div>
-          <div><Field label="Registration district" value={property.districtCode} onChange={(v) => update('districtCode', v)} required />{fieldError('districtCode')}</div>
-          <div><Field label="Taluk" value={property.talukCode} onChange={(v) => update('talukCode', v)} required />{fieldError('talukCode')}</div>
-          <div><Field label="Revenue village" value={property.villageCode} onChange={(v) => update('villageCode', v)} required />{fieldError('villageCode')}</div>
-          <div><Field label="Survey no." value={property.surveyNo} onChange={(v) => update('surveyNo', v)} required />{fieldError('surveyNo')}</div>
-          <Field label="Sub-division no." value={property.subdivisionNo} onChange={(v) => update('subdivisionNo', v)} />
-          <div><Field label="Extent" value={property.extentValue} onChange={(v) => numeric('extentValue', v)} type="number" required />{fieldError('extentValue')}</div>
-          <Field label="Extent unit" value={property.extentUnit} onChange={(v) => update('extentUnit', v)} options={[{ value: 'SQ_FT', label: 'Square feet' }, { value: 'HECTARE', label: 'Hectare' }]} required />
-          <Field label="FMB reference no." value={property.fmbReferenceNo} onChange={(v) => update('fmbReferenceNo', v)} />
-          <Field label="Panchayat" value={property.panchayat} onChange={(v) => update('panchayat', v)} />
-          <Field label="Ward no." value={property.wardNo} onChange={(v) => update('wardNo', v)} />
-          <Field label="Street / door no." value={`${property.street}${property.doorNo ? ` / ${property.doorNo}` : ''}`} onChange={(v) => update('street', v)} />
+        <div className="location-survey-layout">
+          <div className="form-grid three">
+            <div><Field label="Sub-Registrar Office (SRO)" value={property.sroCode} onChange={(v) => update('sroCode', v)} required />{fieldError('sroCode')}</div>
+            <div><Field label="Registration district" value={property.districtCode} onChange={(v) => update('districtCode', v)} required />{fieldError('districtCode')}</div>
+            <div><Field label="Taluk" value={property.talukCode} onChange={(v) => update('talukCode', v)} required />{fieldError('talukCode')}</div>
+            <div><Field label="Revenue village" value={property.villageCode} onChange={(v) => update('villageCode', v)} required />{fieldError('villageCode')}</div>
+            <div><Field label="Survey no." value={property.surveyNo} onChange={(v) => update('surveyNo', v)} required />{fieldError('surveyNo')}</div>
+            <Field label="Sub-division no." value={property.subdivisionNo} onChange={(v) => update('subdivisionNo', v)} />
+            <div><Field label="Extent" value={property.extentValue} onChange={(v) => numeric('extentValue', v)} type="number" required />{fieldError('extentValue')}</div>
+            <Field label="Extent unit" value={property.extentUnit} onChange={(v) => update('extentUnit', v)} options={[{ value: 'SQ_FT', label: 'Square feet' }, { value: 'HECTARE', label: 'Hectare' }]} required />
+            <Field label="FMB reference no." value={property.fmbReferenceNo} onChange={(v) => update('fmbReferenceNo', v)} />
+            <Field label="Panchayat" value={property.panchayat} onChange={(v) => update('panchayat', v)} />
+            <Field label="Ward no." value={property.wardNo} onChange={(v) => update('wardNo', v)} />
+            <Field label="Street / door no." value={`${property.street}${property.doorNo ? ` / ${property.doorNo}` : ''}`} onChange={(v) => update('street', v)} />
+          </div>
+          <aside className="property-map-panel" aria-label="Property map location">
+            <div className="property-map-heading">
+              <div>
+                <strong>Map location</strong>
+                <span>{mapStatus === 'located' ? mapLocationName : 'Chennai, Tamil Nadu'}</span>
+              </div>
+              {mapStatus === 'located' ? <span className="map-pin-status">Located</span> : null}
+            </div>
+            <div className="property-map-frame">
+              <iframe
+                title={`Map showing ${mapStatus === 'located' ? mapLocationName : 'Chennai, Tamil Nadu'}`}
+                src={mapEmbedUrl(mapLocation)}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+              {mapStatus !== 'located' ? (
+                <div className="property-map-message" role="status">
+                  <strong>{mapStatus === 'loading' ? 'Locating area…' : 'Unable to locate on map'}</strong>
+                  <span>{mapStatus === 'loading' ? 'Searching the entered village or address.' : 'Showing Chennai as the city reference.'}</span>
+                </div>
+              ) : null}
+            </div>
+            <span className="map-attribution">Map data © OpenStreetMap contributors</span>
+          </aside>
         </div>
       </Panel>
       <Panel title="Boundaries">

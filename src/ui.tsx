@@ -79,7 +79,7 @@ export function DataTable({
   onRowClick,
 }: {
   rows: Row[]
-  columns: { key: string; label: string }[]
+  columns: { key: string; label: string; render?: (row: Row) => ReactNode }[]
   empty?: string
   onRowClick?: (row: Row) => void
 }) {
@@ -103,7 +103,7 @@ export function DataTable({
             className={onRowClick === undefined ? undefined : 'clickable'}
           >
             {columns.map((c) => (
-              <td key={c.key}>{formatCell(row[c.key])}</td>
+              <td key={c.key}>{c.render === undefined ? formatCell(row[c.key]) : c.render(row)}</td>
             ))}
           </tr>
         ))}

@@ -6,6 +6,37 @@ import { useAuth } from '../auth'
 import type { Row } from '../types'
 import { Banner, DataTable, Field, Panel, formatCell } from '../ui'
 
+function formatProposedOwnerSet(value: unknown): string {
+  if (value === null || value === undefined) return '—'
+
+  let parsed = value
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value) as unknown
+    } catch {
+      return value
+    }
+  }
+
+  const ownerName = (owner: unknown): string => {
+    if (owner === null || typeof owner !== 'object' || Array.isArray(owner)) return formatCell(owner)
+
+    const row = owner as Row
+    const name = row.owner_name ?? row.ownerName ?? row.full_name ?? row.fullName ?? row.name
+    const share = row.share_pct ?? row.sharePct ?? row.share_percentage ?? row.sharePercentage
+    if (name === null || name === undefined) return formatCell(owner)
+    return share === null || share === undefined ? String(name) : `${String(name)} (${String(share)}%)`
+  }
+
+  if (Array.isArray(parsed)) return parsed.map(ownerName).join(', ') || '—'
+  if (typeof parsed === 'object') {
+    const row = parsed as Row
+    const owners = row.owners ?? row.registeredOwners ?? row.ownerSet ?? row.proposedOwners
+    if (Array.isArray(owners)) return owners.map(ownerName).join(', ') || '—'
+  }
+  return formatCell(parsed)
+}
+
 export default function RevenueQueue({ role }: { role: 'VAO' | 'TAHSILDAR' }) {
   const { user } = useAuth()
   const [rows, setRows] = useState<Row[]>([])
@@ -95,7 +126,7 @@ export default function RevenueQueue({ role }: { role: 'VAO' | 'TAHSILDAR' }) {
             <dt>Status</dt>
             <dd>{formatCell(selected.status)}</dd>
             <dt>Proposed owner set</dt>
-            <dd>{formatCell(selected.proposed_owner_set)}</dd>
+            <dd>{formatProposedOwnerSet(selected.proposed_owner_set)}</dd>
             <dt>VAO remarks</dt>
             <dd>{formatCell(selected.vao_remarks)}</dd>
           </dl>

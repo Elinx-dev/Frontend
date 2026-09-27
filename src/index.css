@@ -395,6 +395,105 @@ main {
   margin: 0 auto;
 }
 
+.location-survey-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(250px, 0.8fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.property-map-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+
+.property-map-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+}
+
+.property-map-heading > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.property-map-heading strong {
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.property-map-heading span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-map-heading .map-pin-status {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: var(--r-xs);
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.property-map-frame {
+  position: relative;
+  height: 285px;
+  overflow: hidden;
+  background: #e6ece7;
+}
+
+.property-map-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.property-map-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+}
+
+.property-map-message strong {
+  font-size: 12px;
+}
+
+.property-map-message span {
+  max-width: 220px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.map-attribution {
+  display: block;
+  padding: 5px 8px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: right;
+}
+
 /* ======================================================
    PANELS / CARDS
    ====================================================== */
@@ -590,6 +689,166 @@ button:disabled {
 .validation {
   color: var(--danger-text);
   font-size: 12px;
+}
+
+.readiness-flow {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+
+.readiness-flow-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.readiness-flow-head h3 {
+  margin: 3px 0 0;
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.readiness-current {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.readiness-current span,
+.readiness-state {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.readiness-current strong {
+  color: var(--navy);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.readiness-track {
+  display: flex;
+  overflow-x: auto;
+  padding: 0 0 8px;
+}
+
+.readiness-step-item {
+  flex: 1 1 0;
+  min-width: 120px;
+}
+
+.readiness-step-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.readiness-step-button:hover {
+  background: transparent;
+}
+
+.readiness-step-button:hover .readiness-label,
+.readiness-step-button.selected .readiness-label {
+  color: var(--navy);
+}
+
+.readiness-step-button.selected .readiness-marker {
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+.readiness-step-button:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 3px;
+}
+
+.readiness-marker-row {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  margin-bottom: 8px;
+}
+
+.readiness-marker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 1px solid var(--success);
+  border-radius: 50%;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.readiness-line {
+  height: 2px;
+  flex: 1;
+  margin: 0 8px;
+  background: var(--line);
+}
+
+.readiness-step-button.has-issues .readiness-marker {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.readiness-label,
+.readiness-state {
+  display: block;
+}
+
+.readiness-label {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.readiness-step-button.has-issues .readiness-state {
+  color: var(--danger-text);
+}
+
+.transaction-task-anchor {
+  scroll-margin-top: 24px;
+}
+
+.readiness-detail {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--success);
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 12px;
+}
+
+.readiness-detail.has-issues {
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.readiness-detail strong {
+  display: block;
+  font-size: 12px;
+}
+
+.readiness-detail ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
 }
 
 .helper {
@@ -1411,6 +1670,14 @@ button:disabled {
   .dashboard-lower {
     grid-template-columns: 1fr;
   }
+
+  .location-survey-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .property-map-frame {
+    height: 240px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1434,6 +1701,14 @@ button:disabled {
 
   .step span {
     display: none;
+  }
+
+  .readiness-track {
+    margin-right: -4px;
+  }
+
+  .readiness-step-item {
+    flex: 0 0 155px;
   }
 
   .topbar {

@@ -60,12 +60,12 @@ function Shell({ children }: { children: ReactNode }) {
         </Link>
         <div className="side-section">
           <span>Registration</span>
-          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro"><DashboardIcon />Dashboard</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro" end><DashboardIcon />Dashboard</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties/new"><PropertyIcon />Property Entry</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/transactions/new"><TransferIcon />Initiate Transaction</NavLink> : null}
-          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro"><QueueIcon />Pending Queue</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/ro"><QueueIcon />Pending Queue</Link> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
-          {has('REGISTRATION_OFFICER') ? <NavLink to="/ro"><AuditIcon />Audit Trail</NavLink> : null}
+          {has('REGISTRATION_OFFICER') ? <Link to="/ro"><AuditIcon />Audit Trail</Link> : null}
         </div>
         {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><NavLink to="/admin"><AdminIcon />Users and configuration</NavLink></div> : null}
         <div className="side-section">
