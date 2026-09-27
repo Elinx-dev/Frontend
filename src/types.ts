@@ -54,7 +54,7 @@ export interface TransactionDetail extends Row {
   witnesses: Row[]
   consents: Row[]
   ruleCheckResults: Row[]
-  feeCalculation: Row | null
+  feeCalculation?: Row | null
   payments: Row[]
   registeredOwners: Row[]
   surveyParcels: Row[]

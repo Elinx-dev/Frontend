@@ -158,6 +158,8 @@ export default function TransactionDetail() {
 
   const register = () => guard(() => post(`/api/transactions/${txnRef}/registration`, {}, true), 'Registered.')
 
+  const fees = txn.feeCalculation ?? null
+
   const validationMessages = ((txn.validation?.messages as Row[] | undefined) ?? []).map((m) => formatCell(m.message))
 
   return (
@@ -352,21 +354,21 @@ export default function TransactionDetail() {
       </Panel>
 
       <Panel title="6. Fees and payment" actions={<button onClick={() => void calculateFees()}>Calculate fees</button>}>
-        {txn.feeCalculation === null ? (
+        {fees === null ? (
           <p className="muted">No fee calculation yet.</p>
         ) : (
           <dl className="kv">
             <dt>Valuation basis</dt>
             <dd>
-              {formatCell(txn.feeCalculation.valuation_basis_used)} — {formatCell(txn.feeCalculation.valuation_amount)}
+              {formatCell(fees.valuation_basis_used)} — {formatCell(fees.valuation_amount)}
             </dd>
             <dt>Stamp duty</dt>
-            <dd>{formatCell(txn.feeCalculation.stamp_duty)}</dd>
+            <dd>{formatCell(fees.stamp_duty)}</dd>
             <dt>Registration fee</dt>
-            <dd>{formatCell(txn.feeCalculation.registration_fee)}</dd>
+            <dd>{formatCell(fees.registration_fee)}</dd>
             <dt>Total payable</dt>
             <dd>
-              <b>{formatCell(txn.feeCalculation.total_payable)}</b>
+              <b>{formatCell(fees.total_payable)}</b>
             </dd>
           </dl>
         )}
@@ -374,7 +376,7 @@ export default function TransactionDetail() {
           <Field label="Challan / payment reference" value={paymentRef} onChange={setPaymentRef} />
           <button
             className="primary"
-            disabled={txn.feeCalculation === null || paymentRef.length === 0}
+            disabled={fees === null || paymentRef.length === 0}
             onClick={() => void recordPayment()}
           >
             Record payment
