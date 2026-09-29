@@ -41,8 +41,17 @@ const emptyParty = (side: string): PartyForm => ({
 const numberOrUndefined = (value: string): number | undefined =>
   value.trim().length === 0 ? undefined : Number(value)
 
-export default function TransactionDetail() {
-  const { txnRef = '' } = useParams()
+export default function TransactionDetail({
+  transactionRef,
+  initialWorkflowTab,
+  pageTitle,
+}: {
+  transactionRef?: string
+  initialWorkflowTab?: string
+  pageTitle?: string
+} = {}) {
+  const { txnRef: routeTxnRef = '' } = useParams()
+  const txnRef = transactionRef ?? routeTxnRef
   const [txn, setTxn] = useState<Txn | null>(null)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
@@ -55,11 +64,17 @@ export default function TransactionDetail() {
   const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
   const [witnessOne, setWitnessOne] = useState('')
   const [witnessOneAadhaar, setWitnessOneAadhaar] = useState('')
+  const [witnessOneAddress, setWitnessOneAddress] = useState('')
+  const [witnessOnePhone, setWitnessOnePhone] = useState('')
   const [witnessTwo, setWitnessTwo] = useState('')
   const [witnessTwoAadhaar, setWitnessTwoAadhaar] = useState('')
+  const [witnessTwoAddress, setWitnessTwoAddress] = useState('')
+  const [witnessTwoPhone, setWitnessTwoPhone] = useState('')
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
+  const [registrationComment, setRegistrationComment] = useState('')
+  const [activeWorkflowTab, setActiveWorkflowTab] = useState(initialWorkflowTab ?? 'txn-property')
   const [selectedReadinessStep, setSelectedReadinessStep] = useState<string | null>(null)
   const initializedTxnRef = useRef('')
 
@@ -79,9 +94,21 @@ export default function TransactionDetail() {
         setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
 
+        const savedWitnesses = Array.isArray(result.witnesses) ? result.witnesses : []
+        const firstWitness = savedWitnesses[0]
+        const secondWitness = savedWitnesses[1]
+        setWitnessOne(String(firstWitness?.name ?? ''))
+        setWitnessOneAadhaar(String(firstWitness?.id_proof_ref ?? firstWitness?.idProofRef ?? ''))
+        setWitnessOneAddress(String(firstWitness?.address ?? ''))
+        setWitnessOnePhone(String(firstWitness?.phone_number ?? firstWitness?.phoneNumber ?? ''))
+        setWitnessTwo(String(secondWitness?.name ?? ''))
+        setWitnessTwoAadhaar(String(secondWitness?.id_proof_ref ?? secondWitness?.idProofRef ?? ''))
+        setWitnessTwoAddress(String(secondWitness?.address ?? ''))
+        setWitnessTwoPhone(String(secondWitness?.phone_number ?? secondWitness?.phoneNumber ?? ''))
+
         const savedParties = Array.isArray(result.parties) ? result.parties : []
         setPartyFormVisible(savedParties.length === 0)
-        const sourceParties = savedParties.length > 0
+        const sourceParties: Row[] = savedParties.length > 0
           ? savedParties
           : registeredOwners.map((owner) => ({ ...owner, side: 'SIDE_1' }))
         const partyForms = sourceParties.map((party) => ({
@@ -263,16 +290,29 @@ export default function TransactionDetail() {
       setError('Both witness names are required.')
       return
     }
-    if (!AADHAAR_PATTERN.test(witnessOneAadhaar) || !AADHAAR_PATTERN.test(witnessTwoAadhaar)) {
+    if ((witnessOneAadhaar.length > 0 && !AADHAAR_PATTERN.test(witnessOneAadhaar))
+      || (witnessTwoAadhaar.length > 0 && !AADHAAR_PATTERN.test(witnessTwoAadhaar))) {
       setInfo('')
-      setError('Each witness Aadhaar number must contain exactly 12 digits.')
+      setError('A witness Aadhaar number must contain exactly 12 digits when provided.')
       return
     }
     return guard(
       () =>
         put(`/api/transactions/${txnRef}/witnesses`, [
-          { name: witnessOne, address: 'Recorded at SRO', idProofType: 'AADHAAR', idProofRef: witnessOneAadhaar },
-          { name: witnessTwo, address: 'Recorded at SRO', idProofType: 'AADHAAR', idProofRef: witnessTwoAadhaar },
+          {
+            name: witnessOne,
+            address: witnessOneAddress || undefined,
+            phoneNumber: witnessOnePhone || undefined,
+            idProofType: witnessOneAadhaar ? 'AADHAAR' : undefined,
+            idProofRef: witnessOneAadhaar || undefined,
+          },
+          {
+            name: witnessTwo,
+            address: witnessTwoAddress || undefined,
+            phoneNumber: witnessTwoPhone || undefined,
+            idProofType: witnessTwoAadhaar ? 'AADHAAR' : undefined,
+            idProofRef: witnessTwoAadhaar || undefined,
+          },
         ]),
       'Witnesses saved.',
     )
@@ -329,20 +369,23 @@ export default function TransactionDetail() {
 
   const register = () =>
     guard(
-      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/registration`, {}, true),
+      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/registration`, {
+        comment: registrationComment.trim() || undefined,
+      }, true),
       'Transaction registered.',
     )
 
   const witnessRows = (txn.witnesses ?? []).map((w) => ({
     ...w,
     id_proof_ref: w.id_proof_ref ?? w.idProofRef ?? '',
+    phone_number: w.phone_number ?? w.phoneNumber ?? '',
   }))
 
   const validationMessages = txn.validation.map((validation) => formatCell(validation.message))
 
   const readinessDefinitions = [
     { label: 'Transaction details', target: 'txn-details', matches: /relationship category|guideline value|category/i },
-    { label: 'Parties', target: 'txn-parties', matches: /each side.*at least one party|at least one party/i },
+    { label: 'Buyer details', target: 'txn-parties', matches: /each side.*at least one party|at least one party|party/i },
     { label: 'Witnesses', target: 'txn-witnesses', matches: /witness/i },
     { label: 'Aadhaar consent', target: 'txn-consent', matches: /aadhaar|otp|consent/i },
     { label: 'Rule checks', target: 'txn-rules', matches: /rule check|rule|validation/i },
@@ -356,6 +399,10 @@ export default function TransactionDetail() {
       return (matchingStep?.label ?? 'Rule checks') === definition.label
     }),
   }))
+  const workflowTabs = [
+    { label: 'Property details', target: 'txn-property', issues: [] as string[] },
+    ...readinessSteps,
+  ]
   const currentStage = formatCell(txn.current_stage_code || txn.status).replaceAll('_', ' ')
   const renderReadinessDetails = (label: string) => {
     if (selectedReadinessStep !== label) return null
@@ -486,7 +533,7 @@ export default function TransactionDetail() {
   return (
     <>
       <Panel
-        title={`Transaction ${txn.txn_ref}`}
+        title={pageTitle ?? `Transaction ${txn.txn_ref}`}
         actions={
           <>
             <StatusPill status={txn.status} />
@@ -512,42 +559,34 @@ export default function TransactionDetail() {
           <dt>Stage</dt>
           <dd>{formatCell(txn.current_stage_code)}</dd>
         </dl>
-        <section className="readiness-flow" aria-label="Transaction readiness workflow">
+        <section className="readiness-flow" aria-label="Transaction workflow tabs">
           <div className="readiness-flow-head">
             <div>
               <span className="eyebrow">Registration workflow</span>
-              <h3>Readiness checks</h3>
+              <h3>Transaction sections</h3>
             </div>
             <div className="readiness-current">
               <span>Current status</span>
               <strong>{currentStage}</strong>
             </div>
           </div>
-          <div className="readiness-track" role="list">
-            {readinessSteps.map((step, index) => (
-              <div className="readiness-step-item" role="listitem" key={step.label}>
+          <div className="transaction-tabs" role="tablist" aria-label="Transaction sections">
+            {workflowTabs.map((step) => (
                 <button
+                  id={`workflow-tab-${step.target}`}
                   type="button"
-                  className={`readiness-step-button${step.issues.length > 0 ? ' has-issues' : ' is-clear'}${selectedReadinessStep === step.label ? ' selected' : ''}`}
-                  aria-label={`${step.label}, ${step.issues.length > 0 ? `${step.issues.length} requirements to resolve` : 'no open requirements'}. Go to task.`}
-                  aria-current={selectedReadinessStep === step.label ? 'step' : undefined}
+                  role="tab"
+                  className={`transaction-tab${step.issues.length > 0 ? ' has-issues' : ''}${activeWorkflowTab === step.target ? ' selected' : ''}`}
+                  aria-selected={activeWorkflowTab === step.target}
+                  aria-controls={step.target}
                   onClick={() => {
                     setSelectedReadinessStep(step.label)
-                    document.getElementById(step.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    setActiveWorkflowTab(step.target)
                   }}
                 >
-                  <span className="readiness-marker-row">
-                    <span className="readiness-marker" aria-hidden="true">
-                      {index + 1}
-                    </span>
-                    {index < readinessSteps.length - 1 ? <span className="readiness-line" aria-hidden="true" /> : null}
-                  </span>
                   <strong className="readiness-label">{step.label}</strong>
-                  <span className="readiness-state">
-                    {step.issues.length > 0 ? `${step.issues.length} to resolve` : 'No open issues'}
-                  </span>
+                  {step.issues.length > 0 ? <span className="readiness-state">{step.issues.length} to resolve</span> : null}
                 </button>
-              </div>
             ))}
           </div>
         </section>
@@ -560,8 +599,22 @@ export default function TransactionDetail() {
         </div>
       </Panel>
 
-      <div id="txn-details" className="transaction-task-anchor" tabIndex={-1}>
-      <Panel title="1. Transaction details" actions={<button onClick={() => void saveDetails()}>Save</button>}>
+      <div id="txn-property" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-property" tabIndex={0} hidden={activeWorkflowTab !== 'txn-property'}>
+      <Panel title="1. Property details">
+        <dl className="kv">
+          <dt>Property reference</dt><dd>{formatCell(txn.property.property_ref ?? txn.property.propertyRef)}</dd>
+          <dt>ULPIN</dt><dd>{formatCell(txn.property.ulpin ?? txn.property.ULPIN)}</dd>
+          <dt>Survey number</dt><dd>{formatCell(txn.property.survey_no ?? txn.property.surveyNo)}</dd>
+          <dt>Village</dt><dd>{formatCell(txn.property.village_name ?? txn.property.villageName ?? txn.property.village_code ?? txn.property.villageCode)}</dd>
+          <dt>District</dt><dd>{formatCell(txn.property.district_name ?? txn.property.districtName ?? txn.property.district_code ?? txn.property.districtCode)}</dd>
+          <dt>Address</dt><dd>{formatCell(txn.property.address)}</dd>
+          <dt>Extent</dt><dd>{formatCell(txn.property.extent_value ?? txn.property.extentValue)} {formatCell(txn.property.extent_unit ?? txn.property.extentUnit)}</dd>
+        </dl>
+      </Panel>
+      </div>
+
+      <div id="txn-details" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-details" tabIndex={0} hidden={activeWorkflowTab !== 'txn-details'}>
+      <Panel title="2. Transaction details" actions={<button onClick={() => void saveDetails()}>Save</button>}>
         {renderReadinessDetails('Transaction details')}
         <div className="row">
           <Field label="Declared consideration" value={consideration} onChange={setConsideration} type="number" />
@@ -585,9 +638,9 @@ export default function TransactionDetail() {
       </Panel>
       </div>
 
-      <div id="txn-parties" className="transaction-task-anchor" tabIndex={-1}>
+      <div id="txn-parties" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-parties" tabIndex={0} hidden={activeWorkflowTab !== 'txn-parties'}>
       <Panel
-        title="2. Parties"
+        title="3. Buyer details"
         actions={
           partyFormVisible ? (
             <button className="primary" onClick={() => void saveParties()}>
@@ -600,7 +653,7 @@ export default function TransactionDetail() {
           )
         }
       >
-        {renderReadinessDetails('Parties')}
+        {renderReadinessDetails('Buyer details')}
         {partyFormVisible ? (
           <>
             {renderPartyGroup('SIDE_1', sideOneTitle)}
@@ -621,29 +674,35 @@ export default function TransactionDetail() {
       </Panel>
       </div>
 
-      <div id="txn-witnesses" className="transaction-task-anchor" tabIndex={-1}>
-      <Panel title="3. Witnesses" actions={<button onClick={() => void saveWitnesses()}>Save witnesses</button>}>
+      <div id="txn-witnesses" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-witnesses" tabIndex={0} hidden={activeWorkflowTab !== 'txn-witnesses'}>
+      <Panel title="4. Witnesses" actions={<button onClick={() => void saveWitnesses()}>Save witnesses</button>}>
         {renderReadinessDetails('Witnesses')}
-        <div className="row">
-          <Field label="Witness 1" value={witnessOne} onChange={setWitnessOne} required />
-          <Field label="Witness 1 Aadhaar (12 digits)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} required />
-          <Field label="Witness 2" value={witnessTwo} onChange={setWitnessTwo} required />
-          <Field label="Witness 2 Aadhaar (12 digits)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} required />
+        <div className="form-grid two">
+          <Field label="Witness 1 name" value={witnessOne} onChange={setWitnessOne} required />
+          <Field label="Witness 1 address" value={witnessOneAddress} onChange={setWitnessOneAddress} />
+          <Field label="Witness 1 phone number" value={witnessOnePhone} onChange={setWitnessOnePhone} type="tel" />
+          <Field label="Witness 1 Aadhaar (optional)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
+          <Field label="Witness 2 name" value={witnessTwo} onChange={setWitnessTwo} required />
+          <Field label="Witness 2 address" value={witnessTwoAddress} onChange={setWitnessTwoAddress} />
+          <Field label="Witness 2 phone number" value={witnessTwoPhone} onChange={setWitnessTwoPhone} type="tel" />
+          <Field label="Witness 2 Aadhaar (optional)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
         </div>
         <DataTable
           rows={witnessRows}
           columns={[
             { key: 'name', label: 'Name' },
-            { key: 'id_proof_type', label: 'Id proof' },
+            { key: 'address', label: 'Address' },
+            { key: 'phone_number', label: 'Phone number' },
+            { key: 'id_proof_type', label: 'ID proof' },
             { key: 'id_proof_ref', label: 'ID proof ref' },
           ]}
         />
       </Panel>
       </div>
 
-      <div id="txn-consent" className="transaction-task-anchor" tabIndex={-1}>
+      <div id="txn-consent" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-consent" tabIndex={0} hidden={activeWorkflowTab !== 'txn-consent'}>
       <Panel
-        title="4. Aadhaar consent"
+        title="5. Aadhaar consent"
         actions={<button
           disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)}
           onClick={() => void requestConsent()}
@@ -686,8 +745,8 @@ export default function TransactionDetail() {
       </Panel>
       </div>
 
-      <div id="txn-rules" className="transaction-task-anchor" tabIndex={-1}>
-      <Panel title="5. Rule checks" actions={<button disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>}>
+      <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
+      <Panel title="6. Rule checks" actions={<button disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>}>
         {renderReadinessDetails('Rule checks')}
         <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
         <DataTable
@@ -704,8 +763,8 @@ export default function TransactionDetail() {
       </Panel>
       </div>
 
-      <div id="txn-fees" className="transaction-task-anchor" tabIndex={-1}>
-      <Panel title="6. Fees and payment" actions={<button disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>}>
+      <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
+      <Panel title="7. Fees and payment" actions={<button disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>}>
         {renderReadinessDetails('Fees & payment')}
         {txn.feeCalculation === null ? (
           <p className="muted">No fee calculation yet.</p>
@@ -762,9 +821,13 @@ export default function TransactionDetail() {
       </Panel>
       </div>
 
-      <div id="txn-registration" className="transaction-task-anchor" tabIndex={-1}>
-      <Panel title="7. Registration" actions={<button className="primary" disabled={txn.status !== 'SUBMITTED'} onClick={() => void register()}>Register</button>}>
+      <div id="txn-registration" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-registration" tabIndex={0} hidden={activeWorkflowTab !== 'txn-registration'}>
+      <Panel title="8. Registration" actions={<button className="primary" disabled={txn.status !== 'SUBMITTED'} onClick={() => void register()}>Register</button>}>
         {renderReadinessDetails('Registration')}
+        <label className="field registration-comment">
+          <span>Comment (optional)</span>
+          <textarea value={registrationComment} onChange={(event) => setRegistrationComment(event.target.value)} rows={3} />
+        </label>
         <DataTable
           rows={txn.registrationResult}
           columns={[

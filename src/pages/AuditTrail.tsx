@@ -23,7 +23,7 @@ interface AuditFilters {
 }
 
 const emptyFilters: AuditFilters = { search: '', category: '', outcome: '', from: '', to: '' }
-const categories = ['TRANSACTION', 'PROPERTY', 'APPROVAL', 'SECURITY', 'CONFIGURATION', 'NAVIGATION', 'SYSTEM']
+const categories = ['TRANSACTION', 'PROPERTY', 'APPROVAL', 'CONFIGURATION']
 
 export default function AuditTrail() {
   const [filters, setFilters] = useState<AuditFilters>(emptyFilters)
@@ -81,7 +81,7 @@ export default function AuditTrail() {
       <div className="page-heading">
         <div><p className="eyebrow">Registration workspace</p><h1>Audit Trail</h1></div>
         <div className="dashboard-actions">
-          {result.scope ? <span className="muted">Scope: {result.scope === 'SELF' ? 'My activity' : result.scope}</span> : null}
+          {result.scope ? <span className="muted">Scope: {result.scope === 'RELATED' ? 'Related transactions' : result.scope}</span> : null}
           <button onClick={() => { setLoading(true); setRefreshVersion((version) => version + 1) }} disabled={loading}>Refresh</button>
         </div>
       </div>
@@ -115,7 +115,16 @@ export default function AuditTrail() {
                   <td>{formatCell(row.entity_type)}<small className="cell-subtext">{formatCell(row.entity_id)}</small></td>
                   <td>{formatCell(reference)}</td>
                   <td><StatusPill status={String(row.outcome ?? 'UNKNOWN')} /></td>
-                  <td>{formatCell(row.detail)}</td>
+                  <td>
+                    {formatCell(row.detail)}
+                    {row.before_json != null || row.after_json != null ? (
+                      <details className="audit-change-details">
+                        <summary>View changes</summary>
+                        {row.before_json != null ? <><strong>Before</strong><pre>{formatAuditJson(row.before_json)}</pre></> : null}
+                        {row.after_json != null ? <><strong>After</strong><pre>{formatAuditJson(row.after_json)}</pre></> : null}
+                      </details>
+                    ) : null}
+                  </td>
                 </tr>
               })}</tbody>
             </table>
@@ -137,4 +146,15 @@ function formatTimestamp(value: unknown): string {
   if (typeof value !== 'string') return formatCell(value)
   const timestamp = new Date(value)
   return Number.isNaN(timestamp.getTime()) ? value : timestamp.toLocaleString()
+}
+
+function formatAuditJson(value: unknown): string {
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    } catch {
+      return value
+    }
+  }
+  return JSON.stringify(value, null, 2) ?? String(value)
 }

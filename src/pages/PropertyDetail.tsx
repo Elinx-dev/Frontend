@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { ApiError, get, post } from '../api'
+import { ApiError, get } from '../api'
 import { useAuth } from '../auth'
-import type { Bootstrap, Row } from '../types'
-import { Banner, DataTable, Field, Panel, formatCell } from '../ui'
+import type { Row } from '../types'
+import { Banner, DataTable, Panel, formatCell } from '../ui'
 
 export default function PropertyDetail() {
   const { propertyRef = '' } = useParams()
   const navigate = useNavigate()
-  const { bootstrap, user } = useAuth()
+  const { user } = useAuth()
   const [property, setProperty] = useState<Row | null>(null)
   const [error, setError] = useState('')
-  const [deedTypeCode, setDeedTypeCode] = useState('')
-  const [transferScope, setTransferScope] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -27,30 +25,25 @@ export default function PropertyDetail() {
     void load()
   }, [load])
 
-  const startTransaction = async () => {
-    setError('')
-    try {
-      const created = await post<Row>(
-        '/api/transactions',
-        { propertyRef, deedTypeCode, transferScope: transferScope.length === 0 ? undefined : transferScope },
-        true,
-      )
-      navigate(`/transactions/${String(created.txn_ref)}`)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e))
-    }
-  }
-
   if (property === null) {
     return <Banner kind="error" message={error.length === 0 ? 'Loading…' : error} />
   }
 
-  const deedTypes = (bootstrap as Bootstrap | null)?.deedTypes ?? []
   const canCreate = user?.permissions.includes('TXN_CREATE') === true
 
   return (
     <>
-      <Panel title={`Property ${formatCell(property.property_ref)}`}>
+      <Panel
+        title={`Property ${formatCell(property.property_ref)}`}
+        actions={canCreate ? (
+          <button
+            className="primary"
+            onClick={() => navigate(`/transactions/new?propertyRef=${encodeURIComponent(propertyRef)}`)}
+          >
+            Initiate transaction
+          </button>
+        ) : undefined}
+      >
         <Banner kind="error" message={error} />
         <dl className="kv">
           <dt>ULPIN</dt>
@@ -104,12 +97,22 @@ export default function PropertyDetail() {
           rows={(property.chainOfTitle as Row[]) ?? []}
           columns={[
             { key: 'seq', label: '#' },
-            { key: 'executor_name', label: 'Executor' },
-            { key: 'claimant_name', label: 'Claimant' },
             { key: 'transaction_date', label: 'Date' },
-            { key: 'nature_of_transaction', label: 'Nature' },
+            { key: 'nature_of_transaction', label: 'Deed type' },
             { key: 'reference_no', label: 'Reference' },
+            { key: 'property_value', label: 'Property value' },
+            { key: 'registration_fee', label: 'Registration fee' },
+            { key: 'registering_office', label: 'Registered at' },
+            {
+              key: 'owners',
+              label: 'Previous owners and shares',
+              render: (row) => {
+                const owners = (row.owners as Row[] | undefined) ?? []
+                return owners.length === 0 ? '—' : owners.map((owner) => `${String(owner.owner_name ?? 'Owner')} (${String(owner.share_pct ?? '—')}%)`).join(', ')
+              },
+            },
           ]}
+          empty="No prior title history recorded."
         />
       </Panel>
 
@@ -127,35 +130,6 @@ export default function PropertyDetail() {
         />
       </Panel>
 
-      {canCreate ? (
-        <Panel title="Start a new transaction">
-          <div className="row">
-            <Field
-              label="Deed type"
-              value={deedTypeCode}
-              onChange={setDeedTypeCode}
-              required
-              options={deedTypes.map((d) => ({ value: d.code, label: `${d.code} — ${d.name}` }))}
-            />
-            <Field
-              label="Transfer scope"
-              value={transferScope}
-              onChange={setTransferScope}
-              options={[
-                { value: 'FULL_PROPERTY', label: 'Full property' },
-                { value: 'UNDIVIDED_SHARE', label: 'Undivided share' },
-                {
-                  value: 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION',
-                  label: 'Physical partial extent / subdivision',
-                },
-              ]}
-            />
-          </div>
-          <button className="primary" disabled={deedTypeCode.length === 0} onClick={() => void startTransaction()}>
-            Create transaction
-          </button>
-        </Panel>
-      ) : null}
     </>
   )
 }

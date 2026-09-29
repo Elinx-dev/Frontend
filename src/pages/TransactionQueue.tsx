@@ -37,7 +37,7 @@ export default function TransactionQueue() {
     <div className="dashboard-page">
       <div className="dashboard-titlebar">
         <div><span className="eyebrow">Registration workspace</span><h1>Registration Officer Dashboard</h1></div>
-        <div className="dashboard-actions"><button onClick={() => void load()}>Refresh</button><button className="outline" onClick={() => navigate('/properties/new')}>Property Entry</button><button className="primary" onClick={() => navigate('/transactions/new')}>+ Initiate Transaction</button></div>
+        <div className="dashboard-actions"><button onClick={() => void load()}>Refresh</button><button className="outline" onClick={() => navigate('/properties/new')}>Mint Property</button><button className="primary" onClick={() => navigate('/transactions/new')}>+ Initiate Transaction</button></div>
       </div>
       <Banner kind="error" message={error} />
       <div className="metric-grid">

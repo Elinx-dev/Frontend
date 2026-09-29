@@ -48,6 +48,16 @@ export default function PropertySearch() {
           { key: 'extent_unit', label: 'Unit' },
           { key: 'village_code', label: 'Village' },
           { key: 'sro_code', label: 'SRO' },
+          {
+            key: 'latest_registered_at',
+            label: 'Latest registered',
+            render: (row) => {
+              const value = row.latest_registered_at
+              if (typeof value !== 'string') return '—'
+              const date = new Date(value)
+              return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString()
+            },
+          },
           { key: 'status', label: 'Status' },
         ]}
         empty="No properties match the filters."
