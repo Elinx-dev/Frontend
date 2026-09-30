@@ -45,10 +45,12 @@ export default function TransactionDetail({
   transactionRef,
   initialWorkflowTab,
   pageTitle,
+  compact = false,
 }: {
   transactionRef?: string
   initialWorkflowTab?: string
   pageTitle?: string
+  compact?: boolean
 } = {}) {
   const { txnRef: routeTxnRef = '' } = useParams()
   const txnRef = transactionRef ?? routeTxnRef
@@ -75,7 +77,17 @@ export default function TransactionDetail({
   const [paymentRef, setPaymentRef] = useState('')
   const [registrationComment, setRegistrationComment] = useState('')
   const [activeWorkflowTab, setActiveWorkflowTab] = useState(initialWorkflowTab ?? 'txn-property')
-  const [selectedReadinessStep, setSelectedReadinessStep] = useState<string | null>(null)
+  const initialReadinessStep = (() => {
+    if (initialWorkflowTab === 'txn-details') return 'Transaction details'
+    if (initialWorkflowTab === 'txn-parties') return 'Buyer details'
+    if (initialWorkflowTab === 'txn-witnesses') return 'Witnesses'
+    if (initialWorkflowTab === 'txn-consent') return 'Aadhaar consent'
+    if (initialWorkflowTab === 'txn-rules') return 'Rule checks'
+    if (initialWorkflowTab === 'txn-fees') return 'Fees & payment'
+    if (initialWorkflowTab === 'txn-registration') return 'Registration'
+    return null
+  })()
+  const [selectedReadinessStep, setSelectedReadinessStep] = useState<string | null>(initialReadinessStep)
   const initializedTxnRef = useRef('')
 
   const load = useCallback(async () => {
@@ -188,6 +200,10 @@ export default function TransactionDetail({
           remarks: txn.remarks ?? undefined,
         }),
       'Transaction details saved.',
+      () => {
+        setSelectedReadinessStep('Buyer details')
+        setActiveWorkflowTab('txn-parties')
+      },
     )
 
   const updateParty = (index: number, field: PartyField, value: string) => {
@@ -532,6 +548,31 @@ export default function TransactionDetail({
 
   return (
     <>
+      <Banner kind="error" message={error} />
+      <Banner kind="success" message={info} />
+      {compact ? (
+        <div className="transaction-compact-shell">
+          <div className="transaction-tabs" role="tablist" aria-label="Transaction sections">
+            {workflowTabs.map((step) => (
+              <button
+                id={`workflow-tab-${step.target}`}
+                type="button"
+                role="tab"
+                className={`transaction-tab${step.issues.length > 0 ? ' has-issues' : ''}${activeWorkflowTab === step.target ? ' selected' : ''}`}
+                aria-selected={activeWorkflowTab === step.target}
+                aria-controls={step.target}
+                onClick={() => {
+                  setSelectedReadinessStep(step.label)
+                  setActiveWorkflowTab(step.target)
+                }}
+              >
+                <strong className="readiness-label">{step.label}</strong>
+                {step.issues.length > 0 ? <span className="readiness-state">{step.issues.length} to resolve</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
       <Panel
         title={pageTitle ?? `Transaction ${txn.txn_ref}`}
         actions={
@@ -541,8 +582,6 @@ export default function TransactionDetail({
           </>
         }
       >
-        <Banner kind="error" message={error} />
-        <Banner kind="success" message={info} />
         <dl className="kv">
           <dt>Property</dt>
           <dd>
@@ -598,6 +637,7 @@ export default function TransactionDetail({
           ))}
         </div>
       </Panel>
+      )}
 
       <div id="txn-property" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-property" tabIndex={0} hidden={activeWorkflowTab !== 'txn-property'}>
       <Panel title="1. Property details">

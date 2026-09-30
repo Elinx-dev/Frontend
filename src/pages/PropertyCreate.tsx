@@ -35,37 +35,39 @@ interface BoundaryMeasurement {
 }
 type BoundaryMeasurementField = keyof BoundaryMeasurement
 type BoundaryMeasurementErrors = Record<number, Partial<Record<BoundaryMeasurementField, string>>>
-interface PreviousOwnerHistory {
-  ownerName: string
-  address: string
-  aadhaarNumber: string
-  pan: string
-  sharePct: string
-}
 interface ChainHistoryEntry {
+  executorName: string
+  claimantName: string
   transactionDate: string
   natureOfTransaction: string
   referenceNo: string
-  propertyValue: string
-  registrationFee: string
-  registeringOffice: string
-  owners: PreviousOwnerHistory[]
+  surveyNo: string
 }
-type ChainHistoryHeaderField = Exclude<keyof ChainHistoryEntry, 'owners'>
-type PreviousOwnerHistoryField = keyof PreviousOwnerHistory
-interface ChainHistoryEntryErrors {
-  fields?: Partial<Record<ChainHistoryHeaderField, string>>
-  owners?: Record<number, Partial<Record<PreviousOwnerHistoryField, string>>>
-}
-type ChainHistoryErrors = Record<number, ChainHistoryEntryErrors>
+type ChainHistoryField = keyof ChainHistoryEntry
+type ChainHistoryErrors = Record<number, Partial<Record<ChainHistoryField, string>>>
 
 const emptyOwner = (): OwnerForm => ({ ownerName: '', aadhaarNumber: '', pan: '', address: '', sharePct: '' })
 const emptyBoundaryMeasurement = (): BoundaryMeasurement => ({ fromPoint: '', toPoint: '', value: '', unit: 'SQ_FT' })
-const emptyPreviousOwnerHistory = (): PreviousOwnerHistory => ({ ownerName: '', address: '', aadhaarNumber: '', pan: '', sharePct: '' })
-const emptyChainHistoryEntry = (): ChainHistoryEntry => ({
-  transactionDate: '', natureOfTransaction: '', referenceNo: '', propertyValue: '', registrationFee: '',
-  registeringOffice: '', owners: [emptyPreviousOwnerHistory()],
+const emptyChainHistoryEntry = (surveyNo = ''): ChainHistoryEntry => ({
+  executorName: '',
+  claimantName: '',
+  transactionDate: '',
+  natureOfTransaction: '',
+  referenceNo: '',
+  surveyNo,
 })
+const natureOfTransactionOptions = [
+  { value: 'Sale', label: 'Sale' },
+  { value: 'Purchase', label: 'Purchase' },
+  { value: 'Gift', label: 'Gift' },
+  { value: 'Settlement', label: 'Settlement' },
+  { value: 'Partition', label: 'Partition' },
+  { value: 'Inheritance', label: 'Inheritance' },
+  { value: 'Exchange', label: 'Exchange' },
+  { value: 'Government Grant', label: 'Government Grant' },
+  { value: 'Release', label: 'Release' },
+  { value: 'Other', label: 'Other' },
+]
 const AADHAAR_PATTERN = /^\d{12}$/
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const CITY_CENTER = { latitude: 13.0827, longitude: 80.2707 }
@@ -196,31 +198,14 @@ export default function PropertyCreate() {
   const validateChainHistory = () => {
     const nextErrors: ChainHistoryErrors = {}
     chainHistory.forEach((entry, entryIndex) => {
-      const fields: Partial<Record<ChainHistoryHeaderField, string>> = {}
+      const fields: Partial<Record<ChainHistoryField, string>> = {}
+      if (!entry.executorName.trim()) fields.executorName = 'Executor / seller is required.'
+      if (!entry.claimantName.trim()) fields.claimantName = 'Claimant / purchaser is required.'
       if (!entry.transactionDate) fields.transactionDate = 'Transaction date is required.'
-      if (!entry.natureOfTransaction) fields.natureOfTransaction = 'Deed type is required.'
-      if (entry.propertyValue.trim().length === 0 || !Number.isFinite(Number(entry.propertyValue)) || Number(entry.propertyValue) <= 0) {
-        fields.propertyValue = 'Enter a property value greater than zero.'
-      }
-      if (entry.registrationFee.trim().length === 0 || !Number.isFinite(Number(entry.registrationFee)) || Number(entry.registrationFee) < 0) {
-        fields.registrationFee = 'Enter a valid registration fee.'
-      }
-      if (!entry.registeringOffice.trim()) fields.registeringOffice = 'Registration office is required.'
-
-      const ownerErrors: NonNullable<ChainHistoryEntryErrors['owners']> = {}
-      entry.owners.forEach((owner, ownerIndex) => {
-        const errors: Partial<Record<PreviousOwnerHistoryField, string>> = {}
-        if (!owner.ownerName.trim()) errors.ownerName = 'Owner name is required.'
-        if (!owner.address.trim()) errors.address = 'Address is required.'
-        if (!AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
-        if (!PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
-        const share = Number(owner.sharePct)
-        if (owner.sharePct.trim().length === 0) errors.sharePct = 'Share percentage is required.'
-        else if (!Number.isFinite(share) || share < 0 || share > 100) errors.sharePct = 'Share must be between 0 and 100.'
-        if (Object.keys(errors).length > 0) ownerErrors[ownerIndex] = errors
-      })
-      if (Object.keys(fields).length > 0 || Object.keys(ownerErrors).length > 0) {
-        nextErrors[entryIndex] = { fields, owners: ownerErrors }
+      if (!entry.natureOfTransaction.trim()) fields.natureOfTransaction = 'Nature of transaction is required.'
+      if (!entry.surveyNo.trim()) fields.surveyNo = 'Survey number is required.'
+      if (Object.keys(fields).length > 0) {
+        nextErrors[entryIndex] = fields
       }
     })
     setChainHistoryErrors(nextErrors)
@@ -370,19 +355,12 @@ export default function PropertyCreate() {
           unit: measurement.unit,
         })),
         chainOfTitle: chainHistory.map((entry) => ({
+          executorName: entry.executorName.trim(),
+          claimantName: entry.claimantName.trim(),
           transactionDate: entry.transactionDate,
-          natureOfTransaction: entry.natureOfTransaction,
-          referenceNo: entry.referenceNo || undefined,
-          propertyValue: Number(entry.propertyValue),
-          registrationFee: Number(entry.registrationFee),
-          registeringOffice: entry.registeringOffice.trim(),
-          owners: entry.owners.map((owner) => ({
-            ownerName: owner.ownerName.trim(),
-            address: owner.address.trim(),
-            aadhaarNumber: owner.aadhaarNumber,
-            pan: owner.pan,
-            sharePct: Number(owner.sharePct),
-          })),
+          natureOfTransaction: entry.natureOfTransaction.trim(),
+          referenceNo: entry.referenceNo.trim() || undefined,
+          surveyNo: entry.surveyNo.trim(),
         })),
       }, true)
       navigate('/properties')
@@ -397,14 +375,8 @@ export default function PropertyCreate() {
   const updateOwner = (index: number, field: OwnerField, value: string) => {
     setOwners((current) => current.map((owner, ownerIndex) => ownerIndex === index ? { ...owner, [field]: value } : owner))
   }
-  const updateChainHistory = (entryIndex: number, field: ChainHistoryHeaderField, value: string) => {
+  const updateChainHistory = (entryIndex: number, field: ChainHistoryField, value: string) => {
     setChainHistory((current) => current.map((entry, index) => index === entryIndex ? { ...entry, [field]: value } : entry))
-  }
-  const updateChainHistoryOwner = (entryIndex: number, ownerIndex: number, field: PreviousOwnerHistoryField, value: string) => {
-    setChainHistory((current) => current.map((entry, index) => index !== entryIndex ? entry : {
-      ...entry,
-      owners: entry.owners.map((owner, currentOwnerIndex) => currentOwnerIndex === ownerIndex ? { ...owner, [field]: value } : owner),
-    }))
   }
   const fieldError = (key: keyof PropertyState) => fieldErrors[key] ? <span className="field-error">{fieldErrors[key]}</span> : null
   const ownerFieldError = (index: number, field: OwnerField) => ownerErrors[index]?.[field] ? <span className="field-error">{ownerErrors[index][field]}</span> : null
@@ -422,11 +394,11 @@ export default function PropertyCreate() {
     && boundaryMeasurements.length > 0
     && boundaryMeasurements.every((measurement) => measurement.fromPoint && measurement.toPoint
       && measurement.fromPoint !== measurement.toPoint && Number(measurement.value) > 0 && measurement.unit)
-  const chainHistoryComplete = chainHistory.length > 0 && chainHistory.every((entry) => entry.transactionDate && entry.natureOfTransaction
-    && Number(entry.propertyValue) > 0 && Number(entry.registrationFee) >= 0 && entry.registeringOffice.trim()
-    && entry.owners.length > 0 && entry.owners.every((owner) => owner.ownerName.trim() && owner.address.trim()
-      && AADHAAR_PATTERN.test(owner.aadhaarNumber) && PAN_PATTERN.test(owner.pan)
-      && Number.isFinite(Number(owner.sharePct)) && Number(owner.sharePct) >= 0 && Number(owner.sharePct) <= 100))
+  const chainHistoryComplete = chainHistory.length > 0 && chainHistory.every((entry) => entry.executorName.trim()
+    && entry.claimantName.trim()
+    && entry.transactionDate
+    && entry.natureOfTransaction.trim()
+    && entry.surveyNo.trim())
   const stageComplete = [Boolean(property.propertyTypeCode && property.classificationCode), ownersComplete, locationComplete,
     boundariesComplete, chainHistoryComplete, Boolean(property.guidelineValue)]
   const stageHasErrors = [['propertyTypeCode', 'classificationCode'].some((key) => fieldErrors[key] !== undefined), Object.keys(ownerErrors).length > 0,
@@ -557,49 +529,27 @@ export default function PropertyCreate() {
           ))}
         </div>
       </Panel> : null}
-      {activeStage === 4 ? <Panel title="Chain of Title" actions={<button type="button" className="outline" onClick={() => setChainHistory((current) => [...current, emptyChainHistoryEntry()])}>Add previous transaction</button>}>
-        <p className="muted">Add prior registered transactions for this property. Leave this section empty if there is no earlier history to record.</p>
-        {chainHistory.length === 0 ? <p className="chain-history-empty">No prior transactions added.</p> : null}
+      {activeStage === 4 ? <Panel title="Chain of Title" actions={<button type="button" className="outline" onClick={() => setChainHistory((current) => [...current, emptyChainHistoryEntry(property.surveyNo)])}>Add record</button>}>
+        <p className="muted">Add the earlier registered transfers for this property. Start with the earliest known owner and leave the section empty if there is no prior history to record.</p>
+        {chainHistory.length === 0 ? <p className="chain-history-empty">No chain-of-title records added.</p> : null}
         {chainHistory.map((entry, entryIndex) => {
           const entryErrors = chainHistoryErrors[entryIndex]
-          const deedTypeOptions = bootstrap?.deedTypes.map((deed) => ({ value: String(deed.code), label: String(deed.name) }))
-            ?? [{ value: 'SALE', label: 'Sale' }, { value: 'GIFT', label: 'Gift' }, { value: 'SETTLEMENT', label: 'Settlement' }, { value: 'PARTITION', label: 'Partition' }, { value: 'OTHER', label: 'Other' }]
           return <section className="chain-history-entry" key={entryIndex}>
             <header className="chain-history-entry-heading">
-              <h3>Previous transaction {entryIndex + 1}</h3>
+              <h3>{entryIndex === 0 ? 'Earliest known owner' : `Record ${entryIndex + 1}`}</h3>
               <button type="button" className="link" onClick={() => {
                 setChainHistory((current) => current.filter((_, index) => index !== entryIndex))
                 setChainHistoryErrors({})
-              }}>Remove transaction</button>
+              }}>Remove record</button>
             </header>
             <div className="chain-history-fields">
-              <div><Field label="Deed type" value={entry.natureOfTransaction} onChange={(value) => updateChainHistory(entryIndex, 'natureOfTransaction', value)} options={deedTypeOptions} required />{entryErrors?.fields?.natureOfTransaction ? <span className="field-error">{entryErrors.fields.natureOfTransaction}</span> : null}</div>
-              <div><Field label="Transaction date" type="date" value={entry.transactionDate} onChange={(value) => updateChainHistory(entryIndex, 'transactionDate', value)} required />{entryErrors?.fields?.transactionDate ? <span className="field-error">{entryErrors.fields.transactionDate}</span> : null}</div>
-              <div><Field label="Prior deed / document reference" value={entry.referenceNo} onChange={(value) => updateChainHistory(entryIndex, 'referenceNo', value)} /></div>
-              <div><Field label="Property value (INR)" type="number" value={entry.propertyValue} onChange={(value) => updateChainHistory(entryIndex, 'propertyValue', value)} required />{entryErrors?.fields?.propertyValue ? <span className="field-error">{entryErrors.fields.propertyValue}</span> : null}</div>
-              <div><Field label="Registration fee (INR)" type="number" value={entry.registrationFee} onChange={(value) => updateChainHistory(entryIndex, 'registrationFee', value)} required />{entryErrors?.fields?.registrationFee ? <span className="field-error">{entryErrors.fields.registrationFee}</span> : null}</div>
-              <div><Field label="Registered at office" value={entry.registeringOffice} onChange={(value) => updateChainHistory(entryIndex, 'registeringOffice', value)} required />{entryErrors?.fields?.registeringOffice ? <span className="field-error">{entryErrors.fields.registeringOffice}</span> : null}</div>
+              <div><Field label="Executor / Seller" value={entry.executorName} onChange={(value) => updateChainHistory(entryIndex, 'executorName', value)} required />{entryErrors?.executorName ? <span className="field-error">{entryErrors.executorName}</span> : null}</div>
+              <div><Field label="Claimant / Purchaser" value={entry.claimantName} onChange={(value) => updateChainHistory(entryIndex, 'claimantName', value)} required />{entryErrors?.claimantName ? <span className="field-error">{entryErrors.claimantName}</span> : null}</div>
+              <div><Field label="Transaction date" type="date" value={entry.transactionDate} onChange={(value) => updateChainHistory(entryIndex, 'transactionDate', value)} required />{entryErrors?.transactionDate ? <span className="field-error">{entryErrors.transactionDate}</span> : null}</div>
+              <div><Field label="Nature of transaction" value={entry.natureOfTransaction} onChange={(value) => updateChainHistory(entryIndex, 'natureOfTransaction', value)} options={natureOfTransactionOptions} required />{entryErrors?.natureOfTransaction ? <span className="field-error">{entryErrors.natureOfTransaction}</span> : null}</div>
+              <div><Field label="Registration / Reference No." value={entry.referenceNo} onChange={(value) => updateChainHistory(entryIndex, 'referenceNo', value)} /></div>
+              <div><Field label="Survey No." value={entry.surveyNo} onChange={(value) => updateChainHistory(entryIndex, 'surveyNo', value)} required />{entryErrors?.surveyNo ? <span className="field-error">{entryErrors.surveyNo}</span> : null}</div>
             </div>
-            <div className="chain-history-owners-heading">
-              <h4>Previous owners</h4>
-              <button type="button" className="outline" onClick={() => setChainHistory((current) => current.map((record, index) => index === entryIndex ? { ...record, owners: [...record.owners, emptyPreviousOwnerHistory()] } : record))}>Add owner</button>
-            </div>
-            {entry.owners.map((owner, ownerIndex) => {
-              const ownerErrors = entryErrors?.owners?.[ownerIndex]
-              return <div className="chain-history-owner" key={ownerIndex}>
-                <div className="chain-history-owner-heading"><strong>Owner {ownerIndex + 1}</strong>{entry.owners.length > 1 ? <button type="button" className="link" onClick={() => {
-                  setChainHistory((current) => current.map((record, index) => index === entryIndex ? { ...record, owners: record.owners.filter((_, indexInRecord) => indexInRecord !== ownerIndex) } : record))
-                  setChainHistoryErrors({})
-                }}>Remove owner</button> : null}</div>
-                <div className="chain-history-owner-fields">
-                  <div><Field label="Owner name" value={owner.ownerName} onChange={(value) => updateChainHistoryOwner(entryIndex, ownerIndex, 'ownerName', value)} required />{ownerErrors?.ownerName ? <span className="field-error">{ownerErrors.ownerName}</span> : null}</div>
-                  <div><Field label="Address" value={owner.address} onChange={(value) => updateChainHistoryOwner(entryIndex, ownerIndex, 'address', value)} required />{ownerErrors?.address ? <span className="field-error">{ownerErrors.address}</span> : null}</div>
-                  <div><Field label="Aadhaar (12 digits)" value={owner.aadhaarNumber} onChange={(value) => updateChainHistoryOwner(entryIndex, ownerIndex, 'aadhaarNumber', value.replace(/\D/g, '').slice(0, 12))} required />{ownerErrors?.aadhaarNumber ? <span className="field-error">{ownerErrors.aadhaarNumber}</span> : null}</div>
-                  <div><Field label="PAN" value={owner.pan} onChange={(value) => updateChainHistoryOwner(entryIndex, ownerIndex, 'pan', value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))} required />{ownerErrors?.pan ? <span className="field-error">{ownerErrors.pan}</span> : null}</div>
-                  <div><Field label="Share (%)" type="number" value={owner.sharePct} onChange={(value) => updateChainHistoryOwner(entryIndex, ownerIndex, 'sharePct', value)} required />{ownerErrors?.sharePct ? <span className="field-error">{ownerErrors.sharePct}</span> : null}</div>
-                </div>
-              </div>
-            })}
           </section>
         })}
       </Panel> : null}

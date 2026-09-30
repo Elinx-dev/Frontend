@@ -97,20 +97,12 @@ export default function PropertyDetail() {
           rows={(property.chainOfTitle as Row[]) ?? []}
           columns={[
             { key: 'seq', label: '#' },
-            { key: 'transaction_date', label: 'Date' },
-            { key: 'nature_of_transaction', label: 'Deed type' },
-            { key: 'reference_no', label: 'Reference' },
-            { key: 'property_value', label: 'Property value' },
-            { key: 'registration_fee', label: 'Registration fee' },
-            { key: 'registering_office', label: 'Registered at' },
-            {
-              key: 'owners',
-              label: 'Previous owners and shares',
-              render: (row) => {
-                const owners = (row.owners as Row[] | undefined) ?? []
-                return owners.length === 0 ? '—' : owners.map((owner) => `${String(owner.owner_name ?? 'Owner')} (${String(owner.share_pct ?? '—')}%)`).join(', ')
-              },
-            },
+            { key: 'executor_name', label: 'Executor / seller' },
+            { key: 'claimant_name', label: 'Claimant / purchaser' },
+            { key: 'transaction_date', label: 'Transaction date' },
+            { key: 'nature_of_transaction', label: 'Nature of transaction' },
+            { key: 'reference_no', label: 'Registration / reference no.' },
+            { key: 'survey_no', label: 'Survey no.' },
           ]}
           empty="No prior title history recorded."
         />
