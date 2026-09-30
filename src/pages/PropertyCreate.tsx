@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { ApiError, post } from '../api'
+import { ApiError, get, post, qs } from '../api'
 import { useAuth } from '../auth'
 import type { Row } from '../types'
 import { Banner, Field, Panel } from '../ui'
@@ -16,6 +16,34 @@ const initialProperty = {
 }
 
 type PropertyState = typeof initialProperty
+
+interface LocationOption {
+  code: string
+  name: string
+}
+type SelectOption = { value: string; label: string }
+const locationLevels = ['districtCode', 'sroCode', 'talukCode', 'villageCode'] as const
+type LocationLevel = typeof locationLevels[number]
+const labelFor = (options: SelectOption[], code: string) => options.find((option) => option.value === code)?.label ?? code
+
+function useLocationOptions(path: string | null, onError: (message: string) => void): SelectOption[] {
+  const [loaded, setLoaded] = useState<{ path: string; options: SelectOption[] } | null>(null)
+  useEffect(() => {
+    if (path === null) return
+    let cancelled = false
+    get<LocationOption[]>(path)
+      .then((rows) => {
+        if (!cancelled) setLoaded({ path, options: rows.map((row) => ({ value: row.code, label: row.name })) })
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) onError(reason instanceof ApiError ? reason.message : String(reason))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [path, onError])
+  return path !== null && loaded?.path === path ? loaded.options : []
+}
 
 interface OwnerForm {
   ownerName: string
@@ -113,8 +141,22 @@ export default function PropertyCreate() {
   const [mapLocationName, setMapLocationName] = useState('Chennai, Tamil Nadu')
   const [activeStage, setActiveStage] = useState(0)
 
+  const districtOptions = useLocationOptions('/api/locations/districts', setError)
+  const sroOptions = useLocationOptions(property.districtCode
+    ? `/api/locations/sub-registrar-offices${qs({ districtCode: property.districtCode })}`
+    : null, setError)
+  const talukOptions = useLocationOptions(property.districtCode && property.sroCode
+    ? `/api/locations/taluks${qs({ districtCode: property.districtCode, sroCode: property.sroCode })}`
+    : null, setError)
+  const villageOptions = useLocationOptions(property.districtCode && property.sroCode && property.talukCode
+    ? `/api/locations/revenue-villages${qs({ districtCode: property.districtCode, sroCode: property.sroCode, talukCode: property.talukCode })}`
+    : null, setError)
+  const districtName = labelFor(districtOptions, property.districtCode)
+  const talukName = labelFor(talukOptions, property.talukCode)
+  const villageName = labelFor(villageOptions, property.villageCode)
+
   useEffect(() => {
-    const hasLocationDetails = [property.villageCode, property.talukCode, property.street, property.doorNo]
+    const hasLocationDetails = [villageName, talukName, property.street, property.doorNo]
       .some((value) => value.trim().length > 0)
     if (!hasLocationDetails) {
       setMapLocation(CITY_CENTER)
@@ -126,9 +168,9 @@ export default function PropertyCreate() {
     const query = [
       property.doorNo,
       property.street,
-      property.villageCode.replaceAll('_', ' '),
-      property.talukCode.replaceAll('_', ' '),
-      property.districtCode.replaceAll('_', ' '),
+      villageName,
+      talukName,
+      districtName,
       'Tamil Nadu',
       'India',
     ].filter((part) => part.trim().length > 0).join(', ')
@@ -166,9 +208,16 @@ export default function PropertyCreate() {
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [property.districtCode, property.doorNo, property.street, property.talukCode, property.villageCode])
+  }, [districtName, property.doorNo, property.street, talukName, villageName])
 
   const update = (key: keyof PropertyState, value: string) => setProperty((current) => ({ ...current, [key]: value }))
+  const updateLocation = (key: LocationLevel, value: string) => setProperty((current) => {
+    const next = { ...current, [key]: value }
+    locationLevels.slice(locationLevels.indexOf(key) + 1).forEach((child) => {
+      next[child] = ''
+    })
+    return next
+  })
   const options = (key: string, fallback: { value: string; label: string }[]) => {
     const rows = bootstrap?.optionSets[key] ?? []
     const mapped = rows.map((row) => ({ value: String(row.code ?? row.value ?? ''), label: String(row.name ?? row.label ?? row.code ?? row.value ?? '') })).filter((row) => row.value)
@@ -470,10 +519,10 @@ export default function PropertyCreate() {
       {activeStage === 2 ? <Panel title="Location & Survey">
         <div className="location-survey-layout">
           <div className="form-grid three">
-            <div><Field label="Sub-Registrar Office (SRO)" value={property.sroCode} onChange={(v) => update('sroCode', v)} required />{fieldError('sroCode')}</div>
-            <div><Field label="Registration district" value={property.districtCode} onChange={(v) => update('districtCode', v)} required />{fieldError('districtCode')}</div>
-            <div><Field label="Taluk" value={property.talukCode} onChange={(v) => update('talukCode', v)} required />{fieldError('talukCode')}</div>
-            <div><Field label="Revenue village" value={property.villageCode} onChange={(v) => update('villageCode', v)} required />{fieldError('villageCode')}</div>
+            <div><Field label="Registration district" value={property.districtCode} onChange={(v) => updateLocation('districtCode', v)} options={districtOptions} required />{fieldError('districtCode')}</div>
+            <div><Field label="Sub-Registrar Office (SRO)" value={property.sroCode} onChange={(v) => updateLocation('sroCode', v)} options={sroOptions} required />{fieldError('sroCode')}</div>
+            <div><Field label="Taluk" value={property.talukCode} onChange={(v) => updateLocation('talukCode', v)} options={talukOptions} required />{fieldError('talukCode')}</div>
+            <div><Field label="Revenue village" value={property.villageCode} onChange={(v) => updateLocation('villageCode', v)} options={villageOptions} required />{fieldError('villageCode')}</div>
             <div><Field label="Survey no." value={property.surveyNo} onChange={(v) => update('surveyNo', v)} required />{fieldError('surveyNo')}</div>
             <Field label="Sub-division no." value={property.subdivisionNo} onChange={(v) => update('subdivisionNo', v)} />
             <div><Field label="Extent" value={property.extentValue} onChange={(v) => numeric('extentValue', v)} type="number" required />{fieldError('extentValue')}</div>
