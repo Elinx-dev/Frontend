@@ -80,7 +80,21 @@ export async function api<T>(
   if (options?.idempotent === true) {
     headers['Idempotency-Key'] = newIdempotencyKey()
   }
-  const response = await fetch(path, {
+  const adminScopedPath = path.startsWith('/api/admin/users')
+    || path.startsWith('/api/audit/')
+    || path.startsWith('/api/config/admin/')
+    || path === '/api/config/admin'
+    || path.startsWith('/api/config/workflows/')
+  let requestPath = path
+  if (adminScopedPath) {
+    const selectedState = new URLSearchParams(window.location.search).get('stateCode')
+    const scopedUrl = new URL(requestPath, window.location.origin)
+    if (selectedState !== null && !scopedUrl.searchParams.has('stateCode')) {
+      scopedUrl.searchParams.set('stateCode', selectedState)
+      requestPath = `${scopedUrl.pathname}${scopedUrl.search}`
+    }
+  }
+  const response = await fetch(requestPath, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),

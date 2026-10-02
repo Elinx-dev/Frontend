@@ -13,6 +13,7 @@ const DEMO_USERS = [
   ['vao.perungudi', 'Village Administrative Officer (TN)'],
   ['tahsildar.sholinganallur', 'Tahsildar (TN)'],
   ['admin.state', 'State Administrator (TN)'],
+  ['central.admin', 'Central Administrator'],
   ['viewer.public', 'Public viewer (TN)'],
   ['ro.begur', 'Sub-Registrar, Begur (KA)'],
 ]

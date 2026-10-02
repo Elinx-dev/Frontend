@@ -176,8 +176,10 @@ function percent(part: number, whole: number): string {
 export default function AdminDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const centralAdmin = user?.roles.includes('CENTRAL_ADMIN') ?? false
+  const [searchParams, setSearchParams] = useSearchParams()
   const today = isoDate(new Date())
-  const [state, setState] = useState(user?.stateCode ?? 'ALL')
+  const [state, setState] = useState(() => searchParams.get('stateCode') ?? user?.stateCode ?? '')
   const [period, setPeriod] = useState<Period>('MONTH')
   const [from, setFrom] = useState(() => {
     const start = new Date()
@@ -189,7 +191,6 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
   const [explorer, setExplorer] = useState<ExplorerQuery>({ dataset: 'TRANSACTIONS', search: '', status: '' })
   const requestedTab = searchParams.get('tab')
   const tab: TabId = TABS.find((t) => t.id === requestedTab)?.id ?? 'overview'
@@ -254,21 +255,27 @@ export default function AdminDashboard() {
     <div className="dashboard-page admin-dashboard">
       <div className="dashboard-titlebar">
         <div>
-          <span className="eyebrow">State administration · Activity overview</span>
-          <h1>State Dashboard</h1>
+            <span className="eyebrow">{centralAdmin ? 'Central administration · Activity overview' : 'State administration · Activity overview'}</span>
+            <h1>{centralAdmin ? 'Central Dashboard' : 'State Dashboard'}</h1>
           {data !== null ? <p className="ad-subtitle">{stateName} · {formatRange(data.filter.from, data.filter.to)} · {data.filter.timezone}</p> : null}
         </div>
         <div className="dashboard-actions">
           <button onClick={() => void load()} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
-          <button className="outline" onClick={() => navigate('/audit')}>Open Audit Trail</button>
+          <button className="outline" onClick={() => navigate(`/audit?stateCode=${encodeURIComponent(state)}`)}>Open Audit Trail</button>
         </div>
       </div>
 
       <section className="ad-filters" aria-label="Dashboard filters">
         <label className="ad-filter">
           <span>State</span>
-          <select value={state} onChange={(e) => setState(e.target.value)}>
-            <option value="ALL">All states</option>
+          <select value={state} disabled={!centralAdmin} onChange={(e) => {
+            setState(e.target.value)
+            setSearchParams((current) => {
+              const next = new URLSearchParams(current)
+              next.set('stateCode', e.target.value)
+              return next
+            })
+          }}>
             {(data?.states ?? (user !== null ? [{ code: user.stateCode, name: user.stateCode }] : [])).map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
           </select>
         </label>

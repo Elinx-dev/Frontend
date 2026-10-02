@@ -40,7 +40,7 @@ const STATUSES = [
 const FILTERS = [{ value: 'ALL', label: 'All' }, ...STATUSES] as const
 
 export default function WorkflowDefinitions() {
-  const { snapshot, error: loadError, reload } = useAdminSnapshot()
+  const { snapshot, error: loadError, reload, stateCode, centralAdmin, selectState } = useAdminSnapshot()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['value']>('ALL')
   const [info, setInfo] = useState('')
@@ -64,6 +64,10 @@ export default function WorkflowDefinitions() {
       <AdminHeader
         title="Workflow definitions"
         stateName={snapshot?.state?.state_name}
+        centralAdmin={centralAdmin}
+        stateCode={stateCode}
+        states={snapshot?.states}
+        onStateChange={selectState}
         subtitle="Versioned workflows per deed type. Publish, retire or keep a version as draft."
       />
       <Banner kind="error" message={loadError} />
@@ -90,7 +94,7 @@ export default function WorkflowDefinitions() {
         ) : (
           <div className="adm-wf-list">
             {groups.map(([deed, versions]) => (
-              <DeedWorkflows key={deed} deed={deed} versions={versions} onSaved={async (message) => { setInfo(message); await reload() }} />
+              <DeedWorkflows key={`${stateCode}:${deed}`} deed={deed} versions={versions} onSaved={async (message) => { setInfo(message); await reload() }} />
             ))}
           </div>
         )}

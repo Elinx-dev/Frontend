@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 
-import { get, post, put } from '../../api'
+import { get, post, put, qs } from '../../api'
 import { useAuth } from '../../auth'
 import { Banner, Panel, StatusPill } from '../../ui'
 import { DEPARTMENTS, errorText, humanize, useAdminSnapshot } from './adminConfig'
@@ -74,7 +74,7 @@ function initials(name: string) {
 
 export default function AdminUsers() {
   const { user: currentUser } = useAuth()
-  const { snapshot } = useAdminSnapshot()
+  const { snapshot, stateCode, centralAdmin, selectState } = useAdminSnapshot()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,9 +85,11 @@ export default function AdminUsers() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
     try {
-      const result = await get<{ users: AdminUser[]; roles: Role[] }>('/api/admin/users')
+      const result = await get<{ users: AdminUser[]; roles: Role[] }>(`/api/admin/users${qs({ stateCode })}`)
       setUsers(result.users)
       setRoles(result.roles)
     } catch (e) {
@@ -95,8 +97,8 @@ export default function AdminUsers() {
     } finally {
       setLoading(false)
     }
-  }
-  useEffect(() => { void load() }, [])
+  }, [stateCode])
+  useEffect(() => { void load() }, [load])
 
   const roleName = useMemo(() => new Map(roles.map((role) => [role.code, role.name])), [roles])
 
@@ -123,6 +125,13 @@ export default function AdminUsers() {
       <AdminHeader
         title="User administration"
         stateName={snapshot?.state?.state_name}
+        centralAdmin={centralAdmin}
+        stateCode={stateCode}
+        states={snapshot?.states}
+        onStateChange={(nextState) => {
+          setEditing(null)
+          selectState(nextState)
+        }}
         subtitle="Create officer accounts, assign roles and control sign-in access."
         actions={<button className="primary" onClick={() => { setInfo(''); setEditing('new') }}>+ Add user</button>}
       />
@@ -185,6 +194,8 @@ export default function AdminUsers() {
           user={editing === 'new' ? null : editing}
           roles={roles}
           isSelf={editing !== 'new' && editing.id === currentUser?.id}
+          centralAdmin={centralAdmin}
+          stateCode={stateCode}
           onClose={() => setEditing(null)}
           onSaved={(message) => void saved(message)}
         />
@@ -193,10 +204,12 @@ export default function AdminUsers() {
   )
 }
 
-function UserDrawer({ user, roles, isSelf, onClose, onSaved }: {
+function UserDrawer({ user, roles, isSelf, centralAdmin, stateCode, onClose, onSaved }: {
   user: AdminUser | null
   roles: Role[]
   isSelf: boolean
+  centralAdmin: boolean
+  stateCode: string
   onClose: () => void
   onSaved: (message: string) => void
 }) {
@@ -232,8 +245,8 @@ function UserDrawer({ user, roles, isSelf, onClose, onSaved }: {
     setError('')
     try {
       const payload = { ...form, username: form.username.trim(), fullName: form.fullName.trim(), password: form.password.length === 0 ? undefined : form.password }
-      if (creating) await post('/api/admin/users', payload, true)
-      else await put(`/api/admin/users/${user.id}`, payload)
+      if (creating) await post(`/api/admin/users${qs({ stateCode })}`, payload, true)
+      else await put(`/api/admin/users/${user.id}${qs({ stateCode })}`, payload)
       onSaved(creating ? `User ${payload.username} created.` : `User ${payload.username} updated.`)
     } catch (err) {
       setError(errorText(err))
@@ -308,7 +321,7 @@ function UserDrawer({ user, roles, isSelf, onClose, onSaved }: {
               <div className="adm-role-grid">
                 {roles.map((role) => {
                   const selected = form.roles.includes(role.code)
-                  const locked = isSelf && role.code === 'STATE_ADMIN'
+                  const locked = isSelf && role.code === (centralAdmin ? 'CENTRAL_ADMIN' : 'STATE_ADMIN')
                   return (
                     <label key={role.code} className={selected ? 'adm-role selected' : 'adm-role'} title={locked ? 'You cannot remove your own administrator role.' : undefined}>
                       <input type="checkbox" checked={selected} disabled={locked} onChange={() => toggleRole(role.code)} />

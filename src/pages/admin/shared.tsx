@@ -1,19 +1,35 @@
 import type { ReactNode } from 'react'
 
-export function AdminHeader({ title, subtitle, stateName, actions }: {
+export function AdminHeader({ title, subtitle, stateName, actions, centralAdmin = false, stateCode, states = [], onStateChange }: {
   title: string
   subtitle: string
   stateName?: string
   actions?: ReactNode
+  centralAdmin?: boolean
+  stateCode?: string
+  states?: { code: string; name: string }[]
+  onStateChange?: (stateCode: string) => void
 }) {
   return (
     <div className="dashboard-titlebar">
       <div>
-        <span className="eyebrow">State administration · Users and configuration</span>
+        <span className="eyebrow">{centralAdmin ? 'Central administration · State configuration' : 'State administration · Users and configuration'}</span>
         <h1>{title}</h1>
         <p className="ad-subtitle">{stateName !== undefined && stateName.length > 0 ? `${stateName} · ` : ''}{subtitle}</p>
       </div>
-      {actions !== undefined ? <div className="dashboard-actions">{actions}</div> : null}
+      {actions !== undefined || (centralAdmin && states.length > 0) ? (
+        <div className="dashboard-actions">
+          {centralAdmin && states.length > 0 ? (
+            <label className="ad-filter">
+              <span>State</span>
+              <select value={stateCode ?? ''} onChange={(event) => onStateChange?.(event.target.value)}>
+                {states.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {actions}
+        </div>
+      ) : null}
     </div>
   )
 }

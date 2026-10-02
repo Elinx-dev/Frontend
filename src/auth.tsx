@@ -30,6 +30,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null)
 
 export function homeRouteFor(user: UserProfile): string {
+  if (user.roles.includes('CENTRAL_ADMIN')) return '/admin/dashboard'
   if (typeof user.homeRoute === 'string' && user.homeRoute.length > 0) {
     return user.homeRoute
   }

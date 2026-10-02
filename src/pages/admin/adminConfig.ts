@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
-import { ApiError, get } from '../../api'
+import { ApiError, get, qs } from '../../api'
+import { useAuth } from '../../auth'
 
 export interface ModuleConfig {
   id: number
@@ -34,6 +36,7 @@ export interface WorkflowDefinition {
 
 export interface AdminSnapshot {
   state: { state_code: string; state_name: string } | null
+  states: { code: string; name: string }[]
   modules: ModuleConfig[]
   featureFlags: FeatureFlag[]
   workflows: WorkflowDefinition[]
@@ -65,16 +68,27 @@ export function formatDate(value?: string | null): string {
 }
 
 export function useAdminSnapshot() {
+  const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [snapshot, setSnapshot] = useState<AdminSnapshot | null>(null)
   const [error, setError] = useState('')
+  const stateCode = searchParams.get('stateCode') ?? user?.stateCode ?? ''
+  const centralAdmin = user?.roles.includes('CENTRAL_ADMIN') ?? false
   const reload = useCallback(async () => {
     try {
-      setSnapshot(await get<AdminSnapshot>('/api/config/admin'))
+      setSnapshot(await get<AdminSnapshot>(`/api/config/admin${qs({ stateCode })}`))
       setError('')
     } catch (e) {
       setError(errorText(e))
     }
-  }, [])
+  }, [stateCode])
   useEffect(() => { void reload() }, [reload])
-  return { snapshot, error, reload }
+  const selectState = (nextState: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('stateCode', nextState)
+      return next
+    })
+  }
+  return { snapshot, error, reload, stateCode, centralAdmin, selectState }
 }

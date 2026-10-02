@@ -48,7 +48,7 @@ function AdminOnly({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <p className="muted">Loading…</p>
   if (user === null) return <Navigate to="/login" replace />
-  if (!user.roles.includes('STATE_ADMIN')) return <Navigate to={homeRouteFor(user)} replace />
+  if (!user.roles.includes('STATE_ADMIN') && !user.roles.includes('CENTRAL_ADMIN')) return <Navigate to={homeRouteFor(user)} replace />
   return <Shell>{children}</Shell>
 }
 
@@ -57,6 +57,9 @@ function Shell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   if (user === null) return null
   const has = (role: string) => user.roles.includes(role)
+  const canAdminister = has('STATE_ADMIN') || has('CENTRAL_ADMIN')
+  const adminState = new URLSearchParams(window.location.search).get('stateCode') ?? user.stateCode
+  const adminStateQuery = `?stateCode=${encodeURIComponent(adminState)}`
   return (
     <div className="app">
       <aside className="sidebar">
@@ -67,7 +70,7 @@ function Shell({ children }: { children: ReactNode }) {
             <small>Secured Land Asset Token Exchange</small>
           </span>
         </Link>
-        {has('STATE_ADMIN') ? <div className="side-section"><span>Overview</span><NavLink to="/admin/dashboard"><DashboardIcon />State Dashboard</NavLink></div> : null}
+        {canAdminister ? <div className="side-section"><span>Overview</span><NavLink to={`/admin/dashboard${adminStateQuery}`}><DashboardIcon />{has('CENTRAL_ADMIN') ? 'Central Dashboard' : 'State Dashboard'}</NavLink></div> : null}
         <div className="side-section">
           <span>Registration</span>
           {has('REGISTRATION_OFFICER') ? <NavLink to="/ro" end><DashboardIcon />Dashboard</NavLink> : null}
@@ -75,17 +78,17 @@ function Shell({ children }: { children: ReactNode }) {
           {has('REGISTRATION_OFFICER') ? <NavLink to="/transactions/new"><TransferIcon />Initiate Transaction</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <Link to="/ro"><QueueIcon />Pending Queue</Link> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
-          <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink>
+          <NavLink to={canAdminister ? `/audit${adminStateQuery}` : '/audit'}><AuditIcon />Audit Trail</NavLink>
         </div>
-        {has('STATE_ADMIN') ? (
+        {canAdminister ? (
           <div className="side-section">
             <span>Administration</span>
             <div className="side-group" role="group" aria-labelledby="side-group-admin">
               <div className="side-group-title" id="side-group-admin"><AdminIcon />Users and configuration</div>
-              <NavLink to="/admin/users"><UsersIcon />User administration</NavLink>
-              <NavLink to="/admin/modules"><ModulesIcon />State modules</NavLink>
-              <NavLink to="/admin/feature-flags"><FlagIcon />Feature flags</NavLink>
-              <NavLink to="/admin/workflows"><WorkflowIcon />Workflow definitions</NavLink>
+              <NavLink to={`/admin/users${adminStateQuery}`}><UsersIcon />User administration</NavLink>
+              <NavLink to={`/admin/modules${adminStateQuery}`}><ModulesIcon />State modules</NavLink>
+              <NavLink to={`/admin/feature-flags${adminStateQuery}`}><FlagIcon />Feature flags</NavLink>
+              <NavLink to={`/admin/workflows${adminStateQuery}`}><WorkflowIcon />Workflow definitions</NavLink>
             </div>
           </div>
         ) : null}

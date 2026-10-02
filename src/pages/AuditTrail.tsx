@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 
 import { ApiError, get, qs } from '../api'
+import { useAuth } from '../auth'
 import type { Row } from '../types'
 import { Banner, Field, Panel, StatusPill, formatCell } from '../ui'
 
@@ -26,6 +28,10 @@ const emptyFilters: AuditFilters = { search: '', category: '', outcome: '', from
 const categories = ['TRANSACTION', 'PROPERTY', 'APPROVAL', 'CONFIGURATION']
 
 export default function AuditTrail() {
+  const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const centralAdmin = user?.roles.includes('CENTRAL_ADMIN') ?? false
+  const stateCode = searchParams.get('stateCode') ?? user?.stateCode ?? ''
   const [filters, setFilters] = useState<AuditFilters>(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(emptyFilters)
   const [page, setPage] = useState(0)
@@ -33,6 +39,14 @@ export default function AuditTrail() {
   const [result, setResult] = useState<AuditPage>({ rows: [], page: 0, size: 25, total: 0, totalPages: 0, scope: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [states, setStates] = useState<{ code: string; name: string }[]>([])
+
+  useEffect(() => {
+    if (!centralAdmin) return
+    get<{ code: string; name: string }[]>('/api/admin/states')
+      .then(setStates)
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : String(e)))
+  }, [centralAdmin])
 
   useEffect(() => {
     let active = true
@@ -51,7 +65,7 @@ export default function AuditTrail() {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [appliedFilters, page, refreshVersion])
+  }, [appliedFilters, page, refreshVersion, stateCode])
 
   const updateFilter = (key: keyof AuditFilters, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }))
@@ -82,6 +96,22 @@ export default function AuditTrail() {
         <div><p className="eyebrow">Registration workspace</p><h1>Audit Trail</h1></div>
         <div className="dashboard-actions">
           {result.scope ? <span className="muted">Scope: {result.scope === 'RELATED' ? 'Related transactions' : result.scope}</span> : null}
+          {centralAdmin ? (
+            <label className="ad-filter">
+              <span>State</span>
+              <select value={stateCode} onChange={(event) => {
+                setPage(0)
+                setLoading(true)
+                setSearchParams((current) => {
+                  const next = new URLSearchParams(current)
+                  next.set('stateCode', event.target.value)
+                  return next
+                })
+              }}>
+                {states.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
+              </select>
+            </label>
+          ) : null}
           <button onClick={() => { setLoading(true); setRefreshVersion((version) => version + 1) }} disabled={loading}>Refresh</button>
         </div>
       </div>

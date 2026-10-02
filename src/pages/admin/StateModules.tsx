@@ -41,7 +41,7 @@ const same = (a: ModuleDraft, b: ModuleDraft) =>
   && a.slaDays.trim() === b.slaDays.trim() && a.notes.trim() === b.notes.trim()
 
 export default function StateModules() {
-  const { snapshot, error: loadError, reload } = useAdminSnapshot()
+  const { snapshot, error: loadError, reload, stateCode, centralAdmin, selectState } = useAdminSnapshot()
   const [info, setInfo] = useState('')
   const modules = snapshot?.modules ?? []
 
@@ -50,6 +50,10 @@ export default function StateModules() {
       <AdminHeader
         title="State modules"
         stateName={snapshot?.state?.state_name}
+        centralAdmin={centralAdmin}
+        stateCode={stateCode}
+        states={snapshot?.states}
+        onStateChange={selectState}
         subtitle="Choose how each platform module runs, who owns it and its service level."
       />
       <Banner kind="error" message={loadError} />
@@ -65,7 +69,7 @@ export default function StateModules() {
       {snapshot === null && loadError.length === 0 ? <p className="muted">Loading modules…</p> : null}
       <div className="adm-card-grid">
         {modules.map((m) => (
-          <ModuleCard key={`${m.id}:${JSON.stringify(m)}`} module={m} onSaved={async (message) => { setInfo(message); await reload() }} />
+          <ModuleCard key={`${stateCode}:${m.id}:${JSON.stringify(m)}`} module={m} onSaved={async (message) => { setInfo(message); await reload() }} />
         ))}
       </div>
     </div>

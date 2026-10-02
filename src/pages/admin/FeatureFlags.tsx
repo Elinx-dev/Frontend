@@ -12,7 +12,7 @@ const FILTERS = [
 ] as const
 
 export default function FeatureFlags() {
-  const { snapshot, error: loadError, reload } = useAdminSnapshot()
+  const { snapshot, error: loadError, reload, stateCode, centralAdmin, selectState } = useAdminSnapshot()
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['value']>('ALL')
@@ -67,6 +67,13 @@ export default function FeatureFlags() {
       <AdminHeader
         title="Feature flags"
         stateName={snapshot?.state?.state_name}
+        centralAdmin={centralAdmin}
+        stateCode={stateCode}
+        states={snapshot?.states}
+        onStateChange={(nextState) => {
+          setPending({})
+          selectState(nextState)
+        }}
         subtitle="Switch platform behaviours on or off. Changes apply as soon as they are saved."
       />
       <Banner kind="error" message={loadError || error} />
