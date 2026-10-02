@@ -924,7 +924,7 @@ export default function TransactionStart() {
     : 1
 
   return (
-    <div className="intake-page">
+    <div className="intake-page transaction-start-page">
       <div className="page-heading">
         <div>
           <span className="eyebrow">Registration workspace</span>
@@ -936,28 +936,6 @@ export default function TransactionStart() {
       <Banner kind="error" message={error} />
       <Banner kind="success" message={info} />
       <div className="property-stage-layout">
-        <aside className="property-stage-sidebar" aria-label="Transaction stages">
-          <h2>Transaction stages</h2>
-          <ol>
-            {stages.map((stage, index) => (
-              <li key={stage}>
-                <button
-                  type="button"
-                  className={`property-stage-item${activeStage === index ? ' active' : ''}${stageComplete(index) ? ' completed' : ''}`}
-                  onClick={() => setActiveStage(index)}
-                  disabled={index > maxAvailableStage}
-                  aria-current={activeStage === index ? 'step' : undefined}
-                >
-                  <span className="property-stage-marker">{stageComplete(index) ? '✓' : index + 1}</span>
-                  <span className="property-stage-copy">
-                    <strong>{stage}</strong>
-                    <small>{stageStatus(index)}</small>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </aside>
         <div className="property-stage-content">
           <div className="property-stage-tabs" role="tablist" aria-label="Transaction sections">
             {stages.map((stage, index) => (
@@ -967,12 +945,13 @@ export default function TransactionStart() {
                 id={`transaction-stage-tab-${index}`}
                 aria-selected={activeStage === index}
                 aria-controls={`transaction-stage-panel-${index}`}
-                className={activeStage === index ? 'active' : ''}
+                className={`${activeStage === index ? 'active' : ''}${stageComplete(index) ? ' completed' : ''}`}
                 onClick={() => setActiveStage(index)}
                 disabled={index > maxAvailableStage}
                 key={stage}
               >
-                {stage}
+                <span className="property-tab-marker" aria-hidden="true">{stageComplete(index) ? '✓' : index + 1}</span>
+                <span className="property-tab-copy"><strong>{stage}</strong><small>{stageStatus(index)}</small></span>
               </button>
             ))}
           </div>
@@ -1066,7 +1045,7 @@ export default function TransactionStart() {
               </Panel>
             ) : null}
             {activeStage === 1 ? (
-              <Panel title="Transaction details" actions={<span className="stage-label">Required</span>}>
+              <Panel title="" actions={<span className="stage-label">Required</span>}>
                 <div className="form-grid three">
                   <Field
                     label="Deed type"

@@ -407,6 +407,10 @@ main {
   margin-top: 16px;
 }
 
+.intake-page .property-stage-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .property-stage-sidebar {
   padding: 12px 10px;
   border: 1px solid var(--line);
@@ -532,6 +536,182 @@ main {
   border-bottom-color: var(--accent);
   background: transparent;
   color: var(--accent);
+}
+
+.intake-page .property-stage-tabs {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.intake-page .property-stage-tabs button {
+  display: flex;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+}
+
+.intake-page .property-tab-marker {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.intake-page .property-tab-copy {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.intake-page .property-tab-copy strong {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.intake-page .property-tab-copy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.intake-page .property-stage-tabs button.active .property-tab-marker {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.intake-page .property-stage-tabs button.completed .property-tab-marker {
+  border-color: var(--success);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.intake-page .property-stage-tabs button.has-errors .property-tab-marker {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+@media (max-width: 760px) {
+  .intake-page .property-stage-tabs {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .intake-page .property-stage-tabs button {
+    flex: 0 0 160px;
+    justify-content: flex-start;
+  }
+}
+
+.transaction-start-page .property-stage-tabs,
+.transaction-detail-page .property-stage-tabs {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.transaction-start-page .property-stage-tabs button,
+.transaction-detail-page .property-stage-tabs button {
+  display: flex;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 8px;
+}
+
+.transaction-start-page .property-tab-marker,
+.transaction-detail-page .property-tab-marker {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.transaction-start-page .property-tab-copy,
+.transaction-detail-page .property-tab-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.transaction-start-page .property-tab-copy strong,
+.transaction-detail-page .property-tab-copy strong {
+  overflow-wrap: anywhere;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.transaction-start-page .property-tab-copy small,
+.transaction-detail-page .property-tab-copy small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.transaction-start-page .property-stage-tabs button.active .property-tab-marker,
+.transaction-detail-page .property-stage-tabs button.active .property-tab-marker {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.transaction-start-page .property-stage-tabs button.completed .property-tab-marker {
+  border-color: var(--success);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.transaction-detail-page .property-stage-tabs button.has-errors .property-tab-marker {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+@media (max-width: 980px) {
+  .transaction-start-page .property-stage-tabs,
+  .transaction-detail-page .property-stage-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .transaction-start-page .property-stage-tabs,
+  .transaction-detail-page .property-stage-tabs {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .transaction-start-page .property-stage-tabs button,
+  .transaction-detail-page .property-stage-tabs button {
+    flex: 0 0 170px;
+    justify-content: flex-start;
+  }
 }
 
 .property-stage-actions {
@@ -687,6 +867,10 @@ main {
   gap: 8px;
   margin-top: 16px;
   flex-wrap: wrap;
+}
+
+.witness-submit-row {
+  justify-content: flex-start;
 }
 
 .panel-body {

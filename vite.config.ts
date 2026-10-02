@@ -16,6 +16,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    allowedHosts: ['making-boots-moving.ngrok-free.dev'],
     proxy: {
       '/api': apiProxy,
       '/mock': apiProxy,

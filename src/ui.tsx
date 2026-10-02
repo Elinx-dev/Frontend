@@ -23,10 +23,12 @@ export function AuthShell({ children }: { children: ReactNode }) {
 export function Panel({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <section className="panel">
-      <header className="panel-head">
-        <h2>{title}</h2>
-        <div className="panel-actions">{actions}</div>
-      </header>
+      {title.length > 0 || actions !== undefined ? (
+        <header className="panel-head">
+          {title.length > 0 ? <h2>{title}</h2> : null}
+          {actions !== undefined ? <div className="panel-actions">{actions}</div> : null}
+        </header>
+      ) : null}
       <div className="panel-body">{children}</div>
     </section>
   )

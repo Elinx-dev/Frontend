@@ -75,6 +75,7 @@ export default function TransactionDetail({
   const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_1'), emptyParty('SIDE_2')])
   const [partyFormVisible, setPartyFormVisible] = useState(true)
   const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
+  const [witnessFormVisible, setWitnessFormVisible] = useState(true)
   const [witnessOne, setWitnessOne] = useState('')
   const [witnessOneAadhaar, setWitnessOneAadhaar] = useState('')
   const [witnessOneAddress, setWitnessOneAddress] = useState('')
@@ -125,6 +126,7 @@ export default function TransactionDetail({
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
 
         const savedWitnesses = Array.isArray(result.witnesses) ? result.witnesses : []
+        setWitnessFormVisible(savedWitnesses.length === 0)
         const firstWitness = savedWitnesses[0]
         const secondWitness = savedWitnesses[1]
         setWitnessOne(String(firstWitness?.name ?? ''))
@@ -199,7 +201,7 @@ export default function TransactionDetail({
 
   if (txn === null) {
     return (
-      <div className="intake-page" aria-busy={error.length === 0}>
+      <div className="intake-page transaction-detail-page" aria-busy={error.length === 0}>
         <div className="page-heading">
           <div>
             <span className="eyebrow">Registration workspace</span>
@@ -209,24 +211,12 @@ export default function TransactionDetail({
         </div>
         {error.length > 0 ? <Banner kind="error" message={error} /> : null}
         <div className="property-stage-layout">
-          <aside className="property-stage-sidebar" aria-label="Transaction stages">
-            <h2>Transaction stages</h2>
-            <ol>
-              {workflowStageLabels.map((label, index) => (
-                <li key={label}>
-                  <button type="button" className={`property-stage-item${index === 0 ? ' active' : ''}`} disabled>
-                    <span className="property-stage-marker">{index + 1}</span>
-                    <span className="property-stage-copy"><strong>{label}</strong><small>{index === 0 ? 'Loading' : 'Waiting'}</small></span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </aside>
           <div className="property-stage-content">
             <div className="property-stage-tabs" role="tablist" aria-label="Transaction sections">
               {workflowStageLabels.map((label, index) => (
                 <button type="button" role="tab" className={index === 0 ? 'active' : ''} aria-selected={index === 0} disabled key={label}>
-                  {label}
+                  <span className="property-tab-marker" aria-hidden="true">{index + 1}</span>
+                  <span className="property-tab-copy"><strong>{label}</strong><small>{index === 0 ? 'Loading' : 'Waiting'}</small></span>
                 </button>
               ))}
             </div>
@@ -284,6 +274,13 @@ export default function TransactionDetail({
     }
 
     parties.forEach((party, index) => {
+      if (party.side === 'SIDE_1') {
+        const transferredShare = Number(party.shareTransferredPct)
+        if (party.shareTransferredPct.trim().length > 0 && Number.isFinite(transferredShare)) {
+          transferredTotals.SIDE_1 += transferredShare
+        }
+        return
+      }
       if (party.name.trim().length === 0) {
         addError(index, 'name', 'Name is required.')
       }
@@ -388,6 +385,7 @@ export default function TransactionDetail({
           },
         ]),
       'Witnesses saved.',
+      () => setWitnessFormVisible(false),
     )
   }
 
@@ -493,7 +491,6 @@ export default function TransactionDetail({
     )
   }
 
-  const sideOneTitle = formatCell(txn.deedType.side1_role || 'Seller').replaceAll('_', ' ')
   const sideTwoTitle = formatCell(txn.deedType.side2_role || 'Buyer').replaceAll('_', ' ')
 
   const latestRuleResults = Array.from(
@@ -604,7 +601,7 @@ export default function TransactionDetail({
   }
 
   return (
-    <div className="intake-page">
+    <div className="intake-page transaction-detail-page">
       <div className="page-heading">
         <div>
           <span className="eyebrow">Registration workspace</span>
@@ -625,31 +622,6 @@ export default function TransactionDetail({
       <Banner kind="success" message={info} />
 
       <div className="property-stage-layout">
-        <aside className="property-stage-sidebar" aria-label="Transaction sections">
-          <h2>Transaction sections</h2>
-          <ol>
-            {workflowTabs.map((step) => (
-              <li key={step.target}>
-                <button
-                  type="button"
-                  className={`property-stage-item${activeWorkflowTab === step.target ? ' active' : ''}${step.issues.length > 0 ? ' has-errors' : ''}`}
-                  onClick={() => {
-                    setSelectedReadinessStep(step.label)
-                    setActiveWorkflowTab(step.target)
-                  }}
-                  aria-current={activeWorkflowTab === step.target ? 'step' : undefined}
-                >
-                  <span className="property-stage-marker">{step.issues.length > 0 ? '!' : step.target === 'txn-property' ? '1' : workflowTabs.findIndex((item) => item.target === step.target) + 1}</span>
-                  <span className="property-stage-copy">
-                    <strong>{step.label}</strong>
-                    <small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : 'Ready'}</small>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </aside>
-
         <div className="property-stage-content">
           <div className="property-stage-tabs" role="tablist" aria-label="Transaction sections">
             {workflowTabs.map((step) => (
@@ -658,7 +630,7 @@ export default function TransactionDetail({
                 id={`workflow-tab-${step.target}`}
                 type="button"
                 role="tab"
-                className={activeWorkflowTab === step.target ? 'active' : ''}
+                className={`${activeWorkflowTab === step.target ? 'active' : ''}${step.issues.length > 0 ? ' has-errors' : ''}`}
                 aria-selected={activeWorkflowTab === step.target}
                 aria-controls={step.target}
                 onClick={() => {
@@ -666,13 +638,14 @@ export default function TransactionDetail({
                   setActiveWorkflowTab(step.target)
                 }}
               >
-                {step.label}
+                <span className="property-tab-marker" aria-hidden="true">{step.issues.length > 0 ? '!' : workflowTabs.findIndex((item) => item.target === step.target) + 1}</span>
+                <span className="property-tab-copy"><strong>{step.label}</strong><small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : 'Ready'}</small></span>
               </button>
             ))}
           </div>
 
           <div id="txn-property" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-property" tabIndex={0} hidden={activeWorkflowTab !== 'txn-property'}>
-            <Panel title="Property details">
+            <Panel title="">
               <dl className="kv">
                 <dt>Property reference</dt><dd>{formatCell(txn.property.property_ref ?? txn.property.propertyRef)}</dd>
                 <dt>ULPIN</dt><dd>{formatCell(txn.property.ulpin ?? txn.property.ULPIN)}</dd>
@@ -686,7 +659,7 @@ export default function TransactionDetail({
           </div>
 
           <div id="txn-details" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-details" tabIndex={0} hidden={activeWorkflowTab !== 'txn-details'}>
-            <Panel title="Transaction details">
+            <Panel title="">
               {renderReadinessDetails('Transaction details')}
               <div className="form-grid three">
                 <Field label="Transaction date" value={transactionDate} onChange={setTransactionDate} type="date" />
@@ -731,13 +704,10 @@ export default function TransactionDetail({
             >
               {renderReadinessDetails('Buyer details')}
               {partyFormVisible ? (
-                <>
-                  {renderPartyGroup('SIDE_1', sideOneTitle)}
-                  {renderPartyGroup('SIDE_2', sideTwoTitle)}
-                </>
+                renderPartyGroup('SIDE_2', sideTwoTitle)
               ) : null}
               <DataTable
-                rows={txn.parties}
+                rows={txn.parties.filter((party) => String(party.side ?? '') === 'SIDE_2')}
                 columns={[
                   { key: 'role', label: 'Role' },
                   { key: 'name', label: 'Name' },
@@ -751,22 +721,33 @@ export default function TransactionDetail({
           </div>
 
           <div id="txn-witnesses" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-witnesses" tabIndex={0} hidden={activeWorkflowTab !== 'txn-witnesses'}>
-            <Panel title="Witnesses">
+            <Panel
+              title=""
+              actions={!witnessFormVisible ? (
+                <button type="button" className="outline" onClick={() => setWitnessFormVisible(true)}>
+                  Edit witnesses
+                </button>
+              ) : undefined}
+            >
               {renderReadinessDetails('Witnesses')}
-              <p className="helper">Capture witness information before moving on to Aadhaar consent.</p>
-              <div className="form-grid two">
-                <Field label="Witness 1 name" value={witnessOne} onChange={setWitnessOne} required />
-                <Field label="Witness 1 address" value={witnessOneAddress} onChange={setWitnessOneAddress} />
-                <Field label="Witness 1 phone number" value={witnessOnePhone} onChange={setWitnessOnePhone} type="tel" />
-                <Field label="Witness 1 Aadhaar (optional)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
-                <Field label="Witness 2 name" value={witnessTwo} onChange={setWitnessTwo} required />
-                <Field label="Witness 2 address" value={witnessTwoAddress} onChange={setWitnessTwoAddress} />
-                <Field label="Witness 2 phone number" value={witnessTwoPhone} onChange={setWitnessTwoPhone} type="tel" />
-                <Field label="Witness 2 Aadhaar (optional)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
-              </div>
-              <div className="form-submit-row">
-                <button type="button" className="primary" onClick={() => void saveWitnesses()}>Save witness details</button>
-              </div>
+              {witnessFormVisible ? (
+                <>
+                  <p className="helper">Capture witness information before moving on to Aadhaar consent.</p>
+                  <div className="form-grid two">
+                    <Field label="Witness 1 name" value={witnessOne} onChange={setWitnessOne} required />
+                    <Field label="Witness 1 address" value={witnessOneAddress} onChange={setWitnessOneAddress} />
+                    <Field label="Witness 1 phone number" value={witnessOnePhone} onChange={setWitnessOnePhone} type="tel" />
+                    <Field label="Witness 1 Aadhaar (optional)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
+                    <Field label="Witness 2 name" value={witnessTwo} onChange={setWitnessTwo} required />
+                    <Field label="Witness 2 address" value={witnessTwoAddress} onChange={setWitnessTwoAddress} />
+                    <Field label="Witness 2 phone number" value={witnessTwoPhone} onChange={setWitnessTwoPhone} type="tel" />
+                    <Field label="Witness 2 Aadhaar (optional)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
+                  </div>
+                  <div className="form-submit-row witness-submit-row">
+                    <button type="button" className="primary" onClick={() => void saveWitnesses()}>Save witnesses</button>
+                  </div>
+                </>
+              ) : null}
               <DataTable
                 rows={witnessRows}
                 columns={[
@@ -776,6 +757,7 @@ export default function TransactionDetail({
                   { key: 'id_proof_type', label: 'ID proof' },
                   { key: 'id_proof_ref', label: 'ID proof ref' },
                 ]}
+                empty="No witnesses saved yet."
               />
             </Panel>
           </div>
@@ -822,7 +804,7 @@ export default function TransactionDetail({
           </div>
 
           <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
-            <Panel title="Rule checks">
+            <Panel title="">
               {renderReadinessDetails('Rule checks')}
               <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
               <DataTable
@@ -843,8 +825,11 @@ export default function TransactionDetail({
           </div>
 
           <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
-            <Panel title="Fees and payment" actions={<button type="button" disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>}>
+            <Panel title="">
               {renderReadinessDetails('Fees & payment')}
+              <div className="form-submit-row">
+                <button type="button" disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>
+              </div>
               {txn.feeCalculation === null ? (
                 <p className="muted">No fee calculation yet.</p>
               ) : (
@@ -902,7 +887,7 @@ export default function TransactionDetail({
           </div>
 
           <div id="txn-registration" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-registration" tabIndex={0} hidden={activeWorkflowTab !== 'txn-registration'}>
-            <Panel title="Registration">
+            <Panel title="">
               {renderReadinessDetails('Registration')}
               <label className="field registration-comment">
                 <span>Comment (optional)</span>

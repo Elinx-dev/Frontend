@@ -475,27 +475,17 @@ export default function PropertyCreate() {
       <div className="page-heading"><div><span className="eyebrow">Registration workspace</span><h1>Mint Property</h1><p className="muted">Create a property record. ULPIN is optional and can be added when already issued.</p></div></div>
       <Banner kind="error" message={error} />
       <div className="property-stage-layout">
-        <aside className="property-stage-sidebar" aria-label="Mint Property stages">
-          <h2>Mint Property stages</h2>
-          <ol>
-            {stages.map((stage, index) => (
-              <li key={stage}>
-                <button type="button" className={`property-stage-item${activeStage === index ? ' active' : ''}${stageComplete[index] ? ' completed' : ''}${stageHasErrors[index] ? ' has-errors' : ''}`} onClick={() => goToStage(index)} aria-current={activeStage === index ? 'step' : undefined}>
-                  <span className="property-stage-marker">{stageComplete[index] ? '✓' : index + 1}</span>
-                  <span className="property-stage-copy"><strong>{stage}</strong><small>{stageStatus(index)}</small></span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </aside>
         <div className="property-stage-content">
-          <div className="property-stage-tabs" role="tablist" aria-label="Mint Property sections">
+          <div className="property-stage-tabs" role="tablist" aria-label="Property stages">
             {stages.map((stage, index) => (
-              <button type="button" role="tab" id={`property-stage-tab-${index}`} aria-selected={activeStage === index} aria-controls={`property-stage-panel-${index}`} className={activeStage === index ? 'active' : ''} onClick={() => goToStage(index)} key={stage}>{stage}</button>
+              <button type="button" role="tab" id={`property-stage-tab-${index}`} aria-selected={activeStage === index} aria-controls={`property-stage-panel-${index}`} aria-label={`${stage}, ${stageStatus(index)}`} className={`${activeStage === index ? 'active' : ''}${stageComplete[index] ? ' completed' : ''}${stageHasErrors[index] ? ' has-errors' : ''}`} onClick={() => goToStage(index)} key={stage}>
+                <span className="property-tab-marker" aria-hidden="true">{stageComplete[index] ? '✓' : index + 1}</span>
+                <span className="property-tab-copy"><strong>{stage}</strong><small>{stageStatus(index)}</small></span>
+              </button>
             ))}
           </div>
           <div role="tabpanel" id={`property-stage-panel-${activeStage}`} aria-labelledby={`property-stage-tab-${activeStage}`}>
-      {activeStage === 0 ? <Panel title="Identification" actions={<span className="stage-label">Mint property</span>}>
+      {activeStage === 0 ? <Panel title="">
         <div className="form-grid three">
           <Field label="ULPIN (optional)" value={property.ulpin} onChange={(v) => update('ulpin', v)} placeholder="Enter only if already issued" />
           <Field label="Property type" value={property.propertyTypeCode} onChange={(v) => update('propertyTypeCode', v)} options={options('PROPERTY_TYPE', [{ value: 'LAND', label: 'Land Parcel' }, { value: 'HOUSE_SITE', label: 'House Site' }, { value: 'BUILDING', label: 'Building' }, { value: 'APARTMENT_UNIT', label: 'Apartment / Flat' }, { value: 'AGRICULTURAL', label: 'Agricultural Land' }, { value: 'COMMERCIAL', label: 'Commercial' }, { value: 'INDUSTRIAL', label: 'Industrial' }, { value: 'PLOT_SITE', label: 'Plot / Site' }])} required />
@@ -504,7 +494,7 @@ export default function PropertyCreate() {
           <Field label="Classification" value={property.classificationCode} onChange={(v) => update('classificationCode', v)} options={[{ value: 'Dry', label: 'Dry' }, { value: 'Wet', label: 'Wet' }]} required />
         </div>
       </Panel> : null}
-      {activeStage === 1 ? <Panel title="Property owners" actions={<button className="party-add-button" onClick={() => setOwners((current) => [...current, emptyOwner()])}><span aria-hidden="true">+</span> Add owner</button>}>
+      {activeStage === 1 ? <Panel title="" actions={<button className="party-add-button" onClick={() => setOwners((current) => [...current, emptyOwner()])}><span aria-hidden="true">+</span> Add owner</button>}>
         {owners.map((owner, index) => (
           <div className="row party-row" key={index}>
             <div><Field label="Name" value={owner.ownerName} onChange={(v) => updateOwner(index, 'ownerName', v)} required />{ownerFieldError(index, 'ownerName')}</div>
@@ -516,7 +506,7 @@ export default function PropertyCreate() {
           </div>
         ))}
       </Panel> : null}
-      {activeStage === 2 ? <Panel title="Location & Survey">
+      {activeStage === 2 ? <Panel title="">
         <div className="location-survey-layout">
           <div className="form-grid three">
             <div><Field label="Registration district" value={property.districtCode} onChange={(v) => updateLocation('districtCode', v)} options={districtOptions} required />{fieldError('districtCode')}</div>
@@ -557,7 +547,7 @@ export default function PropertyCreate() {
           </aside>
         </div>
       </Panel> : null}
-      {activeStage === 3 ? <Panel title="Boundaries">
+      {activeStage === 3 ? <Panel title="">
         <div className="form-grid four"><div><Field label="North boundary" value={property.boundaryNorth} onChange={(v) => update('boundaryNorth', v)} required />{fieldError('boundaryNorth')}</div><div><Field label="South boundary" value={property.boundarySouth} onChange={(v) => update('boundarySouth', v)} required />{fieldError('boundarySouth')}</div><div><Field label="East boundary" value={property.boundaryEast} onChange={(v) => update('boundaryEast', v)} required />{fieldError('boundaryEast')}</div><div><Field label="West boundary" value={property.boundaryWest} onChange={(v) => update('boundaryWest', v)} required />{fieldError('boundaryWest')}</div></div>
         <div className="boundary-measurements">
           <div className="boundary-measurements-heading">
@@ -578,7 +568,7 @@ export default function PropertyCreate() {
           ))}
         </div>
       </Panel> : null}
-      {activeStage === 4 ? <Panel title="Chain of Title" actions={<button type="button" className="outline" onClick={() => setChainHistory((current) => [...current, emptyChainHistoryEntry(property.surveyNo)])}>Add record</button>}>
+      {activeStage === 4 ? <Panel title="" actions={<button type="button" className="outline" onClick={() => setChainHistory((current) => [...current, emptyChainHistoryEntry(property.surveyNo)])}>Add record</button>}>
         <p className="muted">Add the earlier registered transfers for this property. Start with the earliest known owner and leave the section empty if there is no prior history to record.</p>
         {chainHistory.length === 0 ? <p className="chain-history-empty">No chain-of-title records added.</p> : null}
         {chainHistory.map((entry, entryIndex) => {
@@ -602,7 +592,7 @@ export default function PropertyCreate() {
           </section>
         })}
       </Panel> : null}
-      {activeStage === 5 ? <Panel title="Guideline Value (manual entry)">
+      {activeStage === 5 ? <Panel title="">
         <div className="form-grid three"><Field label="Guideline value" value={property.guidelineValue} onChange={(v) => update('guidelineValue', v)} type="number" /><Field label="Notification / register reference" value={property.guidelineValueReference} onChange={(v) => update('guidelineValueReference', v)} /></div>
         <p className="advisory">Not fetched from an API. Editable again during transaction review; every change is written to the audit trail.</p>
       </Panel> : null}
