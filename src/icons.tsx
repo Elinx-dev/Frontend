@@ -93,3 +93,44 @@ export function SignOutIcon() {
     </svg>
   )
 }
+
+export function UsersIcon() {
+  return (
+    <svg {...BASE}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" />
+      <path d="M18.5 14.5a6.5 6.5 0 0 1 3 5.5" />
+    </svg>
+  )
+}
+
+export function ModulesIcon() {
+  return (
+    <svg {...BASE}>
+      <path d="M12 2.5 3 7l9 4.5L21 7l-9-4.5Z" />
+      <path d="m3 12 9 4.5 9-4.5" />
+      <path d="m3 17 9 4.5 9-4.5" />
+    </svg>
+  )
+}
+
+export function FlagIcon() {
+  return (
+    <svg {...BASE}>
+      <path d="M5 21V4" />
+      <path d="M5 4h11l-2 4 2 4H5" />
+    </svg>
+  )
+}
+
+export function WorkflowIcon() {
+  return (
+    <svg {...BASE}>
+      <rect x="3" y="3" width="6" height="6" rx="1" />
+      <rect x="15" y="15" width="6" height="6" rx="1" />
+      <path d="M6 9v4a2 2 0 0 0 2 2h7" />
+      <path d="m12 12 3 3-3 3" />
+    </svg>
+  )
+}

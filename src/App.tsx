@@ -6,13 +6,20 @@ import {
   AdminIcon,
   AuditIcon,
   DashboardIcon,
+  FlagIcon,
   ListIcon,
+  ModulesIcon,
   PropertyIcon,
   QueueIcon,
   SignOutIcon,
   TransferIcon,
+  UsersIcon,
+  WorkflowIcon,
 } from './icons'
-import Admin from './pages/Admin'
+import AdminUsers from './pages/admin/AdminUsers'
+import FeatureFlags from './pages/admin/FeatureFlags'
+import StateModules from './pages/admin/StateModules'
+import WorkflowDefinitions from './pages/admin/WorkflowDefinitions'
 import AdminDashboard from './pages/AdminDashboard'
 import AuditTrail from './pages/AuditTrail'
 import ForgotPassword from './pages/ForgotPassword'
@@ -70,7 +77,18 @@ function Shell({ children }: { children: ReactNode }) {
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
           <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink>
         </div>
-        {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><NavLink to="/admin" end><AdminIcon />Users and configuration</NavLink></div> : null}
+        {has('STATE_ADMIN') ? (
+          <div className="side-section">
+            <span>Administration</span>
+            <div className="side-group" role="group" aria-labelledby="side-group-admin">
+              <div className="side-group-title" id="side-group-admin"><AdminIcon />Users and configuration</div>
+              <NavLink to="/admin/users"><UsersIcon />User administration</NavLink>
+              <NavLink to="/admin/modules"><ModulesIcon />State modules</NavLink>
+              <NavLink to="/admin/feature-flags"><FlagIcon />Feature flags</NavLink>
+              <NavLink to="/admin/workflows"><WorkflowIcon />Workflow definitions</NavLink>
+            </div>
+          </div>
+        ) : null}
         <div className="side-section">
           <span>Network</span>
           <p>Besu QBFT · chainId 2026<br />Block #18,442</p>
@@ -132,7 +150,11 @@ export default function App() {
           <Route path="/vao" element={<Protected><RevenueQueue role="VAO" /></Protected>} />
           <Route path="/tahsildar" element={<Protected><RevenueQueue role="TAHSILDAR" /></Protected>} />
           <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
-          <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
+          <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+          <Route path="/admin/users" element={<AdminOnly><AdminUsers /></AdminOnly>} />
+          <Route path="/admin/modules" element={<AdminOnly><StateModules /></AdminOnly>} />
+          <Route path="/admin/feature-flags" element={<AdminOnly><FeatureFlags /></AdminOnly>} />
+          <Route path="/admin/workflows" element={<AdminOnly><WorkflowDefinitions /></AdminOnly>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
