@@ -36,7 +36,7 @@ export function homeRouteFor(user: UserProfile): string {
   if (user.roles.includes('SURVEYOR')) return '/surveyor'
   if (user.roles.includes('VAO')) return '/vao'
   if (user.roles.includes('TAHSILDAR')) return '/tahsildar'
-  if (user.roles.includes('STATE_ADMIN')) return '/admin'
+  if (user.roles.includes('STATE_ADMIN')) return '/admin/dashboard'
   if (user.roles.includes('REGISTRATION_OFFICER')) return '/ro'
   return '/public'
 }

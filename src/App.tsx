@@ -13,6 +13,7 @@ import {
   TransferIcon,
 } from './icons'
 import Admin from './pages/Admin'
+import AdminDashboard from './pages/AdminDashboard'
 import AuditTrail from './pages/AuditTrail'
 import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
@@ -36,12 +37,12 @@ function Protected({ children }: { children: ReactNode }) {
   return <Shell>{children}</Shell>
 }
 
-function AdminOnly() {
+function AdminOnly({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <p className="muted">Loading…</p>
   if (user === null) return <Navigate to="/login" replace />
   if (!user.roles.includes('STATE_ADMIN')) return <Navigate to={homeRouteFor(user)} replace />
-  return <Shell><Admin /></Shell>
+  return <Shell>{children}</Shell>
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -59,6 +60,7 @@ function Shell({ children }: { children: ReactNode }) {
             <small>Secured Land Asset Token Exchange</small>
           </span>
         </Link>
+        {has('STATE_ADMIN') ? <div className="side-section"><span>Overview</span><NavLink to="/admin/dashboard"><DashboardIcon />State Dashboard</NavLink></div> : null}
         <div className="side-section">
           <span>Registration</span>
           {has('REGISTRATION_OFFICER') ? <NavLink to="/ro" end><DashboardIcon />Dashboard</NavLink> : null}
@@ -68,7 +70,7 @@ function Shell({ children }: { children: ReactNode }) {
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
           <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink>
         </div>
-        {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><NavLink to="/admin"><AdminIcon />Users and configuration</NavLink></div> : null}
+        {has('STATE_ADMIN') ? <div className="side-section"><span>Administration</span><NavLink to="/admin" end><AdminIcon />Users and configuration</NavLink></div> : null}
         <div className="side-section">
           <span>Network</span>
           <p>Besu QBFT · chainId 2026<br />Block #18,442</p>
@@ -129,7 +131,8 @@ export default function App() {
           <Route path="/survey/:txnRef" element={<Protected><Survey /></Protected>} />
           <Route path="/vao" element={<Protected><RevenueQueue role="VAO" /></Protected>} />
           <Route path="/tahsildar" element={<Protected><RevenueQueue role="TAHSILDAR" /></Protected>} />
-          <Route path="/admin" element={<AdminOnly />} />
+          <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
+          <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
