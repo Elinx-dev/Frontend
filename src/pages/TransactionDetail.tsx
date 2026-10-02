@@ -24,6 +24,16 @@ type PartyErrors = Record<number, Partial<Record<PartyField, string>>>
 const AADHAAR_PATTERN = /^\d{12}$/
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const SHARE_EPSILON = 0.01
+const workflowStageLabels = [
+  'Property details',
+  'Transaction details',
+  'Buyer details',
+  'Witnesses',
+  'Aadhaar consent',
+  'Rule checks',
+  'Fees and payment',
+  'Registration',
+] as const
 
 const emptyParty = (side: string): PartyForm => ({
   side,
@@ -45,7 +55,7 @@ export default function TransactionDetail({
   transactionRef,
   initialWorkflowTab,
   pageTitle,
-  compact = false,
+  compact: _compact = false,
 }: {
   transactionRef?: string
   initialWorkflowTab?: string
@@ -58,6 +68,7 @@ export default function TransactionDetail({
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [consideration, setConsideration] = useState('')
+  const [transactionDate, setTransactionDate] = useState('')
   const [extent, setExtent] = useState('')
   const [extentUnit, setExtentUnit] = useState('SQ_FT')
   const [relationshipCategory, setRelationshipCategory] = useState('')
@@ -102,6 +113,13 @@ export default function TransactionDetail({
       if (initializedTxnRef.current !== txnRef) {
         initializedTxnRef.current = txnRef
         setConsideration(String(result.declared_consideration ?? result.declaredConsideration ?? ''))
+        setTransactionDate(String(
+          result.transaction_date
+          ?? result.transactionDate
+          ?? result.created_at
+          ?? result.createdAt
+          ?? '',
+        ).slice(0, 10))
         setExtent(String(result.extent_or_share_transferred ?? result.extentOrShareTransferred ?? ''))
         setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
@@ -180,13 +198,52 @@ export default function TransactionDetail({
   }
 
   if (txn === null) {
-    return <Banner kind="error" message={error.length === 0 ? 'Loading…' : error} />
+    return (
+      <div className="intake-page" aria-busy={error.length === 0}>
+        <div className="page-heading">
+          <div>
+            <span className="eyebrow">Registration workspace</span>
+            <h1>Transaction workflow</h1>
+            <p className="muted">Review and complete the transaction workflow.</p>
+          </div>
+        </div>
+        {error.length > 0 ? <Banner kind="error" message={error} /> : null}
+        <div className="property-stage-layout">
+          <aside className="property-stage-sidebar" aria-label="Transaction stages">
+            <h2>Transaction stages</h2>
+            <ol>
+              {workflowStageLabels.map((label, index) => (
+                <li key={label}>
+                  <button type="button" className={`property-stage-item${index === 0 ? ' active' : ''}`} disabled>
+                    <span className="property-stage-marker">{index + 1}</span>
+                    <span className="property-stage-copy"><strong>{label}</strong><small>{index === 0 ? 'Loading' : 'Waiting'}</small></span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </aside>
+          <div className="property-stage-content">
+            <div className="property-stage-tabs" role="tablist" aria-label="Transaction sections">
+              {workflowStageLabels.map((label, index) => (
+                <button type="button" role="tab" className={index === 0 ? 'active' : ''} aria-selected={index === 0} disabled key={label}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Panel title="Loading transaction details">
+              <p className="helper" role="status">{error.length === 0 ? 'Loading transaction details…' : 'Transaction details could not be loaded.'}</p>
+            </Panel>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const saveDetails = () =>
     guard(
       () =>
         put(`/api/transactions/${txnRef}/details`, {
+          transactionDate: transactionDate.length === 0 ? undefined : transactionDate,
           declaredConsideration: numberOrUndefined(consideration),
           modeOfConsideration: Number(consideration) > 0 ? 'BANK_TRANSFER' : undefined,
           extentOrShareTransferred: numberOrUndefined(extent),
@@ -547,18 +604,61 @@ export default function TransactionDetail({
   }
 
   return (
-    <>
+    <div className="intake-page">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">Registration workspace</span>
+          <h1>{pageTitle ?? 'Transaction details'}</h1>
+          <p className="muted">
+            {txn.txn_ref.length > 0
+              ? `Transaction ${txn.txn_ref} is in ${currentStage} stage.`
+              : 'Review and complete the transaction workflow.'}
+          </p>
+        </div>
+        <div className="dashboard-actions">
+          <StatusPill status={txn.status} />
+          <button type="button" className="outline" onClick={() => void load()}>Refresh</button>
+        </div>
+      </div>
+
       <Banner kind="error" message={error} />
       <Banner kind="success" message={info} />
-      {compact ? (
-        <div className="transaction-compact-shell">
-          <div className="transaction-tabs" role="tablist" aria-label="Transaction sections">
+
+      <div className="property-stage-layout">
+        <aside className="property-stage-sidebar" aria-label="Transaction sections">
+          <h2>Transaction sections</h2>
+          <ol>
+            {workflowTabs.map((step) => (
+              <li key={step.target}>
+                <button
+                  type="button"
+                  className={`property-stage-item${activeWorkflowTab === step.target ? ' active' : ''}${step.issues.length > 0 ? ' has-errors' : ''}`}
+                  onClick={() => {
+                    setSelectedReadinessStep(step.label)
+                    setActiveWorkflowTab(step.target)
+                  }}
+                  aria-current={activeWorkflowTab === step.target ? 'step' : undefined}
+                >
+                  <span className="property-stage-marker">{step.issues.length > 0 ? '!' : step.target === 'txn-property' ? '1' : workflowTabs.findIndex((item) => item.target === step.target) + 1}</span>
+                  <span className="property-stage-copy">
+                    <strong>{step.label}</strong>
+                    <small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : 'Ready'}</small>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </aside>
+
+        <div className="property-stage-content">
+          <div className="property-stage-tabs" role="tablist" aria-label="Transaction sections">
             {workflowTabs.map((step) => (
               <button
+                key={step.target}
                 id={`workflow-tab-${step.target}`}
                 type="button"
                 role="tab"
-                className={`transaction-tab${step.issues.length > 0 ? ' has-issues' : ''}${activeWorkflowTab === step.target ? ' selected' : ''}`}
+                className={activeWorkflowTab === step.target ? 'active' : ''}
                 aria-selected={activeWorkflowTab === step.target}
                 aria-controls={step.target}
                 onClick={() => {
@@ -566,336 +666,298 @@ export default function TransactionDetail({
                   setActiveWorkflowTab(step.target)
                 }}
               >
-                <strong className="readiness-label">{step.label}</strong>
-                {step.issues.length > 0 ? <span className="readiness-state">{step.issues.length} to resolve</span> : null}
+                {step.label}
               </button>
             ))}
           </div>
-        </div>
-      ) : (
-      <Panel
-        title={pageTitle ?? `Transaction ${txn.txn_ref}`}
-        actions={
-          <>
-            <StatusPill status={txn.status} />
-            <button onClick={() => void load()}>Refresh</button>
-          </>
-        }
-      >
-        <dl className="kv">
-          <dt>Property</dt>
-          <dd>
-            <Link to={`/properties/${formatCell(txn.property.property_ref)}`}>
-              {formatCell(txn.property.property_ref)}
-            </Link>
-          </dd>
-          <dt>Deed type</dt>
-          <dd>{txn.deed_type_code}</dd>
-          <dt>Transfer scope</dt>
-          <dd>{formatCell(txn.transfer_scope)}</dd>
-          <dt>Survey required</dt>
-          <dd>{formatCell(txn.survey_required)}</dd>
-          <dt>Stage</dt>
-          <dd>{formatCell(txn.current_stage_code)}</dd>
-        </dl>
-        <section className="readiness-flow" aria-label="Transaction workflow tabs">
-          <div className="readiness-flow-head">
-            <div>
-              <span className="eyebrow">Registration workflow</span>
-              <h3>Transaction sections</h3>
-            </div>
-            <div className="readiness-current">
-              <span>Current status</span>
-              <strong>{currentStage}</strong>
-            </div>
+
+          <div id="txn-property" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-property" tabIndex={0} hidden={activeWorkflowTab !== 'txn-property'}>
+            <Panel title="Property details">
+              <dl className="kv">
+                <dt>Property reference</dt><dd>{formatCell(txn.property.property_ref ?? txn.property.propertyRef)}</dd>
+                <dt>ULPIN</dt><dd>{formatCell(txn.property.ulpin ?? txn.property.ULPIN)}</dd>
+                <dt>Survey number</dt><dd>{formatCell(txn.property.survey_no ?? txn.property.surveyNo)}</dd>
+                <dt>Village</dt><dd>{formatCell(txn.property.village_name ?? txn.property.villageName ?? txn.property.village_code ?? txn.property.villageCode)}</dd>
+                <dt>District</dt><dd>{formatCell(txn.property.district_name ?? txn.property.districtName ?? txn.property.district_code ?? txn.property.districtCode)}</dd>
+                <dt>Address</dt><dd>{formatCell(txn.property.address)}</dd>
+                <dt>Extent</dt><dd>{formatCell(txn.property.extent_value ?? txn.property.extentValue)} {formatCell(txn.property.extent_unit ?? txn.property.extentUnit)}</dd>
+              </dl>
+            </Panel>
           </div>
-          <div className="transaction-tabs" role="tablist" aria-label="Transaction sections">
-            {workflowTabs.map((step) => (
-                <button
-                  id={`workflow-tab-${step.target}`}
-                  type="button"
-                  role="tab"
-                  className={`transaction-tab${step.issues.length > 0 ? ' has-issues' : ''}${activeWorkflowTab === step.target ? ' selected' : ''}`}
-                  aria-selected={activeWorkflowTab === step.target}
-                  aria-controls={step.target}
-                  onClick={() => {
-                    setSelectedReadinessStep(step.label)
-                    setActiveWorkflowTab(step.target)
-                  }}
-                >
-                  <strong className="readiness-label">{step.label}</strong>
-                  {step.issues.length > 0 ? <span className="readiness-state">{step.issues.length} to resolve</span> : null}
-                </button>
-            ))}
+
+          <div id="txn-details" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-details" tabIndex={0} hidden={activeWorkflowTab !== 'txn-details'}>
+            <Panel title="Transaction details">
+              {renderReadinessDetails('Transaction details')}
+              <div className="form-grid three">
+                <Field label="Transaction date" value={transactionDate} onChange={setTransactionDate} type="date" />
+                <Field label="Declared consideration" value={consideration} onChange={setConsideration} type="number" />
+                <Field label="Extent / share transferred" value={extent} onChange={setExtent} type="number" />
+                <Field
+                  label="Extent unit"
+                  value={extentUnit}
+                  onChange={setExtentUnit}
+                  options={['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'PERCENT'].map((u) => ({ value: u, label: u }))}
+                />
+                <Field
+                  label="Relationship category"
+                  value={relationshipCategory}
+                  onChange={setRelationshipCategory}
+                  options={[
+                    { value: 'FAMILY', label: 'Family' },
+                    { value: 'NON_FAMILY', label: 'Non-family' },
+                  ]}
+                />
+              </div>
+              <div className="form-submit-row">
+                <button type="button" className="primary" onClick={() => void saveDetails()}>Save transaction details</button>
+              </div>
+            </Panel>
           </div>
-        </section>
-        <div className="actions">
-          {txn.availableActions.map((a, i) => (
-            <button key={i} onClick={() => void transition(formatCell(a.actionCode))}>
-              {formatCell(a.actionCode)}
-            </button>
-          ))}
-        </div>
-      </Panel>
-      )}
 
-      <div id="txn-property" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-property" tabIndex={0} hidden={activeWorkflowTab !== 'txn-property'}>
-      <Panel title="1. Property details">
-        <dl className="kv">
-          <dt>Property reference</dt><dd>{formatCell(txn.property.property_ref ?? txn.property.propertyRef)}</dd>
-          <dt>ULPIN</dt><dd>{formatCell(txn.property.ulpin ?? txn.property.ULPIN)}</dd>
-          <dt>Survey number</dt><dd>{formatCell(txn.property.survey_no ?? txn.property.surveyNo)}</dd>
-          <dt>Village</dt><dd>{formatCell(txn.property.village_name ?? txn.property.villageName ?? txn.property.village_code ?? txn.property.villageCode)}</dd>
-          <dt>District</dt><dd>{formatCell(txn.property.district_name ?? txn.property.districtName ?? txn.property.district_code ?? txn.property.districtCode)}</dd>
-          <dt>Address</dt><dd>{formatCell(txn.property.address)}</dd>
-          <dt>Extent</dt><dd>{formatCell(txn.property.extent_value ?? txn.property.extentValue)} {formatCell(txn.property.extent_unit ?? txn.property.extentUnit)}</dd>
-        </dl>
-      </Panel>
-      </div>
-
-      <div id="txn-details" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-details" tabIndex={0} hidden={activeWorkflowTab !== 'txn-details'}>
-      <Panel title="2. Transaction details" actions={<button onClick={() => void saveDetails()}>Save</button>}>
-        {renderReadinessDetails('Transaction details')}
-        <div className="row">
-          <Field label="Declared consideration" value={consideration} onChange={setConsideration} type="number" />
-          <Field label="Extent / share transferred" value={extent} onChange={setExtent} type="number" />
-          <Field
-            label="Extent unit"
-            value={extentUnit}
-            onChange={setExtentUnit}
-            options={['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'PERCENT'].map((u) => ({ value: u, label: u }))}
-          />
-          <Field
-            label="Relationship category"
-            value={relationshipCategory}
-            onChange={setRelationshipCategory}
-            options={[
-              { value: 'FAMILY', label: 'Family' },
-              { value: 'NON_FAMILY', label: 'Non-family' },
-            ]}
-          />
-        </div>
-      </Panel>
-      </div>
-
-      <div id="txn-parties" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-parties" tabIndex={0} hidden={activeWorkflowTab !== 'txn-parties'}>
-      <Panel
-        title="3. Buyer details"
-        actions={
-          partyFormVisible ? (
-            <button className="primary" onClick={() => void saveParties()}>
-              Save parties
-            </button>
-          ) : (
-            <button className="outline" onClick={() => setPartyFormVisible(true)}>
-              Edit parties
-            </button>
-          )
-        }
-      >
-        {renderReadinessDetails('Buyer details')}
-        {partyFormVisible ? (
-          <>
-            {renderPartyGroup('SIDE_1', sideOneTitle)}
-            {renderPartyGroup('SIDE_2', sideTwoTitle)}
-          </>
-        ) : null}
-        <DataTable
-          rows={txn.parties}
-          columns={[
-            { key: 'role', label: 'Role' },
-            { key: 'name', label: 'Name' },
-            { key: 'aadhaar_last4', label: 'Aadhaar ••••' },
-            { key: 'existing_share_pct', label: 'Existing %' },
-            { key: 'resulting_share_pct', label: 'Resulting %' },
-          ]}
-          empty="No parties saved yet."
-        />
-      </Panel>
-      </div>
-
-      <div id="txn-witnesses" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-witnesses" tabIndex={0} hidden={activeWorkflowTab !== 'txn-witnesses'}>
-      <Panel title="4. Witnesses" actions={<button onClick={() => void saveWitnesses()}>Save witnesses</button>}>
-        {renderReadinessDetails('Witnesses')}
-        <div className="form-grid two">
-          <Field label="Witness 1 name" value={witnessOne} onChange={setWitnessOne} required />
-          <Field label="Witness 1 address" value={witnessOneAddress} onChange={setWitnessOneAddress} />
-          <Field label="Witness 1 phone number" value={witnessOnePhone} onChange={setWitnessOnePhone} type="tel" />
-          <Field label="Witness 1 Aadhaar (optional)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
-          <Field label="Witness 2 name" value={witnessTwo} onChange={setWitnessTwo} required />
-          <Field label="Witness 2 address" value={witnessTwoAddress} onChange={setWitnessTwoAddress} />
-          <Field label="Witness 2 phone number" value={witnessTwoPhone} onChange={setWitnessTwoPhone} type="tel" />
-          <Field label="Witness 2 Aadhaar (optional)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
-        </div>
-        <DataTable
-          rows={witnessRows}
-          columns={[
-            { key: 'name', label: 'Name' },
-            { key: 'address', label: 'Address' },
-            { key: 'phone_number', label: 'Phone number' },
-            { key: 'id_proof_type', label: 'ID proof' },
-            { key: 'id_proof_ref', label: 'ID proof ref' },
-          ]}
-        />
-      </Panel>
-      </div>
-
-      <div id="txn-consent" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-consent" tabIndex={0} hidden={activeWorkflowTab !== 'txn-consent'}>
-      <Panel
-        title="5. Aadhaar consent"
-        actions={<button
-          disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)}
-          onClick={() => void requestConsent()}
-        >
-          {txn.status === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}
-        </button>}
-      >
-        {renderReadinessDetails('Aadhaar consent')}
-        <p className="muted">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
-        {txn.consents.map((c, i) => (
-          <div className="row" key={i}>
-            <span className="grow">
-              {(() => {
-                const party = txn.parties.find(
-                  (item) => String(item.id ?? item.party_id) === String(c.party_id),
+          <div id="txn-parties" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-parties" tabIndex={0} hidden={activeWorkflowTab !== 'txn-parties'}>
+            <Panel
+              title="Buyer details"
+              actions={
+                partyFormVisible ? (
+                  <button type="button" className="primary" onClick={() => void saveParties()}>
+                    Save parties
+                  </button>
+                ) : (
+                  <button type="button" className="outline" onClick={() => setPartyFormVisible(true)}>
+                    Edit parties
+                  </button>
                 )
-                const sideRole = party?.side === 'SIDE_1'
-                  ? txn.deedType.side1_role
-                  : txn.deedType.side2_role
-                const role = formatCell(party?.role ?? sideRole ?? 'Party').replaceAll('_', ' ')
-                const name = party === undefined ? `#${formatCell(c.party_id)}` : formatCell(party.name)
-                return `${role}: ${name} — ${formatCell(c.status)}`
-              })()}
-            </span>
-            <Field
-              label="OTP"
-              value={otpByParty[formatCell(c.party_id)] ?? ''}
-              onChange={(v) => setOtpByParty({ ...otpByParty, [formatCell(c.party_id)]: v })}
-            />
-            <button
-              disabled={txn.status !== 'CONSENT_PENDING'
-                || formatCell(c.status) === 'VERIFIED'
-                || !/^\d{6}$/.test(otpByParty[formatCell(c.party_id)] ?? '')}
-              onClick={() => void verifyConsent(Number(c.party_id))}
+              }
             >
-              Verify
-            </button>
+              {renderReadinessDetails('Buyer details')}
+              {partyFormVisible ? (
+                <>
+                  {renderPartyGroup('SIDE_1', sideOneTitle)}
+                  {renderPartyGroup('SIDE_2', sideTwoTitle)}
+                </>
+              ) : null}
+              <DataTable
+                rows={txn.parties}
+                columns={[
+                  { key: 'role', label: 'Role' },
+                  { key: 'name', label: 'Name' },
+                  { key: 'aadhaar_last4', label: 'Aadhaar ••••' },
+                  { key: 'existing_share_pct', label: 'Existing %' },
+                  { key: 'resulting_share_pct', label: 'Resulting %' },
+                ]}
+                empty="No parties saved yet."
+              />
+            </Panel>
           </div>
-        ))}
-      </Panel>
-      </div>
 
-      <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
-      <Panel title="6. Rule checks" actions={<button disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>}>
-        {renderReadinessDetails('Rule checks')}
-        <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
-        <DataTable
-          rows={latestRuleResults}
-          columns={[
-            { key: 'engine', label: 'Engine' },
-            { key: 'overall_outcome', label: 'Outcome' },
-            { key: 'reason_code', label: 'Reason' },
-            { key: 'summary', label: 'Summary' },
-            { key: 'executed_at', label: 'Executed' },
-          ]}
-          empty="Rule checks have not been run."
-        />
-      </Panel>
-      </div>
+          <div id="txn-witnesses" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-witnesses" tabIndex={0} hidden={activeWorkflowTab !== 'txn-witnesses'}>
+            <Panel title="Witnesses">
+              {renderReadinessDetails('Witnesses')}
+              <p className="helper">Capture witness information before moving on to Aadhaar consent.</p>
+              <div className="form-grid two">
+                <Field label="Witness 1 name" value={witnessOne} onChange={setWitnessOne} required />
+                <Field label="Witness 1 address" value={witnessOneAddress} onChange={setWitnessOneAddress} />
+                <Field label="Witness 1 phone number" value={witnessOnePhone} onChange={setWitnessOnePhone} type="tel" />
+                <Field label="Witness 1 Aadhaar (optional)" value={witnessOneAadhaar} onChange={(v) => setWitnessOneAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
+                <Field label="Witness 2 name" value={witnessTwo} onChange={setWitnessTwo} required />
+                <Field label="Witness 2 address" value={witnessTwoAddress} onChange={setWitnessTwoAddress} />
+                <Field label="Witness 2 phone number" value={witnessTwoPhone} onChange={setWitnessTwoPhone} type="tel" />
+                <Field label="Witness 2 Aadhaar (optional)" value={witnessTwoAadhaar} onChange={(v) => setWitnessTwoAadhaar(v.replace(/\D/g, '').slice(0, 12))} />
+              </div>
+              <div className="form-submit-row">
+                <button type="button" className="primary" onClick={() => void saveWitnesses()}>Save witness details</button>
+              </div>
+              <DataTable
+                rows={witnessRows}
+                columns={[
+                  { key: 'name', label: 'Name' },
+                  { key: 'address', label: 'Address' },
+                  { key: 'phone_number', label: 'Phone number' },
+                  { key: 'id_proof_type', label: 'ID proof' },
+                  { key: 'id_proof_ref', label: 'ID proof ref' },
+                ]}
+              />
+            </Panel>
+          </div>
 
-      <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
-      <Panel title="7. Fees and payment" actions={<button disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>}>
-        {renderReadinessDetails('Fees & payment')}
-        {txn.feeCalculation === null ? (
-          <p className="muted">No fee calculation yet.</p>
-        ) : (
-          <dl className="kv">
-            <dt>Valuation basis</dt>
-            <dd>
-              {formatCell(txn.feeCalculation.valuation_basis_used)} — {formatCell(txn.feeCalculation.valuation_amount)}
-            </dd>
-            <dt>Stamp duty</dt>
-            <dd>{formatCell(txn.feeCalculation.stamp_duty)}</dd>
-            <dt>Registration fee</dt>
-            <dd>{formatCell(txn.feeCalculation.registration_fee)}</dd>
-            <dt>TDS</dt>
-            <dd>{formatCell(txn.feeCalculation.tds_amount)}</dd>
-            <dt>Other charges</dt>
-            <dd>{formatCell(txn.feeCalculation.other_charges)}</dd>
-            <dt>Total payable</dt>
-            <dd>
-              <b>{formatCell(txn.feeCalculation.total_payable)}</b>
-            </dd>
-          </dl>
-        )}
-        <div className="row">
-          <Field
-            label="Payment mode"
-            value={paymentMode}
-            onChange={setPaymentMode}
-            options={[
-              { value: 'E_CHALLAN', label: 'E-Challan' },
-              { value: 'UPI', label: 'UPI' },
-              { value: 'CARD', label: 'Card' },
-              { value: 'DD', label: 'Demand draft' },
-            ]}
-          />
-          <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
-          <button
-            className="primary"
-            disabled={txn.status !== 'FEE_PAYMENT_PENDING' || txn.feeCalculation === null || paymentRef.length === 0}
-            onClick={() => void recordPayment()}
-          >
-            Record payment
-          </button>
+          <div id="txn-consent" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-consent" tabIndex={0} hidden={activeWorkflowTab !== 'txn-consent'}>
+            <Panel
+              title="Aadhaar consent"
+              actions={<button type="button" disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)} onClick={() => void requestConsent()}>{txn.status === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}</button>}
+            >
+              {renderReadinessDetails('Aadhaar consent')}
+              <p className="muted">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
+              {txn.consents.map((c, i) => (
+                <div className="row" key={i}>
+                  <span className="grow">
+                    {(() => {
+                      const party = txn.parties.find(
+                        (item) => String(item.id ?? item.party_id) === String(c.party_id),
+                      )
+                      const sideRole = party?.side === 'SIDE_1'
+                        ? txn.deedType.side1_role
+                        : txn.deedType.side2_role
+                      const role = formatCell(party?.role ?? sideRole ?? 'Party').replaceAll('_', ' ')
+                      const name = party === undefined ? `#${formatCell(c.party_id)}` : formatCell(party.name)
+                      return `${role}: ${name} — ${formatCell(c.status)}`
+                    })()}
+                  </span>
+                  <Field
+                    label="OTP"
+                    value={otpByParty[formatCell(c.party_id)] ?? ''}
+                    onChange={(v) => setOtpByParty({ ...otpByParty, [formatCell(c.party_id)]: v })}
+                  />
+                  <button
+                    type="button"
+                    disabled={txn.status !== 'CONSENT_PENDING'
+                      || formatCell(c.status) === 'VERIFIED'
+                      || !/^\d{6}$/.test(otpByParty[formatCell(c.party_id)] ?? '')}
+                    onClick={() => void verifyConsent(Number(c.party_id))}
+                  >
+                    Verify
+                  </button>
+                </div>
+              ))}
+            </Panel>
+          </div>
+
+          <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
+            <Panel title="Rule checks">
+              {renderReadinessDetails('Rule checks')}
+              <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
+              <DataTable
+                rows={latestRuleResults}
+                columns={[
+                  { key: 'engine', label: 'Engine' },
+                  { key: 'overall_outcome', label: 'Outcome' },
+                  { key: 'reason_code', label: 'Reason' },
+                  { key: 'summary', label: 'Summary' },
+                  { key: 'executed_at', label: 'Executed' },
+                ]}
+                empty="Rule checks have not been run."
+              />
+              <div className="form-submit-row">
+                <button type="button" className="primary" disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>
+              </div>
+            </Panel>
+          </div>
+
+          <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
+            <Panel title="Fees and payment" actions={<button type="button" disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>}>
+              {renderReadinessDetails('Fees & payment')}
+              {txn.feeCalculation === null ? (
+                <p className="muted">No fee calculation yet.</p>
+              ) : (
+                <dl className="kv">
+                  <dt>Valuation basis</dt>
+                  <dd>
+                    {formatCell(txn.feeCalculation.valuation_basis_used)} — {formatCell(txn.feeCalculation.valuation_amount)}
+                  </dd>
+                  <dt>Stamp duty</dt>
+                  <dd>{formatCell(txn.feeCalculation.stamp_duty)}</dd>
+                  <dt>Registration fee</dt>
+                  <dd>{formatCell(txn.feeCalculation.registration_fee)}</dd>
+                  <dt>TDS</dt>
+                  <dd>{formatCell(txn.feeCalculation.tds_amount)}</dd>
+                  <dt>Other charges</dt>
+                  <dd>{formatCell(txn.feeCalculation.other_charges)}</dd>
+                  <dt>Total payable</dt>
+                  <dd>
+                    <b>{formatCell(txn.feeCalculation.total_payable)}</b>
+                  </dd>
+                </dl>
+              )}
+              <div className="row">
+                <Field
+                  label="Payment mode"
+                  value={paymentMode}
+                  onChange={setPaymentMode}
+                  options={[
+                    { value: 'E_CHALLAN', label: 'E-Challan' },
+                    { value: 'UPI', label: 'UPI' },
+                    { value: 'CARD', label: 'Card' },
+                    { value: 'DD', label: 'Demand draft' },
+                  ]}
+                />
+                <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={txn.status !== 'FEE_PAYMENT_PENDING' || txn.feeCalculation === null || paymentRef.length === 0}
+                  onClick={() => void recordPayment()}
+                >
+                  Record payment
+                </button>
+              </div>
+              <DataTable
+                rows={txn.payments}
+                columns={[
+                  { key: 'mode', label: 'Mode' },
+                  { key: 'reference_no', label: 'Reference' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'paid_at', label: 'Paid at' },
+                ]}
+              />
+            </Panel>
+          </div>
+
+          <div id="txn-registration" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-registration" tabIndex={0} hidden={activeWorkflowTab !== 'txn-registration'}>
+            <Panel title="Registration">
+              {renderReadinessDetails('Registration')}
+              <label className="field registration-comment">
+                <span>Comment (optional)</span>
+                <textarea value={registrationComment} onChange={(event) => setRegistrationComment(event.target.value)} rows={3} />
+              </label>
+              <DataTable
+                rows={txn.registrationResult}
+                columns={[
+                  { key: 'registered_document_no', label: 'Document no' },
+                  { key: 'registration_year', label: 'Year' },
+                  { key: 'registration_date', label: 'Registration date' },
+                  { key: 'registering_sro', label: 'Registering SRO' },
+                  { key: 'registration_status', label: 'Status' },
+                  { key: 'registration_reference', label: 'Reference' },
+                ]}
+                empty="Not registered yet."
+              />
+              {txn.survey_required === true ? (
+                <p>
+                  Survey is required for this transfer scope: <Link to={`/survey/${txn.txn_ref}`}>open the survey screen</Link>.
+                </p>
+              ) : null}
+              <DataTable
+                rows={txn.mutation}
+                columns={[
+                  { key: 'id', label: 'Mutation' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'proposed_at', label: 'Proposed at' },
+                ]}
+                empty="No revenue mutation proposed yet."
+              />
+              <div className="form-submit-row">
+                <button type="button" className="primary" disabled={txn.status !== 'SUBMITTED'} onClick={() => void register()}>Register</button>
+              </div>
+            </Panel>
+          </div>
+
+          {txn.availableActions.length > 0 ? (
+            <div className="property-stage-actions">
+              <span className="stage-label">Quick actions</span>
+              <div className="actions">
+                {txn.availableActions.map((action, index) => (
+                  <button
+                    key={`${formatCell(action.actionCode)}-${index}`}
+                    type="button"
+                    onClick={() => void transition(formatCell(action.actionCode))}
+                  >
+                    {formatCell(action.actionCode)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
-        <DataTable
-          rows={txn.payments}
-          columns={[
-            { key: 'mode', label: 'Mode' },
-            { key: 'reference_no', label: 'Reference' },
-            { key: 'amount', label: 'Amount' },
-            { key: 'paid_at', label: 'Paid at' },
-          ]}
-        />
-      </Panel>
       </div>
-
-      <div id="txn-registration" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-registration" tabIndex={0} hidden={activeWorkflowTab !== 'txn-registration'}>
-      <Panel title="8. Registration" actions={<button className="primary" disabled={txn.status !== 'SUBMITTED'} onClick={() => void register()}>Register</button>}>
-        {renderReadinessDetails('Registration')}
-        <label className="field registration-comment">
-          <span>Comment (optional)</span>
-          <textarea value={registrationComment} onChange={(event) => setRegistrationComment(event.target.value)} rows={3} />
-        </label>
-        <DataTable
-          rows={txn.registrationResult}
-          columns={[
-            { key: 'registered_document_no', label: 'Document no' },
-            { key: 'registration_year', label: 'Year' },
-            { key: 'registration_date', label: 'Registration date' },
-            { key: 'registering_sro', label: 'Registering SRO' },
-            { key: 'registration_status', label: 'Status' },
-            { key: 'registration_reference', label: 'Reference' },
-          ]}
-          empty="Not registered yet."
-        />
-        {txn.survey_required === true ? (
-          <p>
-            Survey is required for this transfer scope: <Link to={`/survey/${txn.txn_ref}`}>open the survey screen</Link>.
-          </p>
-        ) : null}
-        <DataTable
-          rows={txn.mutation}
-          columns={[
-            { key: 'id', label: 'Mutation' },
-            { key: 'status', label: 'Status' },
-            { key: 'proposed_at', label: 'Proposed at' },
-          ]}
-          empty="No revenue mutation proposed yet."
-        />
-      </Panel>
-      </div>
-    </>
+    </div>
   )
 }

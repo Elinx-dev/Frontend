@@ -166,6 +166,7 @@ export default function TransactionStart() {
   const [paymentRef, setPaymentRef] = useState('')
   const [registrationComment, setRegistrationComment] = useState('')
   const detailRef = useRef<HTMLDivElement | null>(null)
+  const initialTransactionStageLocked = useRef(false)
   const selectedDeed = (bootstrap?.deedTypes ?? []).find((deed) => deed.code === deedTypeCode)
   const relationshipRequired = selectedDeed?.requires_relationship_category === true
   const sideTwoTitle = String(selectedDeed?.side2_role ?? 'Buyer').replaceAll('_', ' ')
@@ -303,9 +304,13 @@ export default function TransactionStart() {
   }
 
   useEffect(() => {
-    if (createdTransactionRef.length === 0) return
-    if (activeStage < 2) {
+    if (createdTransactionRef.length === 0) {
+      initialTransactionStageLocked.current = false
+      return
+    }
+    if (!initialTransactionStageLocked.current && activeStage < 2) {
       setActiveStage(2)
+      initialTransactionStageLocked.current = true
     }
   }, [activeStage, createdTransactionRef])
 
@@ -388,6 +393,11 @@ export default function TransactionStart() {
   }
 
   const create = async () => {
+    if (transactionCreated) {
+      setInfo('Transaction already created. Continue from the buyer details stage below.')
+      setActiveStage(2)
+      return
+    }
     setError('')
     setInfo('')
     setBusy(true)
@@ -904,11 +914,12 @@ export default function TransactionStart() {
     }, new Map<string, Row>()).values(),
   )
 
-  const pageTitle = createdTransactionRef.length > 0 ? 'Transaction workflow' : 'Initiate Transaction'
-  const pageDescription = createdTransactionRef.length > 0
+  const transactionCreated = createdTransactionRef.trim().length > 0
+  const pageTitle = transactionCreated ? 'Transaction workflow' : 'Initiate Transaction'
+  const pageDescription = transactionCreated
     ? `Transaction ${createdTransactionRef} has been created. Continue using the tabs below.`
     : 'Select a registered property and capture the transaction instruction. To add a property, use Mint Property.'
-  const maxAvailableStage = createdTransactionRef.length > 0
+  const maxAvailableStage = transactionCreated
     ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted ? 5 : witnessesSaved ? 4 : buyerDetailsSaved ? 3 : 2)
     : 1
 
@@ -1475,8 +1486,8 @@ export default function TransactionStart() {
               <span className="stage-label">Complete fees and payment below to continue</span>
             ) : activeStage === 7 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">Registration</span>
-            ) : createdTransactionRef.length > 0 ? (
-              <span className="stage-label">Created · continue below</span>
+            ) : transactionCreated ? (
+              <span className="stage-label">Transaction created · continue below</span>
             ) : (
               <button
                 type="button"
