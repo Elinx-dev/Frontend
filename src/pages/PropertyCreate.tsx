@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { ApiError, get, post, qs } from '../api'
+import { ApiError, post } from '../api'
 import { useAuth } from '../auth'
-import type { Row } from '../types'
+import { str, type Row } from '../types'
 import { Banner, Field, Panel } from '../ui'
 
 const initialProperty = {
@@ -17,32 +17,28 @@ const initialProperty = {
 
 type PropertyState = typeof initialProperty
 
-interface LocationOption {
-  code: string
-  name: string
-}
 type SelectOption = { value: string; label: string }
 const locationLevels = ['districtCode', 'sroCode', 'talukCode', 'villageCode'] as const
 type LocationLevel = typeof locationLevels[number]
 const labelFor = (options: SelectOption[], code: string) => options.find((option) => option.value === code)?.label ?? code
+const EMPTY_ROWS: Row[] = []
 
-function useLocationOptions(path: string | null, onError: (message: string) => void): SelectOption[] {
-  const [loaded, setLoaded] = useState<{ path: string; options: SelectOption[] } | null>(null)
-  useEffect(() => {
-    if (path === null) return
-    let cancelled = false
-    get<LocationOption[]>(path)
-      .then((rows) => {
-        if (!cancelled) setLoaded({ path, options: rows.map((row) => ({ value: row.code, label: row.name })) })
-      })
-      .catch((reason: unknown) => {
-        if (!cancelled) onError(reason instanceof ApiError ? reason.message : String(reason))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [path, onError])
-  return path !== null && loaded?.path === path ? loaded.options : []
+function jurisdictionOptions(
+  rows: Row[],
+  codeKey: string,
+  labelKey: string,
+  matches: Array<(row: Row) => boolean>,
+): SelectOption[] {
+  const seen = new Set<string>()
+  const options: SelectOption[] = []
+  rows.forEach((row) => {
+    if (!matches.every((match) => match(row))) return
+    const value = str(row, codeKey)
+    if (value.length === 0 || seen.has(value)) return
+    seen.add(value)
+    options.push({ value, label: str(row, labelKey) || value })
+  })
+  return options
 }
 
 interface OwnerForm {
@@ -141,16 +137,20 @@ export default function PropertyCreate() {
   const [mapLocationName, setMapLocationName] = useState('Chennai, Tamil Nadu')
   const [activeStage, setActiveStage] = useState(0)
 
-  const districtOptions = useLocationOptions('/api/locations/districts', setError)
-  const sroOptions = useLocationOptions(property.districtCode
-    ? `/api/locations/sub-registrar-offices${qs({ districtCode: property.districtCode })}`
-    : null, setError)
-  const talukOptions = useLocationOptions(property.districtCode && property.sroCode
-    ? `/api/locations/taluks${qs({ districtCode: property.districtCode, sroCode: property.sroCode })}`
-    : null, setError)
-  const villageOptions = useLocationOptions(property.districtCode && property.sroCode && property.talukCode
-    ? `/api/locations/revenue-villages${qs({ districtCode: property.districtCode, sroCode: property.sroCode, talukCode: property.talukCode })}`
-    : null, setError)
+  const jurisdictionRows = bootstrap?.jurisdictions ?? EMPTY_ROWS
+  const districtOptions = useMemo(() => jurisdictionOptions(jurisdictionRows, 'district_code', 'district_name', []), [jurisdictionRows])
+  const sroOptions = useMemo(() => jurisdictionOptions(jurisdictionRows, 'sro_code', 'sro_name', [
+    (row) => property.districtCode.length === 0 || str(row, 'district_code') === property.districtCode,
+  ]), [jurisdictionRows, property.districtCode])
+  const talukOptions = useMemo(() => jurisdictionOptions(jurisdictionRows, 'taluk_code', 'taluk_name', [
+    (row) => property.districtCode.length === 0 || str(row, 'district_code') === property.districtCode,
+    (row) => property.sroCode.length === 0 || str(row, 'sro_code') === property.sroCode,
+  ]), [jurisdictionRows, property.districtCode, property.sroCode])
+  const villageOptions = useMemo(() => jurisdictionOptions(jurisdictionRows, 'village_code', 'village_name', [
+    (row) => property.districtCode.length === 0 || str(row, 'district_code') === property.districtCode,
+    (row) => property.sroCode.length === 0 || str(row, 'sro_code') === property.sroCode,
+    (row) => property.talukCode.length === 0 || str(row, 'taluk_code') === property.talukCode,
+  ]), [jurisdictionRows, property.districtCode, property.sroCode, property.talukCode])
   const districtName = labelFor(districtOptions, property.districtCode)
   const talukName = labelFor(talukOptions, property.talukCode)
   const villageName = labelFor(villageOptions, property.villageCode)
