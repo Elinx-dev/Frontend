@@ -655,15 +655,13 @@ export default function TransactionStart() {
     setInfo('')
     setConsentBusy(true)
     try {
-      if (txn.status === 'DRAFT') {
-        await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/transitions`, { actionCode: 'REQUEST_CONSENT' }, true)
-      }
       await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/consent/request`, {})
       await loadTransaction(createdTransactionRef, true)
       setActiveStage(4)
       setInfo('Consent started and Aadhaar OTP requested for all parties.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
+      await loadTransaction(createdTransactionRef, true)
     } finally {
       setConsentBusy(false)
     }
@@ -684,7 +682,7 @@ export default function TransactionStart() {
         { partyId, otp },
       )
       const loaded = await loadTransaction(createdTransactionRef, true)
-      const nextStatus = String(result.transactionStatus ?? result.transaction_status ?? loaded?.status ?? '')
+      const nextStatus = String(loaded?.status ?? result.transactionStatus ?? result.transaction_status ?? '')
       if (nextStatus.length > 0) {
         setTxn((current) => (current === null ? current : { ...current, status: nextStatus }))
       }
@@ -898,6 +896,14 @@ export default function TransactionStart() {
 
   const txnParties = Array.isArray(txn?.parties) ? txn.parties : []
   const txnConsents = Array.isArray(txn?.consents) ? txn.consents : []
+  const consentRows = txnConsents.length > 0
+    ? txnConsents
+    : txnParties
+      .filter((party) => party.id !== undefined || party.party_id !== undefined || party.partyId !== undefined)
+      .map((party) => ({
+        party_id: party.id ?? party.party_id ?? party.partyId,
+        status: 'NOT_REQUESTED',
+      }))
   const latestRuleResults = Array.from(
     (Array.isArray(txn?.ruleCheckResults) ? txn.ruleCheckResults : []).reduce((latest, result) => {
       const engine = String(result.engine ?? '')
@@ -1251,7 +1257,7 @@ export default function TransactionStart() {
                   <div className="panel-body">
                     <p className="helper">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
-                    {txnConsents.length === 0 ? <p className="helper">No consent requests yet.</p> : txnConsents.map((consent, index) => {
+                    {consentRows.length === 0 ? <p className="helper">No parties are available for Aadhaar consent.</p> : consentRows.map((consent, index) => {
                       const partyId = String(consent.party_id ?? consent.partyId ?? '')
                       const party = txnParties.find((item) => String(item.id ?? item.party_id ?? item.partyId ?? '') === partyId)
                       const consentStatus = String(consent.status ?? consent.consent_status ?? consent.consentStatus ?? '')

@@ -229,6 +229,12 @@ export default function TransactionDetail({
     )
   }
 
+  const consentRows = txn.consents.length > 0
+    ? txn.consents
+    : txn.parties
+      .filter((party) => party.id !== undefined || party.party_id !== undefined)
+      .map((party) => ({ party_id: party.id ?? party.party_id, status: 'NOT_REQUESTED' }))
+
   const saveDetails = () =>
     guard(
       () =>
@@ -392,13 +398,18 @@ export default function TransactionDetail({
   const transition = (actionCode: string) =>
     guard(() => post(`/api/transactions/${txnRef}/transitions`, { actionCode }, true), `${actionCode} applied.`)
 
-  const requestConsent = () =>
-    guard(async () => {
-      if (txn.status === 'DRAFT') {
-        await post(`/api/transactions/${txnRef}/transitions`, { actionCode: 'REQUEST_CONSENT' }, true)
-      }
+  const requestConsent = async () => {
+    setError('')
+    setInfo('')
+    try {
       await post(`/api/transactions/${txnRef}/consent/request`, {})
-    }, 'Consent started and Aadhaar OTP requested for all parties.')
+      setInfo('Consent started and Aadhaar OTP requested for all parties.')
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    } finally {
+      await load()
+    }
+  }
 
   const verifyConsent = (partyId: number) =>
     guard(
@@ -769,7 +780,7 @@ export default function TransactionDetail({
             >
               {renderReadinessDetails('Aadhaar consent')}
               <p className="muted">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
-              {txn.consents.map((c, i) => (
+              {consentRows.map((c, i) => (
                 <div className="row" key={i}>
                   <span className="grow">
                     {(() => {
