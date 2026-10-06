@@ -71,8 +71,10 @@ export default function PropertyDetail() {
         <DataTable
           rows={(property.registeredOwners as Row[]) ?? []}
           columns={[
+            { key: 'owner_type_code', label: 'Owner type' },
             { key: 'owner_name', label: 'Owner' },
-            { key: 'share_pct', label: 'Share %' },
+            { key: 'registration_no', label: 'CIN / LLPIN / Reg. no.' },
+            { key: 'representative_name', label: 'Representative' },
             { key: 'source', label: 'Source' },
             { key: 'effective_from', label: 'Effective from' },
           ]}

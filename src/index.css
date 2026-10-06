@@ -1480,6 +1480,40 @@ button:disabled {
   min-width: 0;
 }
 
+.owner-entry + .owner-entry {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.owner-entry h3,
+.owner-representative h4 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.owner-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.owner-fields > div {
+  min-width: 0;
+}
+
+.owner-representative {
+  margin-top: 14px;
+  padding: 12px 14px 14px;
+  border: 1px dashed var(--line-soft);
+  border-radius: 6px;
+}
+
+.owner-representative h4 {
+  margin-bottom: 10px;
+}
+
 .boundary-measurements {
   margin-top: 22px;
   padding-top: 16px;
@@ -2350,7 +2384,8 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .chain-history-owner-fields {
+  .chain-history-owner-fields,
+  .owner-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2434,7 +2469,8 @@ button:disabled {
   }
 
   .chain-history-fields,
-  .chain-history-owner-fields {
+  .chain-history-owner-fields,
+  .owner-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 

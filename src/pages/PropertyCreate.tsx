@@ -42,12 +42,74 @@ function jurisdictionOptions(
 }
 
 interface OwnerForm {
+  ownerTypeCode: string
   ownerName: string
   aadhaarNumber: string
   pan: string
+  mobile: string
   address: string
-  sharePct: string
+  registrationNo: string
+  repName: string
+  repDesignation: string
+  repAadhaar: string
+  repPan: string
+  repMobile: string
 }
+
+type OwnerFormKind = 'INDIVIDUAL' | 'DEFAULT' | 'COMPANY' | 'PARTNERSHIP_FIRM' | 'HUF' | 'LLP' | 'TRUST'
+interface OwnerLayout {
+  nameLabel: string
+  panLabel: string
+  addressLabel: string
+  aadhaar: boolean
+  mobile: boolean
+  registration?: { label: string; kind: 'CIN' | 'LLPIN' | 'TEXT'; placeholder?: string }
+  representative?: { title: string; designation: boolean; mobile: boolean }
+}
+const ownerTypes: Array<{ value: string; label: string; form: OwnerFormKind }> = [
+  { value: 'INDIVIDUAL', label: 'Individual', form: 'INDIVIDUAL' },
+  { value: 'SOLE_PROPRIETORSHIP', label: 'Sole Proprietorship', form: 'DEFAULT' },
+  { value: 'PARTNERSHIP_FIRM', label: 'Partnership Firm', form: 'PARTNERSHIP_FIRM' },
+  { value: 'HUF', label: 'HUF', form: 'HUF' },
+  { value: 'LLP', label: 'LLP', form: 'LLP' },
+  { value: 'PRIVATE_LIMITED_COMPANY', label: 'Private Limited Company', form: 'COMPANY' },
+  { value: 'PUBLIC_LIMITED_COMPANY', label: 'Public Limited Company', form: 'COMPANY' },
+  { value: 'ONE_PERSON_COMPANY', label: 'One Person Company', form: 'COMPANY' },
+  { value: 'TRUST', label: 'Trust', form: 'TRUST' },
+  { value: 'SOCIETY', label: 'Society / Co-operative Society', form: 'DEFAULT' },
+  { value: 'AOP_BOI', label: 'Association of Persons / Body of Individuals', form: 'DEFAULT' },
+  { value: 'GOVERNMENT', label: 'Government / Government Department / Local Authority', form: 'DEFAULT' },
+  { value: 'OTHER_LEGAL_ENTITY', label: 'Other Legal Entity', form: 'DEFAULT' },
+]
+const ownerLayouts: Record<OwnerFormKind, OwnerLayout> = {
+  INDIVIDUAL: { nameLabel: 'Name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: true, mobile: true },
+  DEFAULT: { nameLabel: 'Name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: true, mobile: false },
+  COMPANY: {
+    nameLabel: 'Company name', panLabel: 'PAN', addressLabel: 'Registered address', aadhaar: false, mobile: false,
+    registration: { label: 'CIN', kind: 'CIN', placeholder: 'U12345TN2020PTC123456' },
+    representative: { title: 'Authorised signatory', designation: true, mobile: true },
+  },
+  PARTNERSHIP_FIRM: {
+    nameLabel: 'Firm name', panLabel: 'Firm PAN', addressLabel: 'Address', aadhaar: false, mobile: false,
+    registration: { label: 'Registration no.', kind: 'TEXT' },
+    representative: { title: 'Authorised partner', designation: false, mobile: true },
+  },
+  HUF: {
+    nameLabel: 'HUF name', panLabel: 'HUF PAN', addressLabel: 'Address', aadhaar: false, mobile: false,
+    representative: { title: 'Karta', designation: false, mobile: false },
+  },
+  LLP: {
+    nameLabel: 'LLP name', panLabel: 'PAN', addressLabel: 'Registered address', aadhaar: false, mobile: false,
+    registration: { label: 'LLPIN', kind: 'LLPIN', placeholder: 'AAA-1234' },
+    representative: { title: 'Authorised partner', designation: false, mobile: true },
+  },
+  TRUST: {
+    nameLabel: 'Trust name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: false, mobile: false,
+    registration: { label: 'Registration no.', kind: 'TEXT' },
+    representative: { title: 'Trustee / Authorised trustee', designation: false, mobile: true },
+  },
+}
+const ownerLayout = (ownerTypeCode: string) => ownerLayouts[ownerTypes.find((type) => type.value === ownerTypeCode)?.form ?? 'DEFAULT']
 
 type OwnerField = keyof OwnerForm
 type OwnerErrors = Record<number, Partial<Record<OwnerField, string>>>
@@ -70,7 +132,10 @@ interface ChainHistoryEntry {
 type ChainHistoryField = keyof ChainHistoryEntry
 type ChainHistoryErrors = Record<number, Partial<Record<ChainHistoryField, string>>>
 
-const emptyOwner = (): OwnerForm => ({ ownerName: '', aadhaarNumber: '', pan: '', address: '', sharePct: '' })
+const emptyOwner = (): OwnerForm => ({
+  ownerTypeCode: 'INDIVIDUAL', ownerName: '', aadhaarNumber: '', pan: '', mobile: '', address: '', registrationNo: '',
+  repName: '', repDesignation: '', repAadhaar: '', repPan: '', repMobile: '',
+})
 const emptyBoundaryMeasurement = (): BoundaryMeasurement => ({ fromPoint: '', toPoint: '', value: '', unit: 'SQ_FT' })
 const emptyChainHistoryEntry = (surveyNo = ''): ChainHistoryEntry => ({
   executorName: '',
@@ -94,6 +159,58 @@ const natureOfTransactionOptions = [
 ]
 const AADHAAR_PATTERN = /^\d{12}$/
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+const MOBILE_PATTERN = /^[6-9]\d{9}$/
+const CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
+const LLPIN_PATTERN = /^[A-Z]{3}-\d{4}$/
+
+function validateOwner(owner: OwnerForm): Partial<Record<OwnerField, string>> {
+  const layout = ownerLayout(owner.ownerTypeCode)
+  const errors: Partial<Record<OwnerField, string>> = {}
+  if (!ownerTypes.some((type) => type.value === owner.ownerTypeCode)) errors.ownerTypeCode = 'Owner type is required.'
+  if (owner.ownerName.trim().length === 0) errors.ownerName = `${layout.nameLabel} is required.`
+  if (layout.aadhaar && !AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
+  if (owner.pan.trim().length === 0) errors.pan = `${layout.panLabel} is required.`
+  else if (!PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
+  if (layout.mobile && !MOBILE_PATTERN.test(owner.mobile)) errors.mobile = 'Enter a 10-digit mobile number.'
+  if (owner.address.trim().length === 0) errors.address = `${layout.addressLabel} is required.`
+  if (layout.registration) {
+    const { kind, label } = layout.registration
+    if (owner.registrationNo.trim().length === 0) errors.registrationNo = `${label} is required.`
+    else if (kind === 'CIN' && !CIN_PATTERN.test(owner.registrationNo)) errors.registrationNo = 'CIN must be 21 characters, e.g. U12345TN2020PTC123456.'
+    else if (kind === 'LLPIN' && !LLPIN_PATTERN.test(owner.registrationNo)) errors.registrationNo = 'LLPIN must match AAA-9999.'
+  }
+  if (layout.representative) {
+    const { title, designation, mobile } = layout.representative
+    if (owner.repName.trim().length === 0) errors.repName = `${title} name is required.`
+    if (designation && owner.repDesignation.trim().length === 0) errors.repDesignation = 'Designation is required.'
+    if (!AADHAAR_PATTERN.test(owner.repAadhaar)) errors.repAadhaar = 'Aadhaar must contain exactly 12 digits.'
+    if (owner.repPan.trim().length === 0) errors.repPan = 'PAN is required.'
+    else if (!PAN_PATTERN.test(owner.repPan)) errors.repPan = 'PAN must match AAAAA9999A.'
+    if (mobile && !MOBILE_PATTERN.test(owner.repMobile)) errors.repMobile = 'Enter a 10-digit mobile number.'
+  }
+  return errors
+}
+
+function ownerPayload(owner: OwnerForm) {
+  const layout = ownerLayout(owner.ownerTypeCode)
+  const representative = layout.representative
+  return {
+    ownerTypeCode: owner.ownerTypeCode,
+    ownerName: owner.ownerName.trim(),
+    aadhaarNumber: layout.aadhaar ? owner.aadhaarNumber : undefined,
+    pan: owner.pan,
+    mobile: layout.mobile ? owner.mobile : undefined,
+    address: owner.address.trim(),
+    registrationNo: layout.registration ? owner.registrationNo.trim() : undefined,
+    representative: representative ? {
+      name: owner.repName.trim(),
+      designation: representative.designation ? owner.repDesignation.trim() : undefined,
+      aadhaarNumber: owner.repAadhaar,
+      pan: owner.repPan,
+      mobile: representative.mobile ? owner.repMobile : undefined,
+    } : undefined,
+  }
+}
 const CITY_CENTER = { latitude: 13.0827, longitude: 80.2707 }
 const stages = ['Identification', 'Property owners', 'Location & Survey', 'Boundaries', 'Chain of Title', 'Guideline Value'] as const
 const MAX_BOUNDARY_MEASUREMENTS = 8
@@ -300,15 +417,7 @@ export default function PropertyCreate() {
     let currentOwnerErrors: OwnerErrors = {}
     if (stageIndex === 1) {
       owners.forEach((owner, index) => {
-        const errors: Partial<Record<OwnerField, string>> = {}
-        if (owner.ownerName.trim().length === 0) errors.ownerName = 'Owner name is required.'
-        if (!AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
-        if (owner.pan.trim().length === 0) errors.pan = 'PAN is required.'
-        else if (!PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
-        if (owner.address.trim().length === 0) errors.address = 'Address is required.'
-        const share = Number(owner.sharePct)
-        if (owner.sharePct.trim().length === 0) errors.sharePct = 'Share percentage is required.'
-        else if (!Number.isFinite(share) || share < 0 || share > 100) errors.sharePct = 'Share must be between 0 and 100.'
+        const errors = validateOwner(owner)
         if (Object.keys(errors).length > 0) currentOwnerErrors[index] = errors
       })
       setOwnerErrors(currentOwnerErrors)
@@ -358,15 +467,7 @@ export default function PropertyCreate() {
     }
     const validationOwnerErrors: OwnerErrors = {}
     owners.forEach((owner, index) => {
-      const errors: Partial<Record<OwnerField, string>> = {}
-      if (owner.ownerName.trim().length === 0) errors.ownerName = 'Owner name is required.'
-      if (!AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
-      if (owner.pan.trim().length === 0) errors.pan = 'PAN is required.'
-      else if (!PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
-      if (owner.address.trim().length === 0) errors.address = 'Address is required.'
-      const share = Number(owner.sharePct)
-      if (owner.sharePct.trim().length === 0) errors.sharePct = 'Share percentage is required.'
-      else if (!Number.isFinite(share) || share < 0 || share > 100) errors.sharePct = 'Share must be between 0 and 100.'
+      const errors = validateOwner(owner)
       if (Object.keys(errors).length > 0) validationOwnerErrors[index] = errors
     })
     const validationMeasurementErrors = validateBoundaryMeasurements()
@@ -390,13 +491,7 @@ export default function PropertyCreate() {
         ulpin: property.ulpin || undefined,
         extentValue: Number(property.extentValue),
         guidelineValue: property.guidelineValue ? Number(property.guidelineValue) : undefined,
-        owners: owners.map((owner) => ({
-          ownerName: owner.ownerName.trim(),
-          aadhaarNumber: owner.aadhaarNumber,
-          pan: owner.pan || undefined,
-          address: owner.address.trim(),
-          sharePct: Number(owner.sharePct),
-        })),
+        owners: owners.map(ownerPayload),
         boundaryMeasurements: boundaryMeasurements.map((measurement) => ({
           fromPoint: measurement.fromPoint,
           toPoint: measurement.toPoint,
@@ -421,6 +516,8 @@ export default function PropertyCreate() {
   }
 
   const numeric = (key: keyof PropertyState, value: string) => update(key, value.replace(/[^0-9.]/g, ''))
+  const digits = (value: string, length: number) => value.replace(/\D/g, '').slice(0, length)
+  const panValue = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
   const updateOwner = (index: number, field: OwnerField, value: string) => {
     setOwners((current) => current.map((owner, ownerIndex) => ownerIndex === index ? { ...owner, [field]: value } : owner))
   }
@@ -430,13 +527,7 @@ export default function PropertyCreate() {
   const fieldError = (key: keyof PropertyState) => fieldErrors[key] ? <span className="field-error">{fieldErrors[key]}</span> : null
   const ownerFieldError = (index: number, field: OwnerField) => ownerErrors[index]?.[field] ? <span className="field-error">{ownerErrors[index][field]}</span> : null
   const valid = property.talukCode && property.villageCode && property.sroCode && property.surveyNo && property.extentValue && property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest
-  const ownersComplete = owners.length > 0 && owners.every((owner) => owner.ownerName.trim().length > 0
-    && AADHAAR_PATTERN.test(owner.aadhaarNumber)
-    && (owner.pan.length === 0 || PAN_PATTERN.test(owner.pan))
-    && owner.address.trim().length > 0
-    && owner.sharePct.trim().length > 0
-    && Number.isFinite(Number(owner.sharePct))
-    && Number(owner.sharePct) >= 0 && Number(owner.sharePct) <= 100)
+  const ownersComplete = owners.length > 0 && owners.every((owner) => Object.keys(validateOwner(owner)).length === 0)
   const locationComplete = Boolean(property.sroCode && property.districtCode && property.talukCode && property.villageCode
     && property.surveyNo && property.extentValue && property.extentUnit && !Number.isNaN(Number(property.extentValue)))
   const boundariesComplete = Boolean(property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest)
@@ -460,7 +551,7 @@ export default function PropertyCreate() {
     if (stageComplete[index]) return 'Complete'
     if (index === 4 || index === 5) return 'Optional'
     const stageHasInput = index === 1
-      ? owners.some((owner) => Object.values(owner).some((value) => value.trim().length > 0))
+      ? owners.some((owner) => Object.entries(owner).some(([key, value]) => key !== 'ownerTypeCode' && value.trim().length > 0))
       : index === 2
         ? [property.sroCode, property.talukCode, property.villageCode, property.surveyNo, property.extentValue].some(Boolean)
         : index === 3
@@ -495,16 +586,38 @@ export default function PropertyCreate() {
         </div>
       </Panel> : null}
       {activeStage === 1 ? <Panel title="" actions={<button className="party-add-button" onClick={() => setOwners((current) => [...current, emptyOwner()])}><span aria-hidden="true">+</span> Add owner</button>}>
-        {owners.map((owner, index) => (
-          <div className="row party-row" key={index}>
-            <div><Field label="Name" value={owner.ownerName} onChange={(v) => updateOwner(index, 'ownerName', v)} required />{ownerFieldError(index, 'ownerName')}</div>
-            <div><Field label="Aadhaar (12 digits)" value={owner.aadhaarNumber} onChange={(v) => updateOwner(index, 'aadhaarNumber', v.replace(/\D/g, '').slice(0, 12))} required />{ownerFieldError(index, 'aadhaarNumber')}</div>
-            <div><Field label="PAN" value={owner.pan} onChange={(v) => updateOwner(index, 'pan', v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))} required />{ownerFieldError(index, 'pan')}</div>
-            <div><Field label="Address" value={owner.address} onChange={(v) => updateOwner(index, 'address', v)} required />{ownerFieldError(index, 'address')}</div>
-            <div><Field label="Share %" value={owner.sharePct} onChange={(v) => updateOwner(index, 'sharePct', v)} type="number" required />{ownerFieldError(index, 'sharePct')}</div>
-            {owners.length > 1 ? <button type="button" onClick={() => setOwners((current) => current.filter((_, ownerIndex) => ownerIndex !== index))}>Remove</button> : null}
-          </div>
-        ))}
+        {owners.map((owner, index) => {
+          const layout = ownerLayout(owner.ownerTypeCode)
+          const representative = layout.representative
+          return <section className="owner-entry" key={index}>
+            <header className="chain-history-entry-heading">
+              <h3>{`Owner ${index + 1}`}</h3>
+              {owners.length > 1 ? <button type="button" className="link" onClick={() => {
+                setOwners((current) => current.filter((_, ownerIndex) => ownerIndex !== index))
+                setOwnerErrors({})
+              }}>Remove owner</button> : null}
+            </header>
+            <div className="owner-fields">
+              <div><Field label="Owner type" value={owner.ownerTypeCode} onChange={(v) => updateOwner(index, 'ownerTypeCode', v)} options={ownerTypes} required />{ownerFieldError(index, 'ownerTypeCode')}</div>
+              <div><Field label={layout.nameLabel} value={owner.ownerName} onChange={(v) => updateOwner(index, 'ownerName', v)} required />{ownerFieldError(index, 'ownerName')}</div>
+              {layout.registration ? <div><Field label={layout.registration.label} value={owner.registrationNo} onChange={(v) => updateOwner(index, 'registrationNo', layout.registration?.kind === 'TEXT' ? v : v.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, layout.registration?.kind === 'CIN' ? 21 : 8))} placeholder={layout.registration.placeholder} required />{ownerFieldError(index, 'registrationNo')}</div> : null}
+              {layout.aadhaar ? <div><Field label="Aadhaar (12 digits)" value={owner.aadhaarNumber} onChange={(v) => updateOwner(index, 'aadhaarNumber', digits(v, 12))} required />{ownerFieldError(index, 'aadhaarNumber')}</div> : null}
+              <div><Field label={layout.panLabel} value={owner.pan} onChange={(v) => updateOwner(index, 'pan', panValue(v))} required />{ownerFieldError(index, 'pan')}</div>
+              {layout.mobile ? <div><Field label="Mobile" type="tel" value={owner.mobile} onChange={(v) => updateOwner(index, 'mobile', digits(v, 10))} required />{ownerFieldError(index, 'mobile')}</div> : null}
+              <div><Field label={layout.addressLabel} value={owner.address} onChange={(v) => updateOwner(index, 'address', v)} required />{ownerFieldError(index, 'address')}</div>
+            </div>
+            {representative ? <div className="owner-representative">
+              <h4>{representative.title}</h4>
+              <div className="owner-fields">
+                <div><Field label="Name" value={owner.repName} onChange={(v) => updateOwner(index, 'repName', v)} required />{ownerFieldError(index, 'repName')}</div>
+                {representative.designation ? <div><Field label="Designation" value={owner.repDesignation} onChange={(v) => updateOwner(index, 'repDesignation', v)} required />{ownerFieldError(index, 'repDesignation')}</div> : null}
+                <div><Field label="Aadhaar (12 digits)" value={owner.repAadhaar} onChange={(v) => updateOwner(index, 'repAadhaar', digits(v, 12))} required />{ownerFieldError(index, 'repAadhaar')}</div>
+                <div><Field label="PAN" value={owner.repPan} onChange={(v) => updateOwner(index, 'repPan', panValue(v))} required />{ownerFieldError(index, 'repPan')}</div>
+                {representative.mobile ? <div><Field label="Mobile" type="tel" value={owner.repMobile} onChange={(v) => updateOwner(index, 'repMobile', digits(v, 10))} required />{ownerFieldError(index, 'repMobile')}</div> : null}
+              </div>
+            </div> : null}
+          </section>
+        })}
       </Panel> : null}
       {activeStage === 2 ? <Panel title="">
         <div className="location-survey-layout">
