@@ -5,28 +5,18 @@ import { ApiError, get, post, put, qs } from '../api'
 import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
+import { OwnerFields } from './OwnerFields'
 import PropertySummaryPanel from './PropertySummaryPanel'
+import { emptyOwner, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
 import { ruleSummary, ruleWarningText } from './ruleCheckResults'
 
-interface PartyForm {
-  side: string
-  partyType: string
-  name: string
-  aadhaarNumber: string
-  pan: string
-  address: string
-  relationshipCode: string
-  existingSharePct: string
-  shareTransferredPct: string
-  resultingSharePct: string
-}
+type PartyForm = OwnerForm & { side: string; relationshipCode: string }
 
 type PartyField = keyof PartyForm
 type PartyErrors = Record<number, Partial<Record<PartyField, string>>>
 
 const AADHAAR_PATTERN = /^\d{12}$/
-const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
 interface WitnessForm {
   name: string
@@ -38,21 +28,8 @@ interface WitnessForm {
 type WitnessField = keyof WitnessForm
 type WitnessErrors = Record<number, Partial<Record<WitnessField, string>>>
 
-const emptyParty = (side: string): PartyForm => ({
-  side,
-  partyType: 'INDIVIDUAL',
-  name: '',
-  aadhaarNumber: '',
-  pan: '',
-  address: '',
-  relationshipCode: '',
-  existingSharePct: '',
-  shareTransferredPct: '',
-  resultingSharePct: '',
-})
+const emptyParty = (side: string): PartyForm => ({ side, relationshipCode: '', ...emptyOwner() })
 
-const numberOrUndefined = (value: string): number | undefined =>
-  value.trim().length === 0 ? undefined : Number(value)
 
 const valueOf = (row: Row | null | undefined, ...keys: string[]): string => {
   if (row === null || row === undefined) return ''
@@ -174,6 +151,7 @@ export default function TransactionStart() {
   const [activeStage, setActiveStage] = useState(0)
   const [createdTransactionRef, setCreatedTransactionRef] = useState(() => searchParams.get('txnRef') ?? '')
   const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_2')])
+  const [buyerTypeCode, setBuyerTypeCode] = useState('')
   const [buyerDetailsSaved, setBuyerDetailsSaved] = useState(false)
   const [witnesses, setWitnesses] = useState<WitnessForm[]>([emptyWitness(), emptyWitness()])
   const [witnessErrors, setWitnessErrors] = useState<WitnessErrors>({})
@@ -202,13 +180,17 @@ export default function TransactionStart() {
   const firstPartyLabel = String(selectedType?.first_party_label ?? txn?.deedType?.first_party_label ?? 'Seller')
   const secondPartyLabel = String(selectedType?.second_party_label ?? txn?.deedType?.second_party_label ?? 'Buyer')
   const sideTwoTitle = secondPartyLabel
+  const buyerTypeOptions = ownerTypeOptionsFrom(bootstrap)
+    .filter((type) => selectedType?.individuals_only !== true || type.value === 'INDIVIDUAL')
+  const selectedBuyerType = buyerTypeOptions.find((type) => type.value === buyerTypeCode)
+  const buyerLayout = ownerLayout(buyerTypeCode)
+  const allowMultipleBuyers = selectedBuyerType?.allowMultipleOwners === true
   const surveyFees = bootstrap?.surveyFees ?? []
   const bloodRelations = bootstrap?.bloodRelations ?? []
   const defaultSurveyLocation = String(
     surveyFees.find((fee) => fee.land_type_code === valueOf(property, 'land_type_code', 'landTypeCode'))?.location_type ?? '',
   )
   const effectiveSurveyLocation = surveyLocationType || defaultSurveyLocation
-  const selectedSurveyFee = surveyFees.find((fee) => fee.location_type === effectiveSurveyLocation)
   const surveyDecision = subdivisionYes
     ? 'Mandatory (subdivision required)'
     : surveyRequiredByParty === 'YES'
@@ -675,6 +657,7 @@ export default function TransactionStart() {
       setPaymentRef('')
       setRegistrationComment('')
       setParties([emptyParty('SIDE_2')])
+      setBuyerTypeCode('')
       setBuyerDetailsSaved(false)
       setWitnesses([emptyWitness(), emptyWitness()])
       setWitnessErrors({})
@@ -720,18 +703,38 @@ export default function TransactionStart() {
     setInfo('')
   }
 
+  const changeBuyerType = (value: string) => {
+    setBuyerTypeCode(value)
+    if (buyerTypeOptions.find((type) => type.value === value)?.allowMultipleOwners !== true) {
+      let kept = false
+      setParties((current) => current.filter((party) => {
+        if (party.side !== 'SIDE_2') return true
+        if (kept) return false
+        kept = true
+        return true
+      }))
+    }
+    setPartyErrors({})
+    setBuyerDetailsSaved(false)
+    setWitnessesSaved(false)
+    setError('')
+    setInfo('')
+  }
+
   const saveParties = async () => {
     if (createdTransactionRef.length === 0) {
       setError('Create the transaction before saving buyer details.')
       return
     }
+    if (!selectedBuyerType) {
+      setInfo('')
+      setError(`Select the ${secondPartyLabel.toLowerCase()} type.`)
+      return
+    }
     const nextErrors: PartyErrors = {}
     parties.forEach((party, index) => {
       if (party.side !== 'SIDE_2') return
-      const errors: Partial<Record<PartyField, string>> = {}
-      if (party.name.trim().length === 0) errors.name = 'Name is required.'
-      if (!AADHAAR_PATTERN.test(party.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must be exactly 12 digits.'
-      if (party.pan.length > 0 && !PAN_PATTERN.test(party.pan)) errors.pan = 'PAN must be in the format ABCDE1234F.'
+      const errors: Partial<Record<PartyField, string>> = { ...validateOwner(party, buyerLayout) }
       if (bloodRelationRequired && party.relationshipCode.length === 0) {
         errors.relationshipCode = `Select the relationship to the ${firstPartyLabel.toLowerCase()}.`
       }
@@ -754,18 +757,16 @@ export default function TransactionStart() {
     try {
       const buyerParties = parties
         .filter((party) => party.side === 'SIDE_2')
-        .map((party) => ({
-          side: party.side,
-          partyType: party.partyType,
-          name: party.name,
-          aadhaarNumber: party.aadhaarNumber.length === 0 ? undefined : party.aadhaarNumber,
-          pan: party.pan.length === 0 ? undefined : party.pan,
-          address: party.address.length === 0 ? undefined : party.address,
-          relationshipCode: party.relationshipCode.length === 0 ? undefined : party.relationshipCode,
-          existingSharePct: numberOrUndefined(party.existingSharePct),
-          shareTransferredPct: numberOrUndefined(party.shareTransferredPct),
-          resultingSharePct: numberOrUndefined(party.resultingSharePct),
-        }))
+        .map((party) => {
+          const { ownerName, ...details } = ownerPayload(party, buyerLayout)
+          return {
+            side: party.side,
+            ownerTypeCode: buyerTypeCode,
+            name: ownerName,
+            ...details,
+            relationshipCode: party.relationshipCode.length === 0 ? undefined : party.relationshipCode,
+          }
+        })
       await put(
         `/api/transactions/${createdTransactionRef}/parties`,
         buyerParties,
@@ -1433,6 +1434,7 @@ export default function TransactionStart() {
                         onClick={() => {
                           clearPropertySearchFields()
                           setParties([emptyParty('SIDE_2')])
+                          setBuyerTypeCode('')
                           setBuyerDetailsSaved(false)
                           setWitnessesSaved(false)
                           setError('')
@@ -1542,11 +1544,6 @@ export default function TransactionStart() {
                             key: 'pan',
                             label: 'PAN',
                             render: (row) => String(row.pan ?? '—'),
-                          },
-                          {
-                            key: 'share_pct',
-                            label: 'Share %',
-                            render: (row) => String(row.share_pct ?? row.sharePct ?? row.existing_share_pct ?? row.existingSharePct ?? '—'),
                           },
                           {
                             key: 'address',
@@ -1675,13 +1672,6 @@ export default function TransactionStart() {
                         }))}
                         required
                       />
-                      <Field
-                        label="Survey fee (₹)"
-                        value={selectedSurveyFee ? String(selectedSurveyFee.fee) : ''}
-                        onChange={() => undefined}
-                        placeholder="Select a location type"
-                        readOnly
-                      />
                     </>
                   ) : null}
                   <Field label="Declared consideration" value={declaredConsideration} onChange={setDeclaredConsideration} type="number" />
@@ -1735,12 +1725,31 @@ export default function TransactionStart() {
                     <p className="helper">
                       Enter the {secondPartyLabel.toLowerCase()} details for this transfer. The {firstPartyLabel.toLowerCase()} is the current property owner shown on the right.
                     </p>
+                    <div className="owner-type-select">
+                      <Field
+                        label={`${secondPartyLabel} type`}
+                        value={buyerTypeCode}
+                        onChange={changeBuyerType}
+                        options={buyerTypeOptions}
+                        required
+                      />
+                      {selectedBuyerType ? (
+                        <small className="muted">
+                          {allowMultipleBuyers
+                            ? `More than one ${secondPartyLabel.toLowerCase()} can be added for this type.`
+                            : `Only one ${secondPartyLabel.toLowerCase()} can be recorded for this type.`}
+                        </small>
+                      ) : null}
+                    </div>
+                    {selectedBuyerType ? (
                     <section className="party-group">
-                      <div className="party-group-actions">
-                        <button type="button" className="outline" onClick={() => addParty('SIDE_2')}>
-                          <span aria-hidden="true">+</span> Add {sideTwoTitle.toLowerCase()}
-                        </button>
-                      </div>
+                      {allowMultipleBuyers ? (
+                        <div className="party-group-actions">
+                          <button type="button" className="outline" onClick={() => addParty('SIDE_2')}>
+                            <span aria-hidden="true">+</span> Add {sideTwoTitle.toLowerCase()}
+                          </button>
+                        </div>
+                      ) : null}
                       {parties
                         .map((party, index) => ({ party, index }))
                         .filter(({ party }) => party.side === 'SIDE_2')
@@ -1756,55 +1765,14 @@ export default function TransactionStart() {
                                 </button>
                               </div>
                             ) : null}
-                            <div className="form-grid four">
-                              <div>
-                                <label className="field">
-                                  <span>Name</span>
-                                  <input
-                                    type="text"
-                                    value={party.name}
-                                    onChange={(event) => updateParty(index, 'name', event.target.value)}
-                                  />
-                                </label>
-                                {partyErrors[index]?.name ? <span className="field-error">{partyErrors[index].name}</span> : null}
-                              </div>
-                              <div>
-                                <label className="field">
-                                  <span>Aadhaar (12 digits)<b className="req"> *</b></span>
-                                  <input
-                                    type="text"
-                                    value={party.aadhaarNumber}
-                                    maxLength={12}
-                                    inputMode="numeric"
-                                    onChange={(event) => updateParty(index, 'aadhaarNumber', event.target.value.replace(/\D/g, '').slice(0, 12))}
-                                  />
-                                </label>
-                                {partyErrors[index]?.aadhaarNumber ? <span className="field-error">{partyErrors[index].aadhaarNumber}</span> : null}
-                              </div>
-                              <div>
-                                <label className="field">
-                                  <span>PAN</span>
-                                  <input
-                                    type="text"
-                                    value={party.pan}
-                                    placeholder="ABCDE1234F"
-                                    maxLength={10}
-                                    onChange={(event) => updateParty(index, 'pan', event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
-                                  />
-                                </label>
-                                {partyErrors[index]?.pan ? <span className="field-error">{partyErrors[index].pan}</span> : null}
-                              </div>
-                              <div>
-                                <label className="field">
-                                  <span>Address</span>
-                                  <input
-                                    type="text"
-                                    value={party.address}
-                                    onChange={(event) => updateParty(index, 'address', event.target.value)}
-                                  />
-                                </label>
-                              </div>
-                              {bloodRelationRequired ? (
+                            <OwnerFields
+                              layout={buyerLayout}
+                              owner={party}
+                              errors={partyErrors[index]}
+                              onChange={(field, value) => updateParty(index, field, value)}
+                            />
+                            {bloodRelationRequired ? (
+                              <div className="owner-fields">
                                 <div>
                                   <Field
                                     label={`Relationship to ${firstPartyLabel.toLowerCase()}`}
@@ -1818,42 +1786,13 @@ export default function TransactionStart() {
                                   />
                                   {partyErrors[index]?.relationshipCode ? <span className="field-error">{partyErrors[index].relationshipCode}</span> : null}
                                 </div>
-                              ) : null}
-                              <div>
-                                <label className="field">
-                                  <span>Existing share %</span>
-                                  <input
-                                    type="number"
-                                    value={party.existingSharePct}
-                                    onChange={(event) => updateParty(index, 'existingSharePct', event.target.value)}
-                                  />
-                                </label>
                               </div>
-                              <div>
-                                <label className="field">
-                                  <span>Share transferred %</span>
-                                  <input
-                                    type="number"
-                                    value={party.shareTransferredPct}
-                                    onChange={(event) => updateParty(index, 'shareTransferredPct', event.target.value)}
-                                  />
-                                </label>
-                              </div>
-                              <div>
-                                <label className="field">
-                                  <span>Resulting share %</span>
-                                  <input
-                                    type="number"
-                                    value={party.resultingSharePct}
-                                    onChange={(event) => updateParty(index, 'resultingSharePct', event.target.value)}
-                                  />
-                                </label>
-                              </div>
-                            </div>
+                            ) : null}
                           </section>
                         ))}
                       {parties.filter((party) => party.side === 'SIDE_2').length === 0 ? <p className="helper">No rows available.</p> : null}
                     </section>
+                    ) : null}
                     <div className="form-submit-row">
                       <button className="primary" disabled={partyBusy} onClick={() => void saveParties()}>
                         {partyBusy ? 'Saving…' : `Save ${secondPartyLabel.toLowerCase()} details`}
