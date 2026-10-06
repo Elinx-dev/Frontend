@@ -5,6 +5,7 @@ import { ApiError, get, post, put, qs } from '../api'
 import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
+import PropertySummaryPanel from './PropertySummaryPanel'
 
 interface PartyForm {
   side: string
@@ -1136,6 +1137,9 @@ export default function TransactionStart() {
     : Array.isArray(property?.chain_of_title)
       ? property.chain_of_title
       : []
+  const summaryPropertyRef = String(property?.property_ref ?? property?.propertyRef ?? txn?.property?.property_ref ?? txn?.property?.propertyRef ?? '')
+  const showPropertySummary = [1, 2, 5].includes(activeStage) && summaryPropertyRef.length > 0
+
   return (
     <div className="intake-page transaction-start-page">
       <div className="page-heading">
@@ -1168,6 +1172,8 @@ export default function TransactionStart() {
               </button>
             ))}
           </div>
+          <div className={showPropertySummary ? 'transaction-stage-with-summary' : undefined}>
+          <div className="transaction-stage-main">
           <div role="tabpanel" id={`transaction-stage-panel-${activeStage}`} aria-labelledby={`transaction-stage-tab-${activeStage}`}>
             {activeStage === 0 ? (
               <Panel title="Select existing property" actions={<button className="outline" onClick={() => navigate('/properties/new')}>+ Mint Property</button>}>
@@ -1960,6 +1966,9 @@ export default function TransactionStart() {
                 {busy ? 'Creating…' : 'Create transaction'}
               </button>
             )}
+          </div>
+          </div>
+          {showPropertySummary ? <PropertySummaryPanel propertyRef={summaryPropertyRef} /> : null}
           </div>
         </div>
       </div>

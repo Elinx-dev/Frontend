@@ -9,18 +9,14 @@ import PropertyMap from './PropertyMap'
 import {
   boundaryPoints, classificationOptions, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions,
   natureOfTitleOptions, optionsFrom, ownerLayout, ownerTypes, propertyTypeFallback, usePropertyMap,
-  type SelectOption,
+  displayValue, maskAadhaar, type SelectOption,
 } from './propertyShared'
 
 const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value', 'Transactions'] as const
 const EMPTY_ROWS: Row[] = []
 const noop = () => undefined
 
-const display = (value: unknown) => (value === null || value === undefined || value === '' ? '—' : String(value))
-const maskAadhaar = (value: unknown) => {
-  const digits = str({ value }, 'value')
-  return digits.length === 12 ? `XXXX XXXX ${digits.slice(8)}` : display(value)
-}
+const display = displayValue
 const rows = (value: unknown) => (Array.isArray(value) ? (value as Row[]) : EMPTY_ROWS)
 
 function ViewField({ label, value, options }: { label: string; value: unknown; options?: SelectOption[] }) {
