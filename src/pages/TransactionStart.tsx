@@ -269,6 +269,7 @@ export default function TransactionStart() {
       }
       setTxn(normalized)
       if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
+      if (result.feeCalculation?.page_count != null) setPageCount(String(result.feeCalculation.page_count))
       return normalized
     } catch (e) {
       if (!silent) {

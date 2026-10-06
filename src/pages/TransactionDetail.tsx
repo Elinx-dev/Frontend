@@ -124,6 +124,7 @@ export default function TransactionDetail({
         setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
         if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
+        if (result.feeCalculation?.page_count != null) setPageCount(String(result.feeCalculation.page_count))
 
         const savedWitnesses = Array.isArray(result.witnesses) ? result.witnesses : []
         setWitnessFormVisible(savedWitnesses.length === 0)
