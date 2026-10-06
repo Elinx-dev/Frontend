@@ -6,6 +6,7 @@ import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertySummaryPanel from './PropertySummaryPanel'
+import { maskAadhaar } from './propertyShared'
 
 interface PartyForm {
   side: string
@@ -21,6 +22,10 @@ interface PartyForm {
 }
 
 type PartyField = keyof PartyForm
+type PartyErrors = Record<number, Partial<Record<PartyField, string>>>
+
+const AADHAAR_PATTERN = /^\d{12}$/
+const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
 interface WitnessForm {
   name: string
@@ -31,8 +36,6 @@ interface WitnessForm {
 
 type WitnessField = keyof WitnessForm
 type WitnessErrors = Record<number, Partial<Record<WitnessField, string>>>
-
-const AADHAAR_PATTERN = /^\d{12}$/
 
 const emptyParty = (side: string): PartyForm => ({
   side,
@@ -50,8 +53,6 @@ const emptyParty = (side: string): PartyForm => ({
 const numberOrUndefined = (value: string): number | undefined =>
   value.trim().length === 0 ? undefined : Number(value)
 
-const textOrEmpty = (value: unknown): string => (value === null || value === undefined ? '' : String(value))
-
 const valueOf = (row: Row | null | undefined, ...keys: string[]): string => {
   if (row === null || row === undefined) return ''
   for (const key of keys) {
@@ -68,19 +69,6 @@ const mapEmbedUrl = ({ latitude, longitude }: { latitude: number; longitude: num
   const north = latitude + 0.018
   return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${latitude}%2C${longitude}`
 }
-
-const mapRegisteredOwnerToParty = (owner: Row): PartyForm => ({
-  ...emptyParty('SIDE_1'),
-  partyType: textOrEmpty(owner.party_type ?? owner.partyType ?? 'INDIVIDUAL'),
-  name: textOrEmpty(owner.owner_name ?? owner.ownerName ?? owner.full_name ?? owner.fullName ?? owner.name ?? ''),
-  aadhaarNumber: textOrEmpty(owner.aadhaar_number ?? owner.aadhaarNumber ?? ''),
-  pan: textOrEmpty(owner.pan ?? ''),
-  address: textOrEmpty(owner.address ?? ''),
-  relationshipCode: textOrEmpty(owner.relationship_code ?? owner.relationshipCode ?? ''),
-  existingSharePct: textOrEmpty(owner.existing_share_pct ?? owner.share_pct ?? owner.sharePct ?? ''),
-  shareTransferredPct: textOrEmpty(owner.share_transferred_pct ?? owner.shareTransferredPct ?? ''),
-  resultingSharePct: textOrEmpty(owner.resulting_share_pct ?? owner.share_pct ?? owner.sharePct ?? ''),
-})
 
 const emptyWitness = (): WitnessForm => ({
   name: '',
@@ -164,6 +152,7 @@ export default function TransactionStart() {
   const [surveyLocationType, setSurveyLocationType] = useState('')
   const [surveyors, setSurveyors] = useState<Row[]>([])
   const [excludedOwners, setExcludedOwners] = useState<Record<number, boolean>>({})
+  const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
   const [transferScope, setTransferScope] = useState('FULL_PROPERTY')
   const [declaredConsideration, setDeclaredConsideration] = useState('')
   const [modeOfConsideration, setModeOfConsideration] = useState('BANK_TRANSFER')
@@ -702,6 +691,7 @@ export default function TransactionStart() {
   }
 
   const updateParty = (index: number, field: PartyField, value: string) => {
+    setPartyErrors((current) => (current[index]?.[field] === undefined ? current : { ...current, [index]: { ...current[index], [field]: undefined } }))
     setParties((current) => current.map((party, i) => (i === index ? { ...party, [field]: value } : party)))
     setBuyerDetailsSaved(false)
     setWitnessesSaved(false)
@@ -735,31 +725,35 @@ export default function TransactionStart() {
       setError('Create the transaction before saving buyer details.')
       return
     }
-    const sellerParties = (() => {
-      const registeredOwners = Array.isArray(property?.registeredOwners)
-        ? property.registeredOwners
-        : Array.isArray(property?.registered_owners)
-          ? property.registered_owners
-          : []
-      return registeredOwners
-        .filter((owner): owner is Row => typeof owner === 'object' && owner !== null)
-        .filter((_, index) => excludedOwners[index] !== true)
-        .map(mapRegisteredOwnerToParty)
-    })()
-    if (sellerParties.length === 0) {
+    const sellerOwnerIds = selectedSellerOwners
+      .filter((owner) => owner.id !== undefined && owner.id !== null)
+      .map((owner) => Number(owner.id))
+    if (sellerOwnerIds.length === 0) {
       setInfo('')
       setError(`Select at least one ${firstPartyLabel.toLowerCase()} from the property owners.`)
       return
     }
-    const secondParties = parties.filter((party) => party.side === 'SIDE_2')
-    if (secondParties.length === 0 || secondParties.some((party) => party.name.trim().length === 0)) {
+    const nextErrors: PartyErrors = {}
+    parties.forEach((party, index) => {
+      if (party.side !== 'SIDE_2') return
+      const errors: Partial<Record<PartyField, string>> = {}
+      if (party.name.trim().length === 0) errors.name = 'Name is required.'
+      if (!AADHAAR_PATTERN.test(party.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must be exactly 12 digits.'
+      if (party.pan.length > 0 && !PAN_PATTERN.test(party.pan)) errors.pan = 'PAN must be in the format ABCDE1234F.'
+      if (bloodRelationRequired && party.relationshipCode.length === 0) {
+        errors.relationshipCode = `Select the relationship to the ${firstPartyLabel.toLowerCase()}.`
+      }
+      if (Object.keys(errors).length > 0) nextErrors[index] = errors
+    })
+    setPartyErrors(nextErrors)
+    if (secondPartyNames.length === 0 && Object.keys(nextErrors).length === 0) {
       setInfo('')
-      setError(`Enter the name of every ${secondPartyLabel.toLowerCase()}.`)
+      setError(`Add at least one ${secondPartyLabel.toLowerCase()}.`)
       return
     }
-    if (bloodRelationRequired && secondParties.some((party) => party.relationshipCode.length === 0)) {
+    if (Object.keys(nextErrors).length > 0) {
       setInfo('')
-      setError(`Select the relationship of every ${secondPartyLabel.toLowerCase()} to the ${firstPartyLabel.toLowerCase()}.`)
+      setError(`Correct the highlighted ${secondPartyLabel.toLowerCase()} details.`)
       return
     }
     setError('')
@@ -783,18 +777,7 @@ export default function TransactionStart() {
       await put(
         `/api/transactions/${createdTransactionRef}/parties`,
         [
-          ...sellerParties.map((party) => ({
-            side: party.side,
-            partyType: party.partyType,
-            name: party.name,
-            aadhaarNumber: party.aadhaarNumber.length === 0 ? undefined : party.aadhaarNumber,
-            pan: party.pan.length === 0 ? undefined : party.pan,
-            address: party.address.length === 0 ? undefined : party.address,
-            relationshipCode: party.relationshipCode.length === 0 ? undefined : party.relationshipCode,
-            existingSharePct: numberOrUndefined(party.existingSharePct),
-            shareTransferredPct: numberOrUndefined(party.shareTransferredPct),
-            resultingSharePct: numberOrUndefined(party.resultingSharePct),
-          })),
+          ...sellerOwnerIds.map((propertyOwnerId) => ({ side: 'SIDE_1', propertyOwnerId })),
           ...buyerParties,
         ],
       )
@@ -1205,6 +1188,10 @@ export default function TransactionStart() {
         : Array.isArray(property?.property_owners)
           ? property.property_owners
           : []
+  const selectedSellerOwners = (registeredOwners as Row[]).filter((_, index) => excludedOwners[index] !== true)
+  const secondPartyNames = parties
+    .filter((party) => party.side === 'SIDE_2' && party.name.trim().length > 0)
+    .map((party) => party.name.trim())
   const chainOfTitle = Array.isArray(property?.chainOfTitle)
     ? property.chainOfTitle
     : Array.isArray(property?.chain_of_title)
@@ -1752,6 +1739,12 @@ export default function TransactionStart() {
                     <p className="helper">
                       Select the {firstPartyLabel.toLowerCase()} and capture {secondPartyLabel.toLowerCase()} information before moving on to witnesses and consent.
                     </p>
+                    <dl className="party-names">
+                      <dt>{firstPartyLabel}</dt>
+                      <dd>{selectedSellerOwners.map((owner) => String(owner.owner_name ?? owner.name ?? '')).filter(Boolean).join(', ') || '—'}</dd>
+                      <dt>{secondPartyLabel}</dt>
+                      <dd>{secondPartyNames.join(', ') || '—'}</dd>
+                    </dl>
                     <section className="party-group">
                       <div className="section-heading">
                         <h3>{firstPartyLabel}</h3>
@@ -1759,19 +1752,43 @@ export default function TransactionStart() {
                       {registeredOwners.length === 0 ? (
                         <p className="helper">No owners are recorded on this property.</p>
                       ) : (
-                        <div className="form-grid three">
-                          {registeredOwners.map((owner, ownerIndex) => (
-                            <label className="checkbox-field" key={`owner-${ownerIndex}`}>
-                              <input
-                                type="checkbox"
-                                checked={excludedOwners[ownerIndex] !== true}
-                                onChange={(event) =>
-                                  setExcludedOwners((current) => ({ ...current, [ownerIndex]: !event.target.checked }))
-                                }
-                              />
-                              <span>{String(owner.owner_name ?? owner.ownerName ?? owner.name ?? `Owner ${ownerIndex + 1}`)}</span>
-                            </label>
-                          ))}
+                        <div className="table-wrap">
+                          <table className="party-owner-table">
+                            <thead>
+                              <tr>
+                                <th>Include</th>
+                                <th>Name</th>
+                                <th>Aadhaar</th>
+                                <th>PAN</th>
+                                <th>Mobile</th>
+                                <th>Address</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {registeredOwners.map((owner, ownerIndex) => {
+                                const ownerName = String(owner.owner_name ?? owner.ownerName ?? owner.name ?? `Owner ${ownerIndex + 1}`)
+                                return (
+                                  <tr key={`owner-${ownerIndex}`}>
+                                    <td>
+                                      <input
+                                        type="checkbox"
+                                        aria-label={`Include ${ownerName} as ${firstPartyLabel.toLowerCase()}`}
+                                        checked={excludedOwners[ownerIndex] !== true}
+                                        onChange={(event) =>
+                                          setExcludedOwners((current) => ({ ...current, [ownerIndex]: !event.target.checked }))
+                                        }
+                                      />
+                                    </td>
+                                    <td>{ownerName}</td>
+                                    <td>{owner.aadhaar_number ? maskAadhaar(owner.aadhaar_number) : '—'}</td>
+                                    <td>{String(owner.pan ?? '') || '—'}</td>
+                                    <td>{String(owner.mobile ?? '') || '—'}</td>
+                                    <td>{String(owner.address ?? '') || '—'}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </section>
@@ -1810,10 +1827,11 @@ export default function TransactionStart() {
                                     onChange={(event) => updateParty(index, 'name', event.target.value)}
                                   />
                                 </label>
+                                {partyErrors[index]?.name ? <span className="field-error">{partyErrors[index].name}</span> : null}
                               </div>
                               <div>
                                 <label className="field">
-                                  <span>Aadhaar (12 digits)</span>
+                                  <span>Aadhaar (12 digits)<b className="req"> *</b></span>
                                   <input
                                     type="text"
                                     value={party.aadhaarNumber}
@@ -1822,6 +1840,7 @@ export default function TransactionStart() {
                                     onChange={(event) => updateParty(index, 'aadhaarNumber', event.target.value.replace(/\D/g, '').slice(0, 12))}
                                   />
                                 </label>
+                                {partyErrors[index]?.aadhaarNumber ? <span className="field-error">{partyErrors[index].aadhaarNumber}</span> : null}
                               </div>
                               <div>
                                 <label className="field">
@@ -1829,10 +1848,12 @@ export default function TransactionStart() {
                                   <input
                                     type="text"
                                     value={party.pan}
+                                    placeholder="ABCDE1234F"
                                     maxLength={10}
                                     onChange={(event) => updateParty(index, 'pan', event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
                                   />
                                 </label>
+                                {partyErrors[index]?.pan ? <span className="field-error">{partyErrors[index].pan}</span> : null}
                               </div>
                               <div>
                                 <label className="field">
@@ -1856,6 +1877,7 @@ export default function TransactionStart() {
                                     }))}
                                     required
                                   />
+                                  {partyErrors[index]?.relationshipCode ? <span className="field-error">{partyErrors[index].relationshipCode}</span> : null}
                                 </div>
                               ) : null}
                               <div>

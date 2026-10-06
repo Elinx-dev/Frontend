@@ -52,7 +52,7 @@ export const ownerTypes: Array<OwnerTypeOption & { form: OwnerFormKind }> = [
 ]
 export const ownerLayouts: Record<OwnerFormKind, OwnerLayout> = {
   INDIVIDUAL: { nameLabel: 'Name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: true, mobile: true },
-  DEFAULT: { nameLabel: 'Name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: true, mobile: false },
+  DEFAULT: { nameLabel: 'Name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: true, mobile: true },
   COMPANY: {
     nameLabel: 'Company name', panLabel: 'PAN', addressLabel: 'Registered address', aadhaar: false, mobile: false,
     registration: { label: 'CIN', kind: 'CIN', placeholder: 'U12345TN2020PTC123456' },

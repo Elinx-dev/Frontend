@@ -82,13 +82,16 @@ export default function PropertySummaryPanel({ propertyRef }: { propertyRef: str
             {owners.length > 1 ? <><dt className="property-summary-entry-title">Owner {index + 1}</dt><dd /></> : null}
             <Item label={layout.nameLabel} value={owner.owner_name} />
             {layout.registration ? <Item label={layout.registration.label} value={owner.registration_no} /> : null}
-            {layout.aadhaar ? <Item label="Aadhaar" value={maskAadhaar(owner.aadhaar_number)} /> : null}
+            {layout.aadhaar || owner.aadhaar_number ? <Item label="Aadhaar" value={maskAadhaar(owner.aadhaar_number)} /> : null}
             <Item label={layout.panLabel} value={owner.pan} />
-            {layout.mobile ? <Item label="Mobile" value={owner.mobile} /> : null}
+            {layout.mobile || owner.mobile ? <Item label="Mobile" value={owner.mobile} /> : null}
             <Item label={layout.addressLabel} value={owner.address} />
             {layout.representative ? <>
               <Item label={layout.representative.title} value={owner.representative_name} />
               {layout.representative.designation ? <Item label="Designation" value={owner.representative_designation} /> : null}
+              <Item label={`${layout.representative.title} Aadhaar`} value={maskAadhaar(owner.representative_aadhaar)} />
+              <Item label={`${layout.representative.title} PAN`} value={owner.representative_pan} />
+              {layout.representative.mobile ? <Item label={`${layout.representative.title} mobile`} value={owner.representative_mobile} /> : null}
             </> : null}
           </dl>
         ))}
