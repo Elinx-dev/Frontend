@@ -51,6 +51,23 @@ const numberOrUndefined = (value: string): number | undefined =>
 
 const textOrEmpty = (value: unknown): string => (value === null || value === undefined ? '' : String(value))
 
+const valueOf = (row: Row | null | undefined, ...keys: string[]): string => {
+  if (row === null || row === undefined) return ''
+  for (const key of keys) {
+    const value = row[key]
+    if (value !== null && value !== undefined && String(value).trim().length > 0) return String(value)
+  }
+  return ''
+}
+
+const mapEmbedUrl = ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+  const west = longitude - 0.025
+  const east = longitude + 0.025
+  const south = latitude - 0.018
+  const north = latitude + 0.018
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${latitude}%2C${longitude}`
+}
+
 const mapRegisteredOwnerToParty = (owner: Row): PartyForm => ({
   ...emptyParty('SIDE_1'),
   partyType: textOrEmpty(owner.party_type ?? owner.partyType ?? 'INDIVIDUAL'),
@@ -127,11 +144,18 @@ export default function TransactionStart() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { bootstrap } = useAuth()
   const [propertyRef, setPropertyRef] = useState(() => searchParams.get('propertyRef') ?? '')
+  const [surveyNo, setSurveyNo] = useState('')
+  const [subdivisionNo, setSubdivisionNo] = useState('')
+  const [districtCode, setDistrictCode] = useState('')
+  const [talukCode, setTalukCode] = useState('')
+  const [villageCode, setVillageCode] = useState('')
+  const [landTypeCode, setLandTypeCode] = useState('')
+  const [propertySuggestions, setPropertySuggestions] = useState<Record<string, Row[]>>({})
   const [propertyId, setPropertyId] = useState('')
   const [property, setProperty] = useState<Row | null>(null)
-  const [propertySuggestions, setPropertySuggestions] = useState<Row[]>([])
-  const [propertySearchLoading, setPropertySearchLoading] = useState(false)
-  const [propertySearchError, setPropertySearchError] = useState('')
+  const [mapLocation, setMapLocation] = useState({ latitude: 13.0827, longitude: 80.2707 })
+  const [mapStatus, setMapStatus] = useState<'fallback' | 'loading' | 'located'>('fallback')
+  const [mapLocationName, setMapLocationName] = useState('Chennai, Tamil Nadu')
   const [deedTypeCode, setDeedTypeCode] = useState('')
   const [subtype, setSubtype] = useState('')
   const [transferScope, setTransferScope] = useState('FULL_PROPERTY')
@@ -276,7 +300,6 @@ export default function TransactionStart() {
     return createdTransactionRef.length > 0 ? (activeStage === index ? 'In progress' : 'Coming soon') : 'Available after draft'
   }
 
-  const selectedPropertyRef = String(property?.property_ref ?? property?.propertyRef ?? '')
   const clearSelectedProperty = () => {
     setProperty(null)
     setPropertyId('')
@@ -284,23 +307,81 @@ export default function TransactionStart() {
     setExtentUnit('SQ_FT')
     setGuidelineValue('')
     setGuidelineValueReference('')
-    setPropertySuggestions([])
-    setPropertySearchLoading(false)
-    setPropertySearchError('')
   }
 
-  const handlePropertyRefChange = (value: string) => {
-    setPropertyRef(value)
+  const clearPropertySearchFields = () => {
+    setPropertyRef('')
+    setSurveyNo('')
+    setSubdivisionNo('')
+    setDistrictCode('')
+    setTalukCode('')
+    setVillageCode('')
+    setLandTypeCode('')
+    setPropertySuggestions({})
     clearSelectedProperty()
     setError('')
     setInfo('')
   }
 
-  const selectPropertySuggestion = async (reference: string) => {
-    setPropertyRef(reference)
-    setPropertySuggestions([])
+  const handlePropertyRefChange = (value: string) => {
+    setPropertyRef(value)
+    if (value.trim().length > 0) {
+      setSurveyNo('')
+      setSubdivisionNo('')
+      setDistrictCode('')
+      setTalukCode('')
+      setVillageCode('')
+      setLandTypeCode('')
+      setPropertySuggestions({})
+    }
     clearSelectedProperty()
-    await findProperty(reference)
+    setError('')
+    setInfo('')
+  }
+
+  const handleLocationSearchChange = (value: string, setValue: (nextValue: string) => void) => {
+    setValue(value)
+    setPropertyRef('')
+    setPropertySuggestions((current) => ({ ...current, propertyRef: [] }))
+    clearSelectedProperty()
+    setError('')
+    setInfo('')
+  }
+
+  const applySuggestion = (field: 'propertyRef' | 'surveyNo' | 'subdivisionNo' | 'districtCode' | 'talukCode' | 'villageCode', row: Row) => {
+    const nextPropertyRef = String(row.property_ref ?? row.propertyRef ?? propertyRef)
+    const nextSurveyNo = String(row.survey_no ?? row.surveyNo ?? surveyNo)
+    const nextSubdivisionNo = String(row.subdivision_no ?? row.subdivisionNo ?? subdivisionNo)
+    const nextDistrictCode = String(row.district_code ?? row.districtCode ?? districtCode)
+    const nextTalukCode = String(row.taluk_code ?? row.talukCode ?? talukCode)
+    const nextVillageCode = String(row.village_code ?? row.villageCode ?? villageCode)
+
+    setPropertyRef(field === 'propertyRef' ? nextPropertyRef : '')
+    setSurveyNo(field === 'propertyRef' ? '' : field === 'surveyNo' ? nextSurveyNo : surveyNo)
+    setSubdivisionNo(field === 'propertyRef' ? '' : field === 'subdivisionNo' ? nextSubdivisionNo : subdivisionNo)
+    setDistrictCode(field === 'propertyRef' ? '' : field === 'districtCode' ? nextDistrictCode : districtCode)
+    setTalukCode(field === 'propertyRef' ? '' : field === 'talukCode' ? nextTalukCode : talukCode)
+    setVillageCode(field === 'propertyRef' ? '' : field === 'villageCode' ? nextVillageCode : villageCode)
+    if (field === 'propertyRef') setLandTypeCode('')
+    setPropertySuggestions((current) => ({ ...current, [field]: [] }))
+    clearSelectedProperty()
+    setError('')
+    setInfo('')
+  }
+
+  const fetchPropertySuggestions = async (field: 'propertyRef' | 'surveyNo' | 'subdivisionNo' | 'districtCode' | 'talukCode' | 'villageCode', value: string) => {
+    const trimmed = value.trim()
+    if (trimmed.length < 3) {
+      setPropertySuggestions((current) => ({ ...current, [field]: [] }))
+      return
+    }
+
+    try {
+      const rows = await get<Row[]>(`/api/properties${qs({ query: trimmed, limit: 10 })}`)
+      setPropertySuggestions((current) => ({ ...current, [field]: rows }))
+    } catch {
+      setPropertySuggestions((current) => ({ ...current, [field]: [] }))
+    }
   }
 
   useEffect(() => {
@@ -328,63 +409,176 @@ export default function TransactionStart() {
   }, [createdTransactionRef, loadTransaction])
 
   useEffect(() => {
-    const query = propertyRef.trim()
-    if (busy || query.length < 3 || (property !== null && query === selectedPropertyRef)) {
-      setPropertySuggestions([])
-      setPropertySearchLoading(false)
-      setPropertySearchError('')
+    if (!property) {
+      setMapLocation({ latitude: 13.0827, longitude: 80.2707 })
+      setMapLocationName('Chennai, Tamil Nadu')
+      setMapStatus('fallback')
       return
     }
 
-    let cancelled = false
-    const timer = window.setTimeout(() => {
-      setPropertySearchLoading(true)
-      setPropertySearchError('')
-      void get<Row[]>(`/api/properties${qs({ query, limit: 200 })}`)
+    const locationQuery = [
+      valueOf(property, 'door_no', 'doorNo'),
+      valueOf(property, 'street'),
+      valueOf(property, 'village_name', 'villageName', 'village_code', 'villageCode'),
+      valueOf(property, 'taluk_name', 'talukName', 'taluk_code', 'talukCode'),
+      valueOf(property, 'district_name', 'districtName', 'district_code', 'districtCode'),
+      'Tamil Nadu',
+      'India',
+    ].filter((part) => part.length > 0).join(', ')
+
+    if (locationQuery.length === 0) {
+      setMapLocation({ latitude: 13.0827, longitude: 80.2707 })
+      setMapLocationName('Chennai, Tamil Nadu')
+      setMapStatus('fallback')
+      return
+    }
+
+    const controller = new AbortController()
+    setMapStatus('loading')
+    const timeout = window.setTimeout(() => {
+      void fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(locationQuery)}`, {
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error('Location search failed')
+          return await response.json() as Array<{ lat: string; lon: string; display_name: string }>
+        })
         .then((results) => {
-          if (cancelled) return
-          setPropertySuggestions(results)
+          const result = results[0]
+          if (!result || !Number.isFinite(Number(result.lat)) || !Number.isFinite(Number(result.lon))) {
+            setMapLocation({ latitude: 13.0827, longitude: 80.2707 })
+            setMapLocationName('Chennai, Tamil Nadu')
+            setMapStatus('fallback')
+            return
+          }
+          setMapLocation({ latitude: Number(result.lat), longitude: Number(result.lon) })
+          setMapLocationName(result.display_name)
+          setMapStatus('located')
         })
-        .catch((e) => {
-          if (cancelled) return
-          setPropertySuggestions([])
-          setPropertySearchError(e instanceof ApiError ? e.message : String(e))
+        .catch((reason: unknown) => {
+          if (reason instanceof DOMException && reason.name === 'AbortError') return
+          setMapLocation({ latitude: 13.0827, longitude: 80.2707 })
+          setMapLocationName('Chennai, Tamil Nadu')
+          setMapStatus('fallback')
         })
-        .finally(() => {
-          if (!cancelled) setPropertySearchLoading(false)
-        })
-    }, 250)
+    }, 500)
 
     return () => {
-      cancelled = true
-      window.clearTimeout(timer)
+      window.clearTimeout(timeout)
+      controller.abort()
     }
-  }, [busy, property, propertyRef, selectedPropertyRef])
+  }, [property])
 
   const findProperty = async (reference = propertyRef) => {
-    const trimmedReference = reference.trim()
-    if (trimmedReference.length === 0) {
-      setError('Property reference is required.')
+    const normalizedReference = reference.trim()
+    const locationValues = [
+      surveyNo.trim(),
+      subdivisionNo.trim(),
+      districtCode.trim(),
+      talukCode.trim(),
+      villageCode.trim(),
+    ]
+
+    if (normalizedReference.length === 0 && (locationValues.some((value) => value.length === 0) || landTypeCode.length === 0)) {
+      setError('Enter a property reference, or complete every survey and location field and choose Rural or Urban.')
       return
     }
+
+    const searchValues = normalizedReference.length > 0 ? [normalizedReference] : locationValues
+    const query = searchValues.join(' ')
+
     setError('')
     setInfo('')
     setBusy(true)
     try {
-      const result = await get<Row>(`/api/properties/ref/${encodeURIComponent(trimmedReference)}`)
-      const id = result.id ?? result.property_id
-      if (id === undefined) throw new Error('The property response did not include a property ID.')
-      setPropertyRef(trimmedReference)
-      setPropertyId(String(id))
-      setProperty(result)
-      setExtentOrShareTransferred((current) =>
-        current || String(result.extent_value ?? result.extentValue ?? ''),
-      )
-      setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
-      setGuidelineValue((current) => current || String(result.guideline_value ?? result.guidelineValue ?? ''))
-      setGuidelineValueReference((current) =>
-        current || String(result.guideline_value_reference ?? result.guidelineValueReference ?? ''),
-      )
+      const queryResults = await get<Row[]>(`/api/properties${qs({
+        query,
+        propertyRef: normalizedReference || undefined,
+        surveyNo: normalizedReference.length === 0 ? surveyNo.trim() : undefined,
+        villageCode: normalizedReference.length === 0 ? villageCode.trim() : undefined,
+        districtCode: normalizedReference.length === 0 ? districtCode.trim() : undefined,
+        talukCode: normalizedReference.length === 0 ? talukCode.trim() : undefined,
+        subdivisionNo: normalizedReference.length === 0 ? subdivisionNo.trim() : undefined,
+        landTypeCode: normalizedReference.length === 0 ? landTypeCode : undefined,
+        limit: 20,
+      })}`)
+
+      const matched = queryResults.find((row) => {
+        const candidates = [
+          row.property_ref,
+          row.propertyRef,
+          row.ulpin,
+          row.survey_no,
+          row.surveyNo,
+          row.subdivision_no,
+          row.subdivisionNo,
+          row.district_code,
+          row.districtCode,
+          row.taluk_code,
+          row.talukCode,
+          row.village_code,
+          row.villageCode,
+          row.land_type_code,
+          row.landTypeCode,
+        ]
+        const hasExactMatch = candidates.some((value) => {
+          const text = String(value ?? '').trim().toLowerCase()
+          return searchValues.some((term) => term.trim().toLowerCase() === text)
+        })
+        if (hasExactMatch) return true
+        if (normalizedReference.length > 0) {
+          const refText = String(row.property_ref ?? row.propertyRef ?? '').trim().toLowerCase()
+          const normalized = normalizedReference.trim().toLowerCase()
+          return refText.includes(normalized) || normalized.includes(refText)
+        }
+        return false
+      }) ?? queryResults[0]
+
+      if (matched) {
+        const summary = matched as Row
+        const resolvedRef = String(summary.property_ref ?? summary.propertyRef ?? normalizedReference)
+        let result = summary
+        try {
+          const details = await get<Row>(`/api/properties/${encodeURIComponent(resolvedRef)}`)
+          result = { ...summary, ...details }
+        } catch {
+          result = summary
+        }
+        const id = result.id ?? result.property_id
+        if (id === undefined) throw new Error('The property response did not include a property ID.')
+        setPropertyRef(resolvedRef)
+        setPropertyId(String(id))
+        setProperty(result)
+        setExtentOrShareTransferred((current) =>
+          current || String(result.extent_value ?? result.extentValue ?? ''),
+        )
+        setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
+        setGuidelineValue((current) => current || String(result.guideline_value ?? result.guidelineValue ?? ''))
+        setGuidelineValueReference((current) =>
+          current || String(result.guideline_value_reference ?? result.guidelineValueReference ?? ''),
+        )
+        return
+      }
+
+      if (normalizedReference.length > 0) {
+        const fallback = await get<Row>(`/api/properties/ref/${encodeURIComponent(normalizedReference)}`)
+        const id = fallback.id ?? fallback.property_id
+        if (id === undefined) throw new Error('The property response did not include a property ID.')
+        setPropertyRef(String(fallback.property_ref ?? fallback.propertyRef ?? normalizedReference))
+        setPropertyId(String(id))
+        setProperty(fallback)
+        setExtentOrShareTransferred((current) =>
+          current || String(fallback.extent_value ?? fallback.extentValue ?? ''),
+        )
+        setExtentUnit(String(fallback.extent_unit ?? fallback.extentUnit ?? 'SQ_FT'))
+        setGuidelineValue((current) => current || String(fallback.guideline_value ?? fallback.guidelineValue ?? ''))
+        setGuidelineValueReference((current) =>
+          current || String(fallback.guideline_value_reference ?? fallback.guidelineValueReference ?? ''),
+        )
+        return
+      }
+
+      throw new Error('No matching property was found for the entered search criteria.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     } finally {
@@ -928,7 +1122,20 @@ export default function TransactionStart() {
   const maxAvailableStage = transactionCreated
     ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted ? 5 : witnessesSaved ? 4 : buyerDetailsSaved ? 3 : 2)
     : 1
-
+  const registeredOwners = Array.isArray(property?.registeredOwners)
+    ? property.registeredOwners
+    : Array.isArray(property?.registered_owners)
+      ? property.registered_owners
+      : Array.isArray(property?.owners)
+        ? property.owners
+        : Array.isArray(property?.property_owners)
+          ? property.property_owners
+          : []
+  const chainOfTitle = Array.isArray(property?.chainOfTitle)
+    ? property.chainOfTitle
+    : Array.isArray(property?.chain_of_title)
+      ? property.chain_of_title
+      : []
   return (
     <div className="intake-page transaction-start-page">
       <div className="page-heading">
@@ -964,87 +1171,357 @@ export default function TransactionStart() {
           <div role="tabpanel" id={`transaction-stage-panel-${activeStage}`} aria-labelledby={`transaction-stage-tab-${activeStage}`}>
             {activeStage === 0 ? (
               <Panel title="Select existing property" actions={<button className="outline" onClick={() => navigate('/properties/new')}>+ Mint Property</button>}>
-                <div className="row">
+                <div className="property-search-section">
+                  <h3>Search by property reference</h3>
+                  <div className="row">
                   <label className="field property-combobox">
-                    <span>
-                      Property reference<b className="req"> *</b>
-                    </span>
+                    <span>Property reference</span>
                     <input
                       type="text"
                       value={propertyRef}
-                      onChange={(event) => handlePropertyRefChange(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !busy && propertyRef.trim().length >= 3) {
-                          event.preventDefault()
-                          void findProperty()
-                        }
+                      onChange={(event) => {
+                        const value = event.target.value
+                        handlePropertyRefChange(value)
+                        void fetchPropertySuggestions('propertyRef', value)
                       }}
-                      placeholder="Start typing property reference"
+                      onBlur={() => window.setTimeout(() => setPropertySuggestions((current) => ({ ...current, propertyRef: [] })), 120)}
+                      placeholder="Enter property reference"
                       autoComplete="off"
-                      role="combobox"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      aria-expanded={property === null && propertyRef.trim().length >= 3 && propertySuggestions.length > 0}
-                      aria-busy={propertySearchLoading}
-                      aria-controls="property-suggestions-list"
                     />
-                    <small className="muted">Type at least 3 characters to search all registered properties.</small>
-                    {propertySearchLoading ? <span className="property-combobox-status">Searching properties…</span> : null}
-                    {propertySearchError ? <span className="field-error">{propertySearchError}</span> : null}
-                    {property === null && propertyRef.trim().length >= 3 && !propertySearchLoading ? (
-                      propertySuggestions.length > 0 ? (
-                        <div className="property-combobox-menu" id="property-suggestions-list" role="listbox" aria-label="Property suggestions">
-                          {propertySuggestions.map((row) => {
-                            const ref = String(row.property_ref ?? row.propertyRef ?? '')
-                            const survey = String(row.survey_no ?? row.surveyNo ?? 'Survey pending')
-                            const village = String(row.village_code ?? row.villageCode ?? '')
-                            const status = String(row.status ?? '')
-                            return (
-                              <button
-                                type="button"
-                                className="property-combobox-option"
-                                key={ref}
-                                onMouseDown={(event) => event.preventDefault()}
-                                onClick={() => { void selectPropertySuggestion(ref) }}
-                              >
-                                <strong>{ref}</strong>
-                                <span>
-                                  {survey}
-                                  {village.length > 0 ? ` · ${village}` : ''}
-                                  {status.length > 0 ? ` · ${status}` : ''}
-                                </span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ) : propertySearchError.length === 0 ? (
-                        <span className="muted">No matching properties found.</span>
-                      ) : null
+                    {propertySuggestions.propertyRef && propertySuggestions.propertyRef.length > 0 ? (
+                      <div className="property-combobox-menu" role="listbox" aria-label="Property reference suggestions">
+                        {propertySuggestions.propertyRef.map((row, index) => {
+                          const label = String(row.property_ref ?? row.propertyRef ?? '')
+                          return (
+                            <button type="button" className="property-combobox-option" key={`${label}-${index}`} onMouseDown={(event) => event.preventDefault()} onClick={() => applySuggestion('propertyRef', row)}>
+                              <strong>{label}</strong>
+                              <span>{String(row.survey_no ?? row.surveyNo ?? '')} · {String(row.village_code ?? row.villageCode ?? '')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
                     ) : null}
                   </label>
                 </div>
+                </div>
+                <div className="property-search-section">
+                  <h3>Search by survey and location</h3>
+                  <div className="row">
+                  <label className="field property-combobox">
+                    <span>Survey number <span className="req">*</span></span>
+                    <input
+                      type="text"
+                      value={surveyNo}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        handleLocationSearchChange(value, setSurveyNo)
+                        void fetchPropertySuggestions('surveyNo', value)
+                      }}
+                      onBlur={() => window.setTimeout(() => setPropertySuggestions((current) => ({ ...current, surveyNo: [] })), 120)}
+                      placeholder="Survey number"
+                      autoComplete="off"
+                    />
+                    {propertySuggestions.surveyNo && propertySuggestions.surveyNo.length > 0 ? (
+                      <div className="property-combobox-menu" role="listbox" aria-label="Survey number suggestions">
+                        {propertySuggestions.surveyNo.map((row, index) => {
+                          const label = String(row.survey_no ?? row.surveyNo ?? '')
+                          return (
+                            <button type="button" className="property-combobox-option" key={`${label}-${index}`} onMouseDown={(event) => event.preventDefault()} onClick={() => applySuggestion('surveyNo', row)}>
+                              <strong>{label}</strong>
+                              <span>{String(row.property_ref ?? row.propertyRef ?? '')} · {String(row.village_code ?? row.villageCode ?? '')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                  </label>
+                  <label className="field property-combobox">
+                    <span>Subdivision <span className="req">*</span></span>
+                    <input
+                      type="text"
+                      value={subdivisionNo}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        handleLocationSearchChange(value, setSubdivisionNo)
+                        void fetchPropertySuggestions('subdivisionNo', value)
+                      }}
+                      onBlur={() => window.setTimeout(() => setPropertySuggestions((current) => ({ ...current, subdivisionNo: [] })), 120)}
+                      placeholder="Subdivision"
+                      autoComplete="off"
+                    />
+                    {propertySuggestions.subdivisionNo && propertySuggestions.subdivisionNo.length > 0 ? (
+                      <div className="property-combobox-menu" role="listbox" aria-label="Subdivision suggestions">
+                        {propertySuggestions.subdivisionNo.map((row, index) => {
+                          const label = String(row.subdivision_no ?? row.subdivisionNo ?? '')
+                          return (
+                            <button type="button" className="property-combobox-option" key={`${label}-${index}`} onMouseDown={(event) => event.preventDefault()} onClick={() => applySuggestion('subdivisionNo', row)}>
+                              <strong>{label}</strong>
+                              <span>{String(row.property_ref ?? row.propertyRef ?? '')} · {String(row.survey_no ?? row.surveyNo ?? '')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                  </label>
+                  <label className="field property-combobox">
+                    <span>District <span className="req">*</span></span>
+                    <input
+                      type="text"
+                      value={districtCode}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        handleLocationSearchChange(value, setDistrictCode)
+                        void fetchPropertySuggestions('districtCode', value)
+                      }}
+                      onBlur={() => window.setTimeout(() => setPropertySuggestions((current) => ({ ...current, districtCode: [] })), 120)}
+                      placeholder="District"
+                      autoComplete="off"
+                    />
+                    {propertySuggestions.districtCode && propertySuggestions.districtCode.length > 0 ? (
+                      <div className="property-combobox-menu" role="listbox" aria-label="District suggestions">
+                        {propertySuggestions.districtCode.map((row, index) => {
+                          const label = String(row.district_code ?? row.districtCode ?? '')
+                          return (
+                            <button type="button" className="property-combobox-option" key={`${label}-${index}`} onMouseDown={(event) => event.preventDefault()} onClick={() => applySuggestion('districtCode', row)}>
+                              <strong>{label}</strong>
+                              <span>{String(row.property_ref ?? row.propertyRef ?? '')} · {String(row.taluk_code ?? row.talukCode ?? '')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                  </label>
+                  <label className="field property-combobox">
+                    <span>Taluk <span className="req">*</span></span>
+                    <input
+                      type="text"
+                      value={talukCode}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        handleLocationSearchChange(value, setTalukCode)
+                        void fetchPropertySuggestions('talukCode', value)
+                      }}
+                      onBlur={() => window.setTimeout(() => setPropertySuggestions((current) => ({ ...current, talukCode: [] })), 120)}
+                      placeholder="Taluk"
+                      autoComplete="off"
+                    />
+                    {propertySuggestions.talukCode && propertySuggestions.talukCode.length > 0 ? (
+                      <div className="property-combobox-menu" role="listbox" aria-label="Taluk suggestions">
+                        {propertySuggestions.talukCode.map((row, index) => {
+                          const label = String(row.taluk_code ?? row.talukCode ?? '')
+                          return (
+                            <button type="button" className="property-combobox-option" key={`${label}-${index}`} onMouseDown={(event) => event.preventDefault()} onClick={() => applySuggestion('talukCode', row)}>
+                              <strong>{label}</strong>
+                              <span>{String(row.property_ref ?? row.propertyRef ?? '')} · {String(row.village_code ?? row.villageCode ?? '')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                  </label>
+                  <label className="field property-combobox">
+                    <span>Village <span className="req">*</span></span>
+                    <input
+                      type="text"
+                      value={villageCode}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        handleLocationSearchChange(value, setVillageCode)
+                        void fetchPropertySuggestions('villageCode', value)
+                      }}
+                      onBlur={() => window.setTimeout(() => setPropertySuggestions((current) => ({ ...current, villageCode: [] })), 120)}
+                      placeholder="Village"
+                      autoComplete="off"
+                    />
+                    {propertySuggestions.villageCode && propertySuggestions.villageCode.length > 0 ? (
+                      <div className="property-combobox-menu" role="listbox" aria-label="Village suggestions">
+                        {propertySuggestions.villageCode.map((row, index) => {
+                          const label = String(row.village_code ?? row.villageCode ?? '')
+                          return (
+                            <button type="button" className="property-combobox-option" key={`${label}-${index}`} onMouseDown={(event) => event.preventDefault()} onClick={() => applySuggestion('villageCode', row)}>
+                              <strong>{label}</strong>
+                              <span>{String(row.property_ref ?? row.propertyRef ?? '')} · {String(row.survey_no ?? row.surveyNo ?? '')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                  </label>
+                </div>
+                <div className="property-land-type">
+                  <span>Area type <span className="req">*</span></span>
+                  <div className="property-land-type-options" role="radiogroup" aria-label="Area type">
+                    <label><input type="radio" name="property-land-type" value="RURAL" checked={landTypeCode === 'RURAL'} onChange={() => { setLandTypeCode('RURAL'); setPropertyRef(''); clearSelectedProperty() }} /> Rural</label>
+                    <label><input type="radio" name="property-land-type" value="URBAN" checked={landTypeCode === 'URBAN'} onChange={() => { setLandTypeCode('URBAN'); setPropertyRef(''); clearSelectedProperty() }} /> Urban</label>
+                  </div>
+                </div>
+                </div>
                 <div className="form-submit-row">
-                  <button className="primary" disabled={busy || propertyRef.trim().length < 3} onClick={() => void findProperty()}>{busy ? 'Checking…' : 'Find property'}</button>
+                  <button className="outline" type="button" onClick={clearPropertySearchFields} disabled={busy}>Clear</button>
+                  <button className="primary" type="button" disabled={busy || (propertyRef.trim().length === 0 && ([surveyNo, subdivisionNo, districtCode, talukCode, villageCode].some((value) => value.trim().length === 0) || landTypeCode.length === 0))} onClick={() => void findProperty()}>{busy ? 'Checking…' : 'Find property'}</button>
                 </div>
                 {property ? (
-                  <div className="summary-strip">
-                    <span><strong>{String(property.property_ref ?? property.propertyRef ?? propertyRef)}</strong></span>
-                    <span>{String(property.survey_no ?? property.surveyNo ?? 'Survey pending')}</span>
-                    <span>{String(property.village_code ?? property.villageCode ?? '')}</span>
-                    <button
-                      className="link"
-                      onClick={() => {
-                        clearSelectedProperty()
-                        setParties([emptyParty('SIDE_2')])
-                        setBuyerDetailsSaved(false)
-                        setWitnessesSaved(false)
-                        setError('')
-                        setInfo('')
-                      }}
-                    >
-                      Change
-                    </button>
-                  </div>
+                  <>
+                    <div className="summary-strip">
+                      <span><strong>{String(property.property_ref ?? property.propertyRef ?? propertyRef)}</strong></span>
+                      <span>{String(property.survey_no ?? property.surveyNo ?? 'Survey pending')}</span>
+                      <span>{String(property.village_code ?? property.villageCode ?? '')}</span>
+                      <button
+                        className="link"
+                        onClick={() => {
+                          clearPropertySearchFields()
+                          setParties([emptyParty('SIDE_2')])
+                          setBuyerDetailsSaved(false)
+                          setWitnessesSaved(false)
+                          setError('')
+                          setInfo('')
+                        }}
+                      >
+                        Change
+                      </button>
+                    </div>
+
+                    <div className="location-survey-layout">
+                      <Panel title="Property details">
+                        <section className="property-detail-group">
+                          <h3>Identification</h3>
+                          <dl className="kv">
+                            <dt>Property reference</dt>
+                            <dd>{String(property.property_ref ?? property.propertyRef ?? propertyRef)}</dd>
+                            <dt>ULPIN</dt>
+                            <dd>{valueOf(property, 'ulpin') || '—'}</dd>
+                            <dt>Property type</dt>
+                            <dd>{valueOf(property, 'property_type_code', 'propertyTypeCode', 'property_type', 'propertyType') || '—'}</dd>
+                            <dt>Nature of title</dt>
+                            <dd>{valueOf(property, 'nature_of_title_code', 'natureOfTitleCode') || '—'}</dd>
+                            <dt>Land type</dt>
+                            <dd>{valueOf(property, 'land_type_code', 'landTypeCode') || '—'}</dd>
+                            <dt>Classification</dt>
+                            <dd>{valueOf(property, 'classification_code', 'classificationCode') || '—'}</dd>
+                            <dt>Record status</dt>
+                            <dd>{valueOf(property, 'status') || '—'}</dd>
+                          </dl>
+                        </section>
+                        <section className="property-detail-group">
+                          <h3>Survey and extent</h3>
+                          <dl className="kv">
+                            <dt>Survey number</dt>
+                            <dd>{valueOf(property, 'survey_no', 'surveyNo') || '—'}</dd>
+                            <dt>Subdivision number</dt>
+                            <dd>{valueOf(property, 'subdivision_no', 'subdivisionNo') || '—'}</dd>
+                            <dt>Old survey reference</dt>
+                            <dd>{valueOf(property, 'old_survey_reference', 'oldSurveyReference') || '—'}</dd>
+                            <dt>FMB reference</dt>
+                            <dd>{valueOf(property, 'fmb_reference_no', 'fmbReferenceNo') || '—'}</dd>
+                            <dt>Extent</dt>
+                            <dd>{`${valueOf(property, 'extent_value', 'extentValue') || '—'} ${valueOf(property, 'extent_unit', 'extentUnit')}`.trim()}</dd>
+                          </dl>
+                        </section>
+                        <section className="property-detail-group">
+                          <h3>Location</h3>
+                          <dl className="kv">
+                            <dt>District</dt>
+                            <dd>{valueOf(property, 'district_name', 'districtName', 'district_code', 'districtCode') || '—'}</dd>
+                            <dt>Taluk</dt>
+                            <dd>{valueOf(property, 'taluk_name', 'talukName', 'taluk_code', 'talukCode') || '—'}</dd>
+                            <dt>Village</dt>
+                            <dd>{valueOf(property, 'village_name', 'villageName', 'village_code', 'villageCode') || '—'}</dd>
+                            <dt>Sub-Registrar Office</dt>
+                            <dd>{valueOf(property, 'sro_name', 'sroName', 'sro_code', 'sroCode') || '—'}</dd>
+                            <dt>Panchayat / ward</dt>
+                            <dd>{[valueOf(property, 'panchayat'), valueOf(property, 'ward_no', 'wardNo')].filter(Boolean).join(' / ') || '—'}</dd>
+                            <dt>Street / door number</dt>
+                            <dd>{[valueOf(property, 'street'), valueOf(property, 'door_no', 'doorNo')].filter(Boolean).join(' / ') || '—'}</dd>
+                          </dl>
+                        </section>
+                      </Panel>
+
+                      <aside className="property-map-panel" aria-label="Property map location">
+                        <div className="property-map-heading">
+                          <div>
+                            <strong>Map location</strong>
+                            <span>{mapLocationName}</span>
+                          </div>
+                          {mapStatus === 'located' ? <span className="map-pin-status">Located</span> : null}
+                        </div>
+                        <div className="property-map-frame">
+                          {mapStatus === 'located' ? (
+                            <iframe
+                              title={`Map showing ${mapLocationName}`}
+                              src={mapEmbedUrl(mapLocation)}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="property-map-message" role="status">
+                              <strong>{mapStatus === 'loading' ? 'Locating area…' : 'Unable to locate on map'}</strong>
+                              <span>Property coordinates are not available yet for this record.</span>
+                            </div>
+                          )}
+                        </div>
+                        <small className="map-attribution">Map data © OpenStreetMap contributors</small>
+                      </aside>
+                    </div>
+
+                    <Panel title="Registered owners">
+                      <DataTable
+                        rows={registeredOwners}
+                        columns={[
+                          {
+                            key: 'owner_name',
+                            label: 'Owner',
+                            render: (row) => String(row.owner_name ?? row.ownerName ?? row.full_name ?? row.fullName ?? row.name ?? '—'),
+                          },
+                          {
+                            key: 'aadhaar_number',
+                            label: 'Aadhaar',
+                            render: (row) => String(row.aadhaar_number ?? row.aadhaarNumber ?? '—'),
+                          },
+                          {
+                            key: 'pan',
+                            label: 'PAN',
+                            render: (row) => String(row.pan ?? '—'),
+                          },
+                          {
+                            key: 'share_pct',
+                            label: 'Share %',
+                            render: (row) => String(row.share_pct ?? row.sharePct ?? row.existing_share_pct ?? row.existingSharePct ?? '—'),
+                          },
+                          {
+                            key: 'address',
+                            label: 'Address',
+                            render: (row) => String(row.address ?? '—'),
+                          },
+                        ]}
+                        empty="No registered owners were found for this property."
+                      />
+                    </Panel>
+
+                    <Panel title="Chain of title">
+                      <DataTable
+                        rows={chainOfTitle}
+                        columns={[
+                          { key: 'seq', label: '#' },
+                          { key: 'executor_name', label: 'Executor / seller', render: (row) => String(row.executor_name ?? row.executorName ?? '—') },
+                          { key: 'claimant_name', label: 'Claimant / purchaser', render: (row) => String(row.claimant_name ?? row.claimantName ?? '—') },
+                          { key: 'transaction_date', label: 'Transaction date', render: (row) => String(row.transaction_date ?? row.transactionDate ?? '—') },
+                          { key: 'nature_of_transaction', label: 'Nature', render: (row) => String(row.nature_of_transaction ?? row.natureOfTransaction ?? '—') },
+                          { key: 'reference_no', label: 'Reference no.', render: (row) => String(row.reference_no ?? row.referenceNo ?? '—') },
+                          { key: 'survey_no', label: 'Survey no.', render: (row) => String(row.survey_no ?? row.surveyNo ?? '—') },
+                        ]}
+                        empty="No prior title history recorded for this property."
+                      />
+                    </Panel>
+
+                    <Panel title="Guideline value">
+                      <dl className="kv">
+                        <dt>Guideline value</dt>
+                        <dd>{valueOf(property, 'guideline_value', 'guidelineValue') || '—'}</dd>
+                        <dt>Guideline reference</dt>
+                        <dd>{valueOf(property, 'guideline_value_reference', 'guidelineValueReference') || '—'}</dd>
+                      </dl>
+                    </Panel>
+
+                  </>
                 ) : (
                   <p className="helper">Property registration must be completed before a transaction can be initiated.</p>
                 )}
