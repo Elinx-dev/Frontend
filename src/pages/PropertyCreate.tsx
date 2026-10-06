@@ -6,10 +6,11 @@ import { useAuth } from '../auth'
 import { str, type Row } from '../types'
 import { Banner, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
+import { OwnerFields } from './OwnerFields'
 import {
-  boundaryPoints, classificationOptions, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions,
-  natureOfTitleOptions, optionsFrom, ownerLayout, ownerTypes, propertyTypeFallback, usePropertyMap,
-  type OwnerLayout, type OwnerTypeOption,
+  boundaryPoints, classificationOptions, emptyOwner, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions,
+  natureOfTitleOptions, optionsFrom, ownerLayout, ownerPayload, ownerTypeOptionsFrom, propertyTypeFallback, usePropertyMap,
+  validateOwner, type OwnerErrors, type OwnerField, type OwnerForm,
 } from './propertyShared'
 
 const initialProperty = {
@@ -28,23 +29,6 @@ type LocationLevel = typeof locationLevels[number]
 const EMPTY_ROWS: Row[] = []
 
 
-interface OwnerForm {
-  ownerName: string
-  aadhaarNumber: string
-  pan: string
-  mobile: string
-  address: string
-  registrationNo: string
-  repName: string
-  repDesignation: string
-  repAadhaar: string
-  repPan: string
-  repMobile: string
-}
-
-
-type OwnerField = keyof OwnerForm
-type OwnerErrors = Record<number, Partial<Record<OwnerField, string>>>
 interface BoundaryMeasurement {
   fromPoint: string
   toPoint: string
@@ -73,10 +57,6 @@ interface SurveyRecord {
 type SurveyRecordField = keyof SurveyRecord
 type SurveyRecordErrors = Record<number, Partial<Record<SurveyRecordField, string>>>
 
-const emptyOwner = (): OwnerForm => ({
-  ownerName: '', aadhaarNumber: '', pan: '', mobile: '', address: '', registrationNo: '',
-  repName: '', repDesignation: '', repAadhaar: '', repPan: '', repMobile: '',
-})
 const emptySurveyRecord = (): SurveyRecord => ({ ulpin: '', surveyNo: '', subdivisionNo: '', extentValue: '', extentUnit: 'SQ_FT' })
 function surveyRecordErrors(records: SurveyRecord[]): SurveyRecordErrors {
   const errors: SurveyRecordErrors = {}
@@ -115,56 +95,6 @@ const natureOfTransactionOptions = [
   { value: 'Release', label: 'Release' },
   { value: 'Other', label: 'Other' },
 ]
-const AADHAAR_PATTERN = /^\d{12}$/
-const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
-const MOBILE_PATTERN = /^[6-9]\d{9}$/
-const CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
-const LLPIN_PATTERN = /^[A-Z]{3}-\d{4}$/
-
-function validateOwner(owner: OwnerForm, layout: OwnerLayout): Partial<Record<OwnerField, string>> {
-  const errors: Partial<Record<OwnerField, string>> = {}
-  if (owner.ownerName.trim().length === 0) errors.ownerName = `${layout.nameLabel} is required.`
-  if (layout.aadhaar && !AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
-  if (owner.pan.trim().length === 0) errors.pan = `${layout.panLabel} is required.`
-  else if (!PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
-  if (layout.mobile && !MOBILE_PATTERN.test(owner.mobile)) errors.mobile = 'Enter a 10-digit mobile number.'
-  if (owner.address.trim().length === 0) errors.address = `${layout.addressLabel} is required.`
-  if (layout.registration) {
-    const { kind, label } = layout.registration
-    if (owner.registrationNo.trim().length === 0) errors.registrationNo = `${label} is required.`
-    else if (kind === 'CIN' && !CIN_PATTERN.test(owner.registrationNo)) errors.registrationNo = 'CIN must be 21 characters, e.g. U12345TN2020PTC123456.'
-    else if (kind === 'LLPIN' && !LLPIN_PATTERN.test(owner.registrationNo)) errors.registrationNo = 'LLPIN must match AAA-9999.'
-  }
-  if (layout.representative) {
-    const { title, designation, mobile } = layout.representative
-    if (owner.repName.trim().length === 0) errors.repName = `${title} name is required.`
-    if (designation && owner.repDesignation.trim().length === 0) errors.repDesignation = 'Designation is required.'
-    if (!AADHAAR_PATTERN.test(owner.repAadhaar)) errors.repAadhaar = 'Aadhaar must contain exactly 12 digits.'
-    if (owner.repPan.trim().length === 0) errors.repPan = 'PAN is required.'
-    else if (!PAN_PATTERN.test(owner.repPan)) errors.repPan = 'PAN must match AAAAA9999A.'
-    if (mobile && !MOBILE_PATTERN.test(owner.repMobile)) errors.repMobile = 'Enter a 10-digit mobile number.'
-  }
-  return errors
-}
-
-function ownerPayload(owner: OwnerForm, layout: OwnerLayout) {
-  const representative = layout.representative
-  return {
-    ownerName: owner.ownerName.trim(),
-    aadhaarNumber: layout.aadhaar ? owner.aadhaarNumber : undefined,
-    pan: owner.pan,
-    mobile: layout.mobile ? owner.mobile : undefined,
-    address: owner.address.trim(),
-    registrationNo: layout.registration ? owner.registrationNo.trim() : undefined,
-    representative: representative ? {
-      name: owner.repName.trim(),
-      designation: representative.designation ? owner.repDesignation.trim() : undefined,
-      aadhaarNumber: owner.repAadhaar,
-      pan: owner.repPan,
-      mobile: representative.mobile ? owner.repMobile : undefined,
-    } : undefined,
-  }
-}
 const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value'] as const
 const MAX_BOUNDARY_MEASUREMENTS = 8
 
@@ -219,14 +149,7 @@ export default function PropertyCreate() {
     return optionsFrom(bootstrap, key, fallback)
   }
 
-  const ownerTypeOptions: OwnerTypeOption[] = (() => {
-    const rows = bootstrap?.optionSets.OWNER_TYPE ?? []
-    const configured = rows.map((row) => {
-      const attributes = (row.attributes ?? {}) as Row
-      return { value: String(row.code ?? ''), label: String(row.label ?? row.code ?? ''), allowMultipleOwners: attributes.allowMultipleOwners === true }
-    }).filter((row) => ownerTypes.some((type) => type.value === row.value))
-    return configured.length > 0 ? configured : ownerTypes
-  })()
+  const ownerTypeOptions = ownerTypeOptionsFrom(bootstrap)
   const selectedOwnerType = ownerTypeOptions.find((type) => type.value === ownerTypeCode)
   const allowMultipleOwners = selectedOwnerType?.allowMultipleOwners === true
   const layout = ownerLayout(ownerTypeCode)
@@ -430,8 +353,6 @@ export default function PropertyCreate() {
     }
   }
 
-  const digits = (value: string, length: number) => value.replace(/\D/g, '').slice(0, length)
-  const panValue = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
   const updateOwner = (index: number, field: OwnerField, value: string) => {
     setOwners((current) => current.map((owner, ownerIndex) => ownerIndex === index ? { ...owner, [field]: value } : owner))
   }
@@ -442,7 +363,6 @@ export default function PropertyCreate() {
     setChainHistory((current) => current.map((entry, index) => index === entryIndex ? { ...entry, [field]: value } : entry))
   }
   const fieldError = (key: keyof PropertyState) => fieldErrors[key] ? <span className="field-error">{fieldErrors[key]}</span> : null
-  const ownerFieldError = (index: number, field: OwnerField) => ownerErrors[index]?.[field] ? <span className="field-error">{ownerErrors[index][field]}</span> : null
   const surveyComplete = surveyRecords.length > 0 && Object.keys(surveyRecordErrors(surveyRecords)).length === 0
   const valid = property.talukCode && property.villageCode && property.sroCode && surveyComplete && property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest
   const ownersComplete = Boolean(selectedOwnerType) && owners.length > 0 && (allowMultipleOwners || owners.length === 1)
@@ -510,7 +430,6 @@ export default function PropertyCreate() {
           {selectedOwnerType ? <small className="muted">{allowMultipleOwners ? 'More than one owner can be added for this owner type.' : 'Only one owner can be recorded for this owner type.'}</small> : null}
         </div>
         {selectedOwnerType ? owners.map((owner, index) => {
-          const representative = layout.representative
           return <section className="owner-entry" key={index}>
             <header className="chain-history-entry-heading">
               <h3>{allowMultipleOwners ? `Owner ${index + 1}` : 'Owner details'}</h3>
@@ -519,24 +438,7 @@ export default function PropertyCreate() {
                 setOwnerErrors({})
               }}>Remove owner</button> : null}
             </header>
-            <div className="owner-fields">
-              <div><Field label={layout.nameLabel} value={owner.ownerName} onChange={(v) => updateOwner(index, 'ownerName', v)} required />{ownerFieldError(index, 'ownerName')}</div>
-              {layout.registration ? <div><Field label={layout.registration.label} value={owner.registrationNo} onChange={(v) => updateOwner(index, 'registrationNo', layout.registration?.kind === 'TEXT' ? v : v.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, layout.registration?.kind === 'CIN' ? 21 : 8))} placeholder={layout.registration.placeholder} required />{ownerFieldError(index, 'registrationNo')}</div> : null}
-              {layout.aadhaar ? <div><Field label="Aadhaar (12 digits)" value={owner.aadhaarNumber} onChange={(v) => updateOwner(index, 'aadhaarNumber', digits(v, 12))} required />{ownerFieldError(index, 'aadhaarNumber')}</div> : null}
-              <div><Field label={layout.panLabel} value={owner.pan} onChange={(v) => updateOwner(index, 'pan', panValue(v))} required />{ownerFieldError(index, 'pan')}</div>
-              {layout.mobile ? <div><Field label="Mobile" type="tel" value={owner.mobile} onChange={(v) => updateOwner(index, 'mobile', digits(v, 10))} required />{ownerFieldError(index, 'mobile')}</div> : null}
-              <div><Field label={layout.addressLabel} value={owner.address} onChange={(v) => updateOwner(index, 'address', v)} required />{ownerFieldError(index, 'address')}</div>
-            </div>
-            {representative ? <div className="owner-representative">
-              <h4>{representative.title}</h4>
-              <div className="owner-fields">
-                <div><Field label="Name" value={owner.repName} onChange={(v) => updateOwner(index, 'repName', v)} required />{ownerFieldError(index, 'repName')}</div>
-                {representative.designation ? <div><Field label="Designation" value={owner.repDesignation} onChange={(v) => updateOwner(index, 'repDesignation', v)} required />{ownerFieldError(index, 'repDesignation')}</div> : null}
-                <div><Field label="Aadhaar (12 digits)" value={owner.repAadhaar} onChange={(v) => updateOwner(index, 'repAadhaar', digits(v, 12))} required />{ownerFieldError(index, 'repAadhaar')}</div>
-                <div><Field label="PAN" value={owner.repPan} onChange={(v) => updateOwner(index, 'repPan', panValue(v))} required />{ownerFieldError(index, 'repPan')}</div>
-                {representative.mobile ? <div><Field label="Mobile" type="tel" value={owner.repMobile} onChange={(v) => updateOwner(index, 'repMobile', digits(v, 10))} required />{ownerFieldError(index, 'repMobile')}</div> : null}
-              </div>
-            </div> : null}
+            <OwnerFields layout={layout} owner={owner} errors={ownerErrors[index]} onChange={(field, value) => updateOwner(index, field, value)} />
           </section>
         }) : null}
       </Panel> : null}

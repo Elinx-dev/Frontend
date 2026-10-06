@@ -185,3 +185,96 @@ export const maskAadhaar = (value: unknown) => {
   const digits = value === null || value === undefined ? '' : String(value)
   return /^\d{12}$/.test(digits) ? `XXXX XXXX ${digits.slice(8)}` : displayValue(value)
 }
+
+export interface OwnerForm {
+  ownerName: string
+  aadhaarNumber: string
+  pan: string
+  mobile: string
+  address: string
+  registrationNo: string
+  repName: string
+  repDesignation: string
+  repAadhaar: string
+  repPan: string
+  repMobile: string
+}
+
+export type OwnerField = keyof OwnerForm
+export type OwnerFieldErrors = Partial<Record<OwnerField, string>>
+export type OwnerErrors = Record<number, OwnerFieldErrors>
+
+export const emptyOwner = (): OwnerForm => ({
+  ownerName: '', aadhaarNumber: '', pan: '', mobile: '', address: '', registrationNo: '',
+  repName: '', repDesignation: '', repAadhaar: '', repPan: '', repMobile: '',
+})
+
+const OWNER_AADHAAR_PATTERN = /^\d{12}$/
+const OWNER_PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+const OWNER_MOBILE_PATTERN = /^[6-9]\d{9}$/
+const OWNER_CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
+const OWNER_LLPIN_PATTERN = /^[A-Z]{3}-\d{4}$/
+
+export const digits = (value: string, length: number) => value.replace(/\D/g, '').slice(0, length)
+export const panValue = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
+
+export function validateOwner(owner: OwnerForm, layout: OwnerLayout): OwnerFieldErrors {
+  const errors: OwnerFieldErrors = {}
+  if (owner.ownerName.trim().length === 0) errors.ownerName = `${layout.nameLabel} is required.`
+  if (layout.aadhaar && !OWNER_AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
+  if (owner.pan.trim().length === 0) errors.pan = `${layout.panLabel} is required.`
+  else if (!OWNER_PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
+  if (layout.mobile && !OWNER_MOBILE_PATTERN.test(owner.mobile)) errors.mobile = 'Enter a 10-digit mobile number.'
+  if (owner.address.trim().length === 0) errors.address = `${layout.addressLabel} is required.`
+  if (layout.registration) {
+    const { kind, label } = layout.registration
+    if (owner.registrationNo.trim().length === 0) errors.registrationNo = `${label} is required.`
+    else if (kind === 'CIN' && !OWNER_CIN_PATTERN.test(owner.registrationNo)) errors.registrationNo = 'CIN must be 21 characters, e.g. U12345TN2020PTC123456.'
+    else if (kind === 'LLPIN' && !OWNER_LLPIN_PATTERN.test(owner.registrationNo)) errors.registrationNo = 'LLPIN must match AAA-9999.'
+  }
+  if (layout.representative) {
+    const { title, designation, mobile } = layout.representative
+    if (owner.repName.trim().length === 0) errors.repName = `${title} name is required.`
+    if (designation && owner.repDesignation.trim().length === 0) errors.repDesignation = 'Designation is required.'
+    if (!OWNER_AADHAAR_PATTERN.test(owner.repAadhaar)) errors.repAadhaar = 'Aadhaar must contain exactly 12 digits.'
+    if (owner.repPan.trim().length === 0) errors.repPan = 'PAN is required.'
+    else if (!OWNER_PAN_PATTERN.test(owner.repPan)) errors.repPan = 'PAN must match AAAAA9999A.'
+    if (mobile && !OWNER_MOBILE_PATTERN.test(owner.repMobile)) errors.repMobile = 'Enter a 10-digit mobile number.'
+  }
+  return errors
+}
+
+export function ownerPayload(owner: OwnerForm, layout: OwnerLayout) {
+  const representative = layout.representative
+  return {
+    ownerName: owner.ownerName.trim(),
+    aadhaarNumber: layout.aadhaar ? owner.aadhaarNumber : undefined,
+    pan: owner.pan,
+    mobile: layout.mobile ? owner.mobile : undefined,
+    address: owner.address.trim(),
+    registrationNo: layout.registration ? owner.registrationNo.trim() : undefined,
+    representative: representative ? {
+      name: owner.repName.trim(),
+      designation: representative.designation ? owner.repDesignation.trim() : undefined,
+      aadhaarNumber: owner.repAadhaar,
+      pan: owner.repPan,
+      mobile: representative.mobile ? owner.repMobile : undefined,
+    } : undefined,
+  }
+}
+
+/** Owner types configured in cfg.option_value (OWNER_TYPE), falling back to the built-in list. */
+export function ownerTypeOptionsFrom(bootstrap: Bootstrap | null | undefined): OwnerTypeOption[] {
+  const rows = bootstrap?.optionSets.OWNER_TYPE ?? []
+  const configured = rows.map((row) => {
+    const attributes = (row.attributes ?? {}) as Row
+    return { value: String(row.code ?? ''), label: String(row.label ?? row.code ?? ''), allowMultipleOwners: attributes.allowMultipleOwners === true }
+  }).filter((row) => ownerTypes.some((type) => type.value === row.value))
+  return configured.length > 0 ? configured : ownerTypes
+}
+
+/** Masked Aadhaar from a full number or from the stored last four digits. */
+export const maskAadhaarLast4 = (full: unknown, last4: unknown) => {
+  const lastDigits = last4 === null || last4 === undefined ? '' : String(last4)
+  return /^\d{4}$/.test(lastDigits) ? `XXXX XXXX ${lastDigits}` : maskAadhaar(full)
+}

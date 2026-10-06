@@ -2,28 +2,33 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ApiError, get, post, put } from '../api'
+import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel, StatusPill, formatCell } from '../ui'
+import { MissingAadhaarCapture, OwnerFields, PartyDetailsView } from './OwnerFields'
+import {
+  emptyOwner, labelFor, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm,
+} from './propertyShared'
+import RuleCheckDetails from './RuleCheckDetails'
+import { FeeSummary, ScheduleEditor } from './FeeFields'
+import {
+  emptySchedule,
+  paidAtFrom,
+  relationshipCategoryOptions,
+  schedulePayload,
+  schedulesFromRows,
+  today,
+  validateSchedules,
+  type ScheduleForm,
+} from './feeShared'
+import { ruleSummary, ruleWarningText } from './ruleCheckResults'
 
-interface PartyForm {
-  side: string
-  partyType: string
-  name: string
-  aadhaarNumber: string
-  pan: string
-  address: string
-  relationshipCode: string
-  existingSharePct: string
-  shareTransferredPct: string
-  resultingSharePct: string
-}
+type PartyForm = OwnerForm & { side: string; relationshipCode: string }
 
 type PartyField = keyof PartyForm
 type PartyErrors = Record<number, Partial<Record<PartyField, string>>>
 
 const AADHAAR_PATTERN = /^\d{12}$/
-const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
-const SHARE_EPSILON = 0.01
 const workflowStageLabels = [
   'Property details',
   'Transaction details',
@@ -35,18 +40,7 @@ const workflowStageLabels = [
   'Registration',
 ] as const
 
-const emptyParty = (side: string): PartyForm => ({
-  side,
-  partyType: 'INDIVIDUAL',
-  name: '',
-  aadhaarNumber: '',
-  pan: '',
-  address: '',
-  relationshipCode: '',
-  existingSharePct: '',
-  shareTransferredPct: '',
-  resultingSharePct: '',
-})
+const emptyParty = (side: string): PartyForm => ({ side, relationshipCode: '', ...emptyOwner() })
 
 const numberOrUndefined = (value: string): number | undefined =>
   value.trim().length === 0 ? undefined : Number(value)
@@ -72,7 +66,9 @@ export default function TransactionDetail({
   const [extent, setExtent] = useState('')
   const [extentUnit, setExtentUnit] = useState('SQ_FT')
   const [relationshipCategory, setRelationshipCategory] = useState('')
-  const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_1'), emptyParty('SIDE_2')])
+  const { bootstrap } = useAuth()
+  const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_2')])
+  const [buyerTypeCode, setBuyerTypeCode] = useState('')
   const [partyFormVisible, setPartyFormVisible] = useState(true)
   const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
   const [witnessFormVisible, setWitnessFormVisible] = useState(true)
@@ -87,6 +83,9 @@ export default function TransactionDetail({
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
+  const [paymentDate, setPaymentDate] = useState(today())
+  const [pageCount, setPageCount] = useState('')
+  const [schedules, setSchedules] = useState<ScheduleForm[]>([emptySchedule(0)])
   const [registrationComment, setRegistrationComment] = useState('')
   const [activeWorkflowTab, setActiveWorkflowTab] = useState(initialWorkflowTab ?? 'txn-property')
   const initialReadinessStep = (() => {
@@ -124,6 +123,8 @@ export default function TransactionDetail({
         setExtent(String(result.extent_or_share_transferred ?? result.extentOrShareTransferred ?? ''))
         setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
+        if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
+        if (result.feeCalculation?.page_count != null) setPageCount(String(result.feeCalculation.page_count))
 
         const savedWitnesses = Array.isArray(result.witnesses) ? result.witnesses : []
         setWitnessFormVisible(savedWitnesses.length === 0)
@@ -140,22 +141,23 @@ export default function TransactionDetail({
 
         const savedParties = Array.isArray(result.parties) ? result.parties : []
         setPartyFormVisible(savedParties.length === 0)
-        const sourceParties: Row[] = savedParties.length > 0
-          ? savedParties
-          : registeredOwners.map((owner) => ({ ...owner, side: 'SIDE_1' }))
-        const partyForms = sourceParties.map((party) => ({
-          ...emptyParty(String(party.side ?? 'SIDE_1')),
-          partyType: String(party.party_type ?? party.partyType ?? 'INDIVIDUAL'),
-          name: String(party.name ?? party.owner_name ?? party.ownerName ?? ''),
-          aadhaarNumber: String(party.aadhaar_number ?? party.aadhaarNumber ?? ''),
-          pan: String(party.pan ?? ''),
-          address: String(party.address ?? ''),
-          relationshipCode: String(party.relationship_code ?? party.relationshipCode ?? ''),
-          existingSharePct: String(party.existing_share_pct ?? party.share_pct ?? party.sharePct ?? ''),
-          shareTransferredPct: String(party.share_transferred_pct ?? ''),
-          resultingSharePct: String(party.resulting_share_pct ?? party.share_pct ?? party.sharePct ?? ''),
+        const buyerRows = savedParties.filter((party: Row) => String(party.side ?? '') === 'SIDE_2')
+        setBuyerTypeCode(String(buyerRows[0]?.owner_type_code ?? ''))
+        const text = (value: unknown) => (value === null || value === undefined ? '' : String(value))
+        const partyForms = buyerRows.map((party: Row) => ({
+          ...emptyParty('SIDE_2'),
+          ownerName: text(party.name),
+          pan: text(party.pan),
+          mobile: text(party.mobile),
+          address: text(party.address),
+          registrationNo: text(party.registration_no),
+          repName: text(party.representative_name ?? party.karta_name),
+          repDesignation: text(party.representative_designation),
+          repPan: text(party.representative_pan),
+          repMobile: text(party.representative_mobile),
+          relationshipCode: text(party.relationship_code),
         }))
-        setParties(partyForms.length > 0 ? partyForms : [emptyParty('SIDE_1'), emptyParty('SIDE_2')])
+        setParties(partyForms.length > 0 ? partyForms : [emptyParty('SIDE_2')])
       }
       setTxn({
         ...result,
@@ -235,6 +237,14 @@ export default function TransactionDetail({
       .filter((party) => party.id !== undefined || party.party_id !== undefined)
       .map((party) => ({ party_id: party.id ?? party.party_id, status: 'NOT_REQUESTED' }))
 
+  const transactionType = (bootstrap?.transactionTypes ?? []).find((type) => type.code === txn.deed_type_code)
+  const scheduleValuation = transactionType?.schedule_valuation === true
+  const relationshipOptions = transactionType?.blood_relation_required === true
+    ? []
+    : relationshipCategoryOptions(bootstrap?.feeRelationshipCategories, txn.deed_type_code)
+  const schedulesLocked = !['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING'].includes(txn.status)
+    || txn.payments.length > 0
+
   const saveDetails = () =>
     guard(
       () =>
@@ -268,68 +278,39 @@ export default function TransactionDetail({
     })
   }
 
+  const buyerTypeOptions = ownerTypeOptionsFrom(bootstrap)
+  const selectedBuyerType = buyerTypeOptions.find((type) => type.value === buyerTypeCode)
+  const buyerLayout = ownerLayout(buyerTypeCode)
+  const allowMultipleBuyers = selectedBuyerType?.allowMultipleOwners === true
+
+  const changeBuyerType = (value: string) => {
+    setBuyerTypeCode(value)
+    if (buyerTypeOptions.find((type) => type.value === value)?.allowMultipleOwners !== true) {
+      setParties((current) => {
+        const firstBuyer = current.findIndex((party) => party.side === 'SIDE_2')
+        return current.filter((party, index) => party.side !== 'SIDE_2' || index === firstBuyer)
+      })
+    }
+    setPartyErrors({})
+  }
+
   const validateParties = (): boolean => {
     const validationErrors: PartyErrors = {}
-    const transferredTotals: Record<string, number> = { SIDE_1: 0, SIDE_2: 0 }
-
-    const addError = (index: number, field: PartyField, message: string) => {
-      validationErrors[index] = {
-        ...validationErrors[index],
-        [field]: validationErrors[index]?.[field] ?? message,
-      }
-    }
-
     parties.forEach((party, index) => {
-      if (party.side === 'SIDE_1') {
-        const transferredShare = Number(party.shareTransferredPct)
-        if (party.shareTransferredPct.trim().length > 0 && Number.isFinite(transferredShare)) {
-          transferredTotals.SIDE_1 += transferredShare
-        }
-        return
-      }
-      if (party.name.trim().length === 0) {
-        addError(index, 'name', 'Name is required.')
-      }
-      if (!AADHAAR_PATTERN.test(party.aadhaarNumber)) {
-        addError(index, 'aadhaarNumber', 'Aadhaar must contain exactly 12 digits.')
-      }
-      if (party.pan.length > 0 && !PAN_PATTERN.test(party.pan)) {
-        addError(index, 'pan', 'PAN must match AAAAA9999A.')
-      }
-      if (party.address.trim().length === 0) {
-        addError(index, 'address', 'Address is required.')
-      }
-
-      const percentages: Array<[PartyField, string, boolean]> = [
-        ['existingSharePct', 'Existing share', false],
-        ['shareTransferredPct', 'Transferred share', true],
-        ['resultingSharePct', 'Resulting share', false],
-      ]
-      for (const [field, label, required] of percentages) {
-        const value = party[field].trim()
-        if (value.length === 0) {
-          if (required) addError(index, field, `${label} is required.`)
-          continue
-        }
-        const numericValue = Number(value)
-        if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
-          addError(index, field, `${label} must be between 0 and 100.`)
-        } else if (field === 'shareTransferredPct') {
-          transferredTotals[party.side] = (transferredTotals[party.side] ?? 0) + numericValue
-        }
-      }
+      if (party.side !== 'SIDE_2') return
+      const errors = validateOwner(party, buyerLayout)
+      if (Object.keys(errors).length > 0) validationErrors[index] = errors
     })
-
-    if (Math.abs(transferredTotals.SIDE_1 - transferredTotals.SIDE_2) > SHARE_EPSILON) {
-      const message = `Transferred shares must balance (seller ${transferredTotals.SIDE_1}%, buyer ${transferredTotals.SIDE_2}%).`
-      parties.forEach((_, index) => addError(index, 'shareTransferredPct', message))
-    }
-
     setPartyErrors(validationErrors)
     return Object.keys(validationErrors).length === 0
   }
 
   const saveParties = () => {
+    if (!selectedBuyerType) {
+      setInfo('')
+      setError('Select the buyer type.')
+      return
+    }
     if (!validateParties()) {
       setInfo('')
       setError('Please correct the highlighted party details before saving.')
@@ -339,21 +320,17 @@ export default function TransactionDetail({
       () =>
         put(
           `/api/transactions/${txnRef}/parties`,
-          parties.map((p) => ({
-            side: p.side,
-            role: p.side === 'SIDE_1'
-              ? txn.deedType.side1_role ?? undefined
-              : txn.deedType.side2_role ?? undefined,
-            partyType: p.partyType,
-            name: p.name,
-            aadhaarNumber: p.aadhaarNumber.length === 0 ? undefined : p.aadhaarNumber,
-            pan: p.pan.length === 0 ? undefined : p.pan,
-            address: p.address.length === 0 ? undefined : p.address,
-            relationshipCode: p.relationshipCode.length === 0 ? undefined : p.relationshipCode,
-            existingSharePct: numberOrUndefined(p.existingSharePct),
-            shareTransferredPct: numberOrUndefined(p.shareTransferredPct),
-            resultingSharePct: numberOrUndefined(p.resultingSharePct),
-          })),
+          parties.filter((p) => p.side === 'SIDE_2').map((p) => {
+            const { ownerName, ...details } = ownerPayload(p, buyerLayout)
+            return {
+              side: p.side,
+              role: txn.deedType.side2_role ?? undefined,
+              ownerTypeCode: buyerTypeCode,
+              name: ownerName,
+              ...details,
+              relationshipCode: p.relationshipCode.length === 0 ? undefined : p.relationshipCode,
+            }
+          }),
         ),
       'Parties saved.',
         () => setPartyFormVisible(false),
@@ -411,34 +388,65 @@ export default function TransactionDetail({
     }
   }
 
+  const savePartyAadhaar = (partyId: number, aadhaarNumber: string) =>
+    guard(
+      () => put(`/api/transactions/${txnRef}/parties/${partyId}/aadhaar`, { aadhaarNumber }),
+      'Aadhaar saved. You can now request the OTP.',
+    )
+
   const verifyConsent = (partyId: number) =>
     guard(
       () => post(`/api/transactions/${txnRef}/consent/verify`, { partyId, otp: otpByParty[String(partyId)] ?? '' }),
       'Consent captured.',
     )
 
-  const runRules = () =>
-    guard(async () => {
+  const runRules = async () => {
+    setError('')
+    setInfo('')
+    try {
       const results = await post<Row[]>(`/api/transactions/${encodeURIComponent(txnRef)}/rule-checks`, {})
       if (results.length === 0) {
         throw new Error('No rule engines ran for this transaction.')
       }
       await post(`/api/transactions/${txnRef}/transitions`, { actionCode: 'RULE_CHECKS_CLEAR' }, true)
-    }, 'Rule checks executed. Transaction is ready for fee calculation.')
+      const warning = ruleWarningText(results)
+      setInfo(`${warning.length > 0 ? `${warning} ` : 'Rule checks executed. '}Transaction is ready for fee calculation.`)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    } finally {
+      await load()
+    }
+  }
 
   const calculateFees = () =>
     guard(
-      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {}),
+      () =>
+        post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {
+          pageCount: pageCount.trim().length > 0 ? Number(pageCount) : undefined,
+        }),
       'Fees calculated.',
     )
+
+  const saveSchedules = () => {
+    const scheduleError = validateSchedules(schedules)
+    if (scheduleError !== null) {
+      setError(scheduleError)
+      return Promise.resolve()
+    }
+    return guard(
+      () => put(`/api/transactions/${encodeURIComponent(txnRef)}/schedules`, schedulePayload(schedules)),
+      'Schedules saved. Calculate the fee again to apply them.',
+    )
+  }
 
   const recordPayment = () => {
     const payable = txn.feeCalculation?.total_payable
     return guard(
       async () => {
+        if (paymentDate > today()) throw new Error('Payment date cannot be in the future.')
         const summary = await post<Row>(
           `/api/transactions/${txnRef}/payments`,
-          { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable) },
+          { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable), paidAt: paidAtFrom(paymentDate) },
           true,
         )
         if (summary.fullyPaid === true || Number(summary.balance) <= 0) {
@@ -511,7 +519,7 @@ export default function TransactionDetail({
       const currentDate = current === undefined ? '' : formatCell(current.checked_at)
       const resultDate = formatCell(result.checked_at)
       if (current === undefined || resultDate > currentDate) {
-        latest.set(engine, result)
+        latest.set(engine, { ...result, summary: ruleSummary(result), executed_at: result.executed_at ?? result.checked_at })
       }
       return latest
     }, new Map<string, Row>()).values(),
@@ -524,90 +532,59 @@ export default function TransactionDetail({
 
     return (
       <section className="party-group">
-        <div className="section-heading">
-          <h3>{title}</h3>
-          <button className="party-add-button" onClick={() => setParties([...parties, emptyParty(side)])}>
-            <span aria-hidden="true">+</span> Add {title.toLowerCase()}
-          </button>
+        <div className="owner-type-select">
+          <Field label={`${title} type`} value={buyerTypeCode} onChange={changeBuyerType} options={buyerTypeOptions} required />
+          {selectedBuyerType && allowMultipleBuyers ? (
+            <button className="party-add-button" onClick={() => setParties([...parties, emptyParty(side)])}>
+              <span aria-hidden="true">+</span> Add {title.toLowerCase()}
+            </button>
+          ) : null}
         </div>
-        {group.map(({ party, index }) => (
-          <div className="row party-row" key={`${side}-${index}`}>
-            <div>
-              <Field
-                label="Name"
-                value={party.name}
-                required
-                onChange={(v) => updateParty(index, 'name', v)}
-              />
-              {partyErrors[index]?.name ? <span className="field-error">{partyErrors[index].name}</span> : null}
-            </div>
-            <div>
-              <Field
-                label="Aadhaar (12 digits)"
-                value={party.aadhaarNumber}
-                required
-                onChange={(v) => updateParty(index, 'aadhaarNumber', v.replace(/\D/g, '').slice(0, 12))}
-              />
-              {partyErrors[index]?.aadhaarNumber ? (
-                <span className="field-error">{partyErrors[index].aadhaarNumber}</span>
-              ) : null}
-            </div>
-            <div>
-              <Field
-                label="PAN"
-                value={party.pan}
-                onChange={(v) => updateParty(index, 'pan', v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
-              />
-              {partyErrors[index]?.pan ? <span className="field-error">{partyErrors[index].pan}</span> : null}
-            </div>
-            <div>
-              <Field
-                label="Address"
-                value={party.address}
-                required
-                onChange={(v) => updateParty(index, 'address', v)}
-              />
-              {partyErrors[index]?.address ? (
-                <span className="field-error">{partyErrors[index].address}</span>
-              ) : null}
-            </div>
-            <div>
-              <Field
-                label="Existing share %"
-                value={party.existingSharePct}
-                type="number"
-                onChange={(v) => updateParty(index, 'existingSharePct', v)}
-              />
-              {partyErrors[index]?.existingSharePct ? (
-                <span className="field-error">{partyErrors[index].existingSharePct}</span>
-              ) : null}
-            </div>
-            <div>
-              <Field
-                label="Share transferred %"
-                value={party.shareTransferredPct}
-                type="number"
-                required
-                onChange={(v) => updateParty(index, 'shareTransferredPct', v)}
-              />
-              {partyErrors[index]?.shareTransferredPct ? (
-                <span className="field-error">{partyErrors[index].shareTransferredPct}</span>
-              ) : null}
-            </div>
-            <div>
-              <Field
-                label="Resulting share %"
-                value={party.resultingSharePct}
-                type="number"
-                onChange={(v) => updateParty(index, 'resultingSharePct', v)}
-              />
-              {partyErrors[index]?.resultingSharePct ? (
-                <span className="field-error">{partyErrors[index].resultingSharePct}</span>
-              ) : null}
-            </div>
-          </div>
-        ))}
+        {selectedBuyerType ? group.map(({ party, index }, groupIndex) => (
+          <section className="owner-entry" key={`${side}-${index}`}>
+            {group.length > 1 ? (
+              <header className="chain-history-entry-heading">
+                <h3>{title} {groupIndex + 1}</h3>
+                <button type="button" className="link" onClick={() => {
+                  setParties((current) => current.filter((_, currentIndex) => currentIndex !== index))
+                  setPartyErrors({})
+                }}>Remove</button>
+              </header>
+            ) : null}
+            <OwnerFields
+              layout={buyerLayout}
+              owner={party}
+              errors={partyErrors[index]}
+              onChange={(field, value) => updateParty(index, field, value)}
+            />
+          </section>
+        )) : null}
       </section>
+    )
+  }
+
+  const renderSavedBuyers = (title: string) => {
+    const buyers = txn.parties.filter((party) => String(party.side ?? '') === 'SIDE_2')
+    if (buyers.length === 0) return <p className="helper">No parties saved yet.</p>
+    const typeCode = String(buyers[0].owner_type_code ?? '')
+    return (
+      <>
+        <div className="owner-type-select">
+          <Field label={`${title} type`} value={typeCode ? labelFor(buyerTypeOptions, typeCode) : '—'} onChange={() => undefined} readOnly />
+        </div>
+        {buyers.map((party, index) => (
+          <section className="owner-entry" key={String(party.id ?? index)}>
+            {buyers.length > 1 ? (
+              <header className="chain-history-entry-heading"><h3>{title} {index + 1}</h3></header>
+            ) : null}
+            <PartyDetailsView
+              layout={ownerLayout(String(party.owner_type_code ?? ''))}
+              party={party}
+              relationship={party.relationship_code ? String(party.relationship_code) : undefined}
+            />
+          </section>
+        ))}
+      </>
     )
   }
 
@@ -682,16 +659,25 @@ export default function TransactionDetail({
                   onChange={setExtentUnit}
                   options={['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'PERCENT'].map((u) => ({ value: u, label: u }))}
                 />
-                <Field
-                  label="Relationship category"
-                  value={relationshipCategory}
-                  onChange={setRelationshipCategory}
-                  options={[
-                    { value: 'FAMILY', label: 'Family' },
-                    { value: 'NON_FAMILY', label: 'Non-family' },
-                  ]}
-                />
+                {relationshipOptions.length === 0 ? null : (
+                  <Field
+                    label="Relationship category"
+                    value={relationshipCategory}
+                    onChange={setRelationshipCategory}
+                    options={relationshipOptions}
+                  />
+                )}
               </div>
+              {scheduleValuation ? (
+                <>
+                  <ScheduleEditor schedules={schedules} onChange={setSchedules} readOnly={schedulesLocked} />
+                  {schedulesLocked ? null : (
+                    <div className="form-submit-row">
+                      <button type="button" className="outline" onClick={() => void saveSchedules()}>Save schedules</button>
+                    </div>
+                  )}
+                </>
+              ) : null}
               <div className="form-submit-row">
                 <button type="button" className="primary" onClick={() => void saveDetails()}>Save transaction details</button>
               </div>
@@ -714,20 +700,7 @@ export default function TransactionDetail({
               }
             >
               {renderReadinessDetails('Buyer details')}
-              {partyFormVisible ? (
-                renderPartyGroup('SIDE_2', sideTwoTitle)
-              ) : null}
-              <DataTable
-                rows={txn.parties.filter((party) => String(party.side ?? '') === 'SIDE_2')}
-                columns={[
-                  { key: 'role', label: 'Role' },
-                  { key: 'name', label: 'Name' },
-                  { key: 'aadhaar_last4', label: 'Aadhaar ••••' },
-                  { key: 'existing_share_pct', label: 'Existing %' },
-                  { key: 'resulting_share_pct', label: 'Resulting %' },
-                ]}
-                empty="No parties saved yet."
-              />
+              {partyFormVisible ? renderPartyGroup('SIDE_2', sideTwoTitle) : renderSavedBuyers(sideTwoTitle)}
             </Panel>
           </div>
 
@@ -780,6 +753,14 @@ export default function TransactionDetail({
             >
               {renderReadinessDetails('Aadhaar consent')}
               <p className="muted">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
+              <MissingAadhaarCapture
+                parties={txn.parties}
+                disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)}
+                onSave={savePartyAadhaar}
+                roleOf={(party) => formatCell(
+                  party.role ?? (party.side === 'SIDE_1' ? txn.deedType.side1_role : txn.deedType.side2_role) ?? 'Party',
+                ).replaceAll('_', ' ')}
+              />
               {consentRows.map((c, i) => (
                 <div className="row" key={i}>
                   <span className="grow">
@@ -817,7 +798,10 @@ export default function TransactionDetail({
           <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
             <Panel title="">
               {renderReadinessDetails('Rule checks')}
-              <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
+              <p className="muted">
+                A court attachment on the EC stops pre-registration. Other findings are warnings for manual review and
+                the transaction can continue.
+              </p>
               <DataTable
                 rows={latestRuleResults}
                 columns={[
@@ -829,6 +813,7 @@ export default function TransactionDetail({
                 ]}
                 empty="Rule checks have not been run."
               />
+              <RuleCheckDetails results={latestRuleResults} />
               <div className="form-submit-row">
                 <button type="button" className="primary" disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>
               </div>
@@ -838,32 +823,16 @@ export default function TransactionDetail({
           <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
             <Panel title="">
               {renderReadinessDetails('Fees & payment')}
+              <div className="row">
+                <Field label="Number of pages" value={pageCount} onChange={(value) => setPageCount(value.replace(/\D/g, ''))} type="number" />
+              </div>
               <div className="form-submit-row">
                 <button type="button" disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>
               </div>
               {txn.feeCalculation === null ? (
                 <p className="muted">No fee calculation yet.</p>
               ) : (
-                <dl className="kv">
-                  <dt>Valuation basis</dt>
-                  <dd>
-                    {formatCell(txn.feeCalculation.valuation_basis_used)} — {formatCell(txn.feeCalculation.valuation_amount)}
-                  </dd>
-                  <dt>Stamp duty</dt>
-                  <dd>{formatCell(txn.feeCalculation.stamp_duty)}</dd>
-                  <dt>Registration fee</dt>
-                  <dd>{formatCell(txn.feeCalculation.registration_fee)}</dd>
-                  <dt>TDS</dt>
-                  <dd>{formatCell(txn.feeCalculation.tds_amount)}</dd>
-                  <dt>Other charges</dt>
-                  <dd>{formatCell(txn.feeCalculation.other_charges)}</dd>
-                  <dt>Survey fee</dt>
-                  <dd>{formatCell(txn.feeCalculation.survey_fee ?? 0)}</dd>
-                  <dt>Total payable</dt>
-                  <dd>
-                    <b>{formatCell(txn.feeCalculation.total_payable)}</b>
-                  </dd>
-                </dl>
+                <FeeSummary fee={txn.feeCalculation} scheduleLines={txn.feeScheduleLines ?? []} />
               )}
               <div className="row">
                 <Field
@@ -878,6 +847,7 @@ export default function TransactionDetail({
                   ]}
                 />
                 <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
+                <Field label="Payment date" value={paymentDate} onChange={setPaymentDate} type="date" required />
                 <button
                   type="button"
                   className="primary"
@@ -894,6 +864,7 @@ export default function TransactionDetail({
                   { key: 'reference_no', label: 'Reference' },
                   { key: 'amount', label: 'Amount' },
                   { key: 'paid_at', label: 'Paid at' },
+                  { key: 'status', label: 'Status' },
                 ]}
               />
             </Panel>
