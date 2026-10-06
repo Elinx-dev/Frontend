@@ -4203,23 +4203,3 @@ button:disabled {
   font-size: 14px;
 }
 
-.party-names {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-  margin: 8px 0 16px;
-}
-.party-names dt {
-  font-weight: 600;
-}
-.party-owner-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.party-owner-table th,
-.party-owner-table td {
-  text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--line, #e2e8f0);
-}

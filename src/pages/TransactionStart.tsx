@@ -6,7 +6,6 @@ import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertySummaryPanel from './PropertySummaryPanel'
-import { maskAadhaar } from './propertyShared'
 
 interface PartyForm {
   side: string
@@ -151,7 +150,6 @@ export default function TransactionStart() {
   const [surveyorUserId, setSurveyorUserId] = useState('')
   const [surveyLocationType, setSurveyLocationType] = useState('')
   const [surveyors, setSurveyors] = useState<Row[]>([])
-  const [excludedOwners, setExcludedOwners] = useState<Record<number, boolean>>({})
   const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
   const [transferScope, setTransferScope] = useState('FULL_PROPERTY')
   const [declaredConsideration, setDeclaredConsideration] = useState('')
@@ -725,14 +723,6 @@ export default function TransactionStart() {
       setError('Create the transaction before saving buyer details.')
       return
     }
-    const sellerOwnerIds = selectedSellerOwners
-      .filter((owner) => owner.id !== undefined && owner.id !== null)
-      .map((owner) => Number(owner.id))
-    if (sellerOwnerIds.length === 0) {
-      setInfo('')
-      setError(`Select at least one ${firstPartyLabel.toLowerCase()} from the property owners.`)
-      return
-    }
     const nextErrors: PartyErrors = {}
     parties.forEach((party, index) => {
       if (party.side !== 'SIDE_2') return
@@ -746,7 +736,7 @@ export default function TransactionStart() {
       if (Object.keys(errors).length > 0) nextErrors[index] = errors
     })
     setPartyErrors(nextErrors)
-    if (secondPartyNames.length === 0 && Object.keys(nextErrors).length === 0) {
+    if (!parties.some((party) => party.side === 'SIDE_2')) {
       setInfo('')
       setError(`Add at least one ${secondPartyLabel.toLowerCase()}.`)
       return
@@ -776,10 +766,7 @@ export default function TransactionStart() {
         }))
       await put(
         `/api/transactions/${createdTransactionRef}/parties`,
-        [
-          ...sellerOwnerIds.map((propertyOwnerId) => ({ side: 'SIDE_1', propertyOwnerId })),
-          ...buyerParties,
-        ],
+        buyerParties,
       )
       await loadTransaction(createdTransactionRef, true)
       setBuyerDetailsSaved(true)
@@ -1188,10 +1175,6 @@ export default function TransactionStart() {
         : Array.isArray(property?.property_owners)
           ? property.property_owners
           : []
-  const selectedSellerOwners = (registeredOwners as Row[]).filter((_, index) => excludedOwners[index] !== true)
-  const secondPartyNames = parties
-    .filter((party) => party.side === 'SIDE_2' && party.name.trim().length > 0)
-    .map((party) => party.name.trim())
   const chainOfTitle = Array.isArray(property?.chainOfTitle)
     ? property.chainOfTitle
     : Array.isArray(property?.chain_of_title)
@@ -1737,61 +1720,8 @@ export default function TransactionStart() {
                   </header>
                   <div className="panel-body">
                     <p className="helper">
-                      Select the {firstPartyLabel.toLowerCase()} and capture {secondPartyLabel.toLowerCase()} information before moving on to witnesses and consent.
+                      Enter the {secondPartyLabel.toLowerCase()} details for this transfer. The {firstPartyLabel.toLowerCase()} is the current property owner shown on the right.
                     </p>
-                    <dl className="party-names">
-                      <dt>{firstPartyLabel}</dt>
-                      <dd>{selectedSellerOwners.map((owner) => String(owner.owner_name ?? owner.name ?? '')).filter(Boolean).join(', ') || '—'}</dd>
-                      <dt>{secondPartyLabel}</dt>
-                      <dd>{secondPartyNames.join(', ') || '—'}</dd>
-                    </dl>
-                    <section className="party-group">
-                      <div className="section-heading">
-                        <h3>{firstPartyLabel}</h3>
-                      </div>
-                      {registeredOwners.length === 0 ? (
-                        <p className="helper">No owners are recorded on this property.</p>
-                      ) : (
-                        <div className="table-wrap">
-                          <table className="party-owner-table">
-                            <thead>
-                              <tr>
-                                <th>Include</th>
-                                <th>Name</th>
-                                <th>Aadhaar</th>
-                                <th>PAN</th>
-                                <th>Mobile</th>
-                                <th>Address</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {registeredOwners.map((owner, ownerIndex) => {
-                                const ownerName = String(owner.owner_name ?? owner.ownerName ?? owner.name ?? `Owner ${ownerIndex + 1}`)
-                                return (
-                                  <tr key={`owner-${ownerIndex}`}>
-                                    <td>
-                                      <input
-                                        type="checkbox"
-                                        aria-label={`Include ${ownerName} as ${firstPartyLabel.toLowerCase()}`}
-                                        checked={excludedOwners[ownerIndex] !== true}
-                                        onChange={(event) =>
-                                          setExcludedOwners((current) => ({ ...current, [ownerIndex]: !event.target.checked }))
-                                        }
-                                      />
-                                    </td>
-                                    <td>{ownerName}</td>
-                                    <td>{owner.aadhaar_number ? maskAadhaar(owner.aadhaar_number) : '—'}</td>
-                                    <td>{String(owner.pan ?? '') || '—'}</td>
-                                    <td>{String(owner.mobile ?? '') || '—'}</td>
-                                    <td>{String(owner.address ?? '') || '—'}</td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </section>
                     <section className="party-group">
                       <div className="section-heading">
                         <h3>{sideTwoTitle}</h3>
@@ -2181,7 +2111,7 @@ export default function TransactionStart() {
             )}
           </div>
           </div>
-          {showPropertySummary ? <PropertySummaryPanel propertyRef={summaryPropertyRef} /> : null}
+          {showPropertySummary ? <PropertySummaryPanel propertyRef={summaryPropertyRef} ownerLabel={firstPartyLabel} /> : null}
           </div>
         </div>
       </div>

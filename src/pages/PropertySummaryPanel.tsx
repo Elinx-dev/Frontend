@@ -17,7 +17,7 @@ function Item({ label, value, options }: { label: string; value: unknown; option
   return <><dt>{label}</dt><dd>{options && text !== '—' ? labelFor(options, text) : text}</dd></>
 }
 
-export default function PropertySummaryPanel({ propertyRef }: { propertyRef: string }) {
+export default function PropertySummaryPanel({ propertyRef, ownerLabel }: { propertyRef: string; ownerLabel?: string }) {
   const { bootstrap } = useAuth()
   const [loaded, setLoaded] = useState<{ ref: string; property: Row | null; error: string }>({ ref: '', property: null, error: '' })
 
@@ -72,7 +72,7 @@ export default function PropertySummaryPanel({ propertyRef }: { propertyRef: str
         </dl>
       </section>
       <section className="property-summary-section">
-        <h3>Property owners</h3>
+        <h3>{ownerLabel ? `${ownerLabel} (property owners)` : 'Property owners'}</h3>
         <dl className="property-summary-list">
           <Item label="Owner type" value={ownerTypes.find((type) => type.value === ownerTypeCode)?.label ?? ownerTypeCode} />
         </dl>
