@@ -48,6 +48,8 @@ const mapEmbedUrl = ({ latitude, longitude }: { latitude: number; longitude: num
   return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${latitude}%2C${longitude}`
 }
 
+const MIN_WITNESSES = 2
+
 const emptyWitness = (): WitnessForm => ({
   name: '',
   address: '',
@@ -805,8 +807,8 @@ export default function TransactionStart() {
   }
 
   const removeWitness = (index: number) => {
-    if (witnesses.length <= 1) {
-      setError('At least one witness is required.')
+    if (index < MIN_WITNESSES || witnesses.length <= MIN_WITNESSES) {
+      setError(`At least ${MIN_WITNESSES} witnesses are required.`)
       return
     }
     setWitnesses((current) => current.filter((_, currentIndex) => currentIndex !== index))
@@ -1073,15 +1075,12 @@ export default function TransactionStart() {
       {witnesses.map((witness, index) => (
         <section className="form-section" key={`witness-${index}`}>
           <div className="section-heading">
-            <h3>Witness {witnesses.length > 1 ? index + 1 : ''}</h3>
-            <button
-              type="button"
-              className="outline"
-              disabled={witnesses.length <= 1}
-              onClick={() => removeWitness(index)}
-            >
-              Remove
-            </button>
+            <h3>Witness {index + 1}</h3>
+            {index >= MIN_WITNESSES ? (
+              <button type="button" className="outline" onClick={() => removeWitness(index)}>
+                Remove
+              </button>
+            ) : null}
           </div>
           <div className="form-grid four">
             <div>
