@@ -10,6 +10,17 @@ import {
   emptyOwner, labelFor, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm,
 } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
+import { FeeSummary, ScheduleEditor } from './FeeFields'
+import {
+  emptySchedule,
+  paidAtFrom,
+  relationshipCategoryOptions,
+  schedulePayload,
+  schedulesFromRows,
+  today,
+  validateSchedules,
+  type ScheduleForm,
+} from './feeShared'
 import { ruleSummary, ruleWarningText } from './ruleCheckResults'
 
 type PartyForm = OwnerForm & { side: string; relationshipCode: string }
@@ -72,6 +83,9 @@ export default function TransactionDetail({
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
+  const [paymentDate, setPaymentDate] = useState(today())
+  const [pageCount, setPageCount] = useState('')
+  const [schedules, setSchedules] = useState<ScheduleForm[]>([emptySchedule(0)])
   const [registrationComment, setRegistrationComment] = useState('')
   const [activeWorkflowTab, setActiveWorkflowTab] = useState(initialWorkflowTab ?? 'txn-property')
   const initialReadinessStep = (() => {
@@ -109,6 +123,7 @@ export default function TransactionDetail({
         setExtent(String(result.extent_or_share_transferred ?? result.extentOrShareTransferred ?? ''))
         setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
+        if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
 
         const savedWitnesses = Array.isArray(result.witnesses) ? result.witnesses : []
         setWitnessFormVisible(savedWitnesses.length === 0)
@@ -220,6 +235,14 @@ export default function TransactionDetail({
     : txn.parties
       .filter((party) => party.id !== undefined || party.party_id !== undefined)
       .map((party) => ({ party_id: party.id ?? party.party_id, status: 'NOT_REQUESTED' }))
+
+  const transactionType = (bootstrap?.transactionTypes ?? []).find((type) => type.code === txn.deed_type_code)
+  const scheduleValuation = transactionType?.schedule_valuation === true
+  const relationshipOptions = transactionType?.blood_relation_required === true
+    ? []
+    : relationshipCategoryOptions(bootstrap?.feeRelationshipCategories, txn.deed_type_code)
+  const schedulesLocked = !['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING'].includes(txn.status)
+    || txn.payments.length > 0
 
   const saveDetails = () =>
     guard(
@@ -396,17 +419,33 @@ export default function TransactionDetail({
 
   const calculateFees = () =>
     guard(
-      () => post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {}),
+      () =>
+        post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {
+          pageCount: pageCount.trim().length > 0 ? Number(pageCount) : undefined,
+        }),
       'Fees calculated.',
     )
+
+  const saveSchedules = () => {
+    const scheduleError = validateSchedules(schedules)
+    if (scheduleError !== null) {
+      setError(scheduleError)
+      return Promise.resolve()
+    }
+    return guard(
+      () => put(`/api/transactions/${encodeURIComponent(txnRef)}/schedules`, schedulePayload(schedules)),
+      'Schedules saved. Calculate the fee again to apply them.',
+    )
+  }
 
   const recordPayment = () => {
     const payable = txn.feeCalculation?.total_payable
     return guard(
       async () => {
+        if (paymentDate > today()) throw new Error('Payment date cannot be in the future.')
         const summary = await post<Row>(
           `/api/transactions/${txnRef}/payments`,
-          { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable) },
+          { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable), paidAt: paidAtFrom(paymentDate) },
           true,
         )
         if (summary.fullyPaid === true || Number(summary.balance) <= 0) {
@@ -619,16 +658,25 @@ export default function TransactionDetail({
                   onChange={setExtentUnit}
                   options={['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'PERCENT'].map((u) => ({ value: u, label: u }))}
                 />
-                <Field
-                  label="Relationship category"
-                  value={relationshipCategory}
-                  onChange={setRelationshipCategory}
-                  options={[
-                    { value: 'FAMILY', label: 'Family' },
-                    { value: 'NON_FAMILY', label: 'Non-family' },
-                  ]}
-                />
+                {relationshipOptions.length === 0 ? null : (
+                  <Field
+                    label="Relationship category"
+                    value={relationshipCategory}
+                    onChange={setRelationshipCategory}
+                    options={relationshipOptions}
+                  />
+                )}
               </div>
+              {scheduleValuation ? (
+                <>
+                  <ScheduleEditor schedules={schedules} onChange={setSchedules} readOnly={schedulesLocked} />
+                  {schedulesLocked ? null : (
+                    <div className="form-submit-row">
+                      <button type="button" className="outline" onClick={() => void saveSchedules()}>Save schedules</button>
+                    </div>
+                  )}
+                </>
+              ) : null}
               <div className="form-submit-row">
                 <button type="button" className="primary" onClick={() => void saveDetails()}>Save transaction details</button>
               </div>
@@ -774,32 +822,16 @@ export default function TransactionDetail({
           <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
             <Panel title="">
               {renderReadinessDetails('Fees & payment')}
+              <div className="row">
+                <Field label="Number of pages" value={pageCount} onChange={(value) => setPageCount(value.replace(/\D/g, ''))} type="number" />
+              </div>
               <div className="form-submit-row">
                 <button type="button" disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>
               </div>
               {txn.feeCalculation === null ? (
                 <p className="muted">No fee calculation yet.</p>
               ) : (
-                <dl className="kv">
-                  <dt>Valuation basis</dt>
-                  <dd>
-                    {formatCell(txn.feeCalculation.valuation_basis_used)} — {formatCell(txn.feeCalculation.valuation_amount)}
-                  </dd>
-                  <dt>Stamp duty</dt>
-                  <dd>{formatCell(txn.feeCalculation.stamp_duty)}</dd>
-                  <dt>Registration fee</dt>
-                  <dd>{formatCell(txn.feeCalculation.registration_fee)}</dd>
-                  <dt>TDS</dt>
-                  <dd>{formatCell(txn.feeCalculation.tds_amount)}</dd>
-                  <dt>Other charges</dt>
-                  <dd>{formatCell(txn.feeCalculation.other_charges)}</dd>
-                  <dt>Survey fee</dt>
-                  <dd>{formatCell(txn.feeCalculation.survey_fee ?? 0)}</dd>
-                  <dt>Total payable</dt>
-                  <dd>
-                    <b>{formatCell(txn.feeCalculation.total_payable)}</b>
-                  </dd>
-                </dl>
+                <FeeSummary fee={txn.feeCalculation} scheduleLines={txn.feeScheduleLines ?? []} />
               )}
               <div className="row">
                 <Field
@@ -814,6 +846,7 @@ export default function TransactionDetail({
                   ]}
                 />
                 <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
+                <Field label="Payment date" value={paymentDate} onChange={setPaymentDate} type="date" required />
                 <button
                   type="button"
                   className="primary"
@@ -830,6 +863,7 @@ export default function TransactionDetail({
                   { key: 'reference_no', label: 'Reference' },
                   { key: 'amount', label: 'Amount' },
                   { key: 'paid_at', label: 'Paid at' },
+                  { key: 'status', label: 'Status' },
                 ]}
               />
             </Panel>

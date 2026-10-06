@@ -9,6 +9,17 @@ import { MissingAadhaarCapture, OwnerFields } from './OwnerFields'
 import PropertySummaryPanel from './PropertySummaryPanel'
 import { emptyOwner, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
+import { FeeSummary, ScheduleEditor } from './FeeFields'
+import {
+  emptySchedule,
+  paidAtFrom,
+  relationshipCategoryOptions,
+  schedulePayload,
+  schedulesFromRows,
+  today,
+  validateSchedules,
+  type ScheduleForm,
+} from './feeShared'
 import { ruleSummary, ruleWarningText } from './ruleCheckResults'
 
 type PartyForm = OwnerForm & { side: string; relationshipCode: string }
@@ -163,6 +174,9 @@ export default function TransactionStart() {
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
+  const [paymentDate, setPaymentDate] = useState(today())
+  const [pageCount, setPageCount] = useState('')
+  const [schedules, setSchedules] = useState<ScheduleForm[]>([emptySchedule(0)])
   const [registrationComment, setRegistrationComment] = useState('')
   const detailRef = useRef<HTMLDivElement | null>(null)
   const initialTransactionStageLocked = useRef(false)
@@ -179,6 +193,8 @@ export default function TransactionStart() {
   const surveyNeeded = subdivisionYes || surveyRequiredByParty === 'YES'
   const bloodRelationRequired = selectedType?.blood_relation_required === true
   const relationshipRequired = !bloodRelationRequired && selectedDeed?.requires_relationship_category === true
+  const scheduleValuation = selectedType?.schedule_valuation === true
+  const relationshipOptions = relationshipCategoryOptions(bootstrap?.feeRelationshipCategories, selectedTypeCode)
   const firstPartyLabel = String(selectedType?.first_party_label ?? txn?.deedType?.first_party_label ?? 'Seller')
   const secondPartyLabel = String(selectedType?.second_party_label ?? txn?.deedType?.second_party_label ?? 'Buyer')
   const sideTwoTitle = secondPartyLabel
@@ -252,6 +268,7 @@ export default function TransactionStart() {
         validation: Array.isArray(result.validation) ? result.validation : [],
       }
       setTxn(normalized)
+      if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
       return normalized
     } catch (e) {
       if (!silent) {
@@ -626,6 +643,12 @@ export default function TransactionStart() {
       )
       return
     }
+    const scheduleError = scheduleValuation ? validateSchedules(schedules) : null
+    if (scheduleError !== null) {
+      setInfo('')
+      setError(scheduleError)
+      return
+    }
     setError('')
     setInfo('')
     setBusy(true)
@@ -643,7 +666,7 @@ export default function TransactionStart() {
         modeOfConsideration: Number(declaredConsideration) > 0 ? modeOfConsideration : undefined,
         extentOrShareTransferred: extentOrShareTransferred ? Number(extentOrShareTransferred) : undefined,
         extentUnit: extentOrShareTransferred ? extentUnit : undefined,
-        relationshipCategory: bloodRelationRequired ? 'FAMILY' : relationshipCategory || undefined,
+        relationshipCategory: relationshipCategory || undefined,
         guidelineValue: guidelineValue ? Number(guidelineValue) : undefined,
         guidelineValueReference: guidelineValueReference || undefined,
         basisOfSettlement: basisOfSettlement || undefined,
@@ -652,11 +675,16 @@ export default function TransactionStart() {
       }, true)
       const transactionRef = String(created.txn_ref ?? created.id)
       setCreatedTransactionRef(transactionRef)
+      if (scheduleValuation) {
+        await put(`/api/transactions/${encodeURIComponent(transactionRef)}/schedules`, schedulePayload(schedules))
+      }
       setActiveStage(2)
       setTxn(null)
       setOtpByParty({})
       setPaymentMode('E_CHALLAN')
       setPaymentRef('')
+      setPaymentDate(today())
+      setPageCount('')
       setRegistrationComment('')
       setParties([emptyParty('SIDE_2')])
       setBuyerTypeCode('')
@@ -1005,10 +1033,29 @@ export default function TransactionStart() {
     setError('')
     setInfo('')
     try {
-      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/fees`, {})
+      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/fees`, {
+        pageCount: pageCount.trim().length > 0 ? Number(pageCount) : undefined,
+      })
       await loadTransaction(createdTransactionRef, true)
       setActiveStage(6)
       setInfo('Fees calculated.')
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    }
+  }
+
+  const saveSchedules = async () => {
+    const scheduleError = validateSchedules(schedules)
+    if (scheduleError !== null) {
+      setError(scheduleError)
+      return
+    }
+    setError('')
+    setInfo('')
+    try {
+      await put(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/schedules`, schedulePayload(schedules))
+      await loadTransaction(createdTransactionRef, true)
+      setInfo('Schedules saved. Calculate the fee again to apply them.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     }
@@ -1032,12 +1079,16 @@ export default function TransactionStart() {
       setError('Payment reference is required.')
       return
     }
+    if (paymentDate > today()) {
+      setError('Payment date cannot be in the future.')
+      return
+    }
     setError('')
     setInfo('')
     try {
       const summary = await post<Row>(
         `/api/transactions/${encodeURIComponent(createdTransactionRef)}/payments`,
-        { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable) },
+        { mode: paymentMode, referenceNo: paymentRef, amount: Number(payable), paidAt: paidAtFrom(paymentDate) },
         true,
       )
       if (summary.fullyPaid === true || Number(summary.balance) <= 0) {
@@ -1608,7 +1659,7 @@ export default function TransactionStart() {
                       setDeedTypeCode(value)
                       setSubdivisionRequired(type?.subdivision_allowed === true ? '' : 'NO')
                       if (transferScope === 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION') setTransferScope('FULL_PROPERTY')
-                      if (type?.blood_relation_required === true) setRelationshipCategory('FAMILY')
+                      setRelationshipCategory(String(type?.default_relationship_category ?? ''))
                       if (value === 'GIFT' || value === 'SETTLEMENT') {
                         setDeclaredConsideration('0')
                         setModeOfConsideration('')
@@ -1696,15 +1747,12 @@ export default function TransactionStart() {
                       { value: 'MIXED', label: 'Mixed' },
                     ]}
                   />
-                  {bloodRelationRequired ? null : (
+                  {bloodRelationRequired || relationshipOptions.length === 0 ? null : (
                     <Field
                       label="Relationship category"
                       value={relationshipCategory}
                       onChange={setRelationshipCategory}
-                      options={[
-                        { value: 'FAMILY', label: 'Family' },
-                        { value: 'NON_FAMILY', label: 'Non-family' },
-                      ]}
+                      options={relationshipOptions}
                       required={relationshipRequired}
                     />
                   )}
@@ -1716,6 +1764,9 @@ export default function TransactionStart() {
                   <Field label="Share being released" value={shareBeingReleased} onChange={setShareBeingReleased} type="number" />
                   <Field label="Resulting subparcel count" value={resultingSubparcelCount} onChange={setResultingSubparcelCount} type="number" />
                 </div>
+                {scheduleValuation ? (
+                  <ScheduleEditor schedules={schedules} onChange={setSchedules} readOnly={transactionCreated} />
+                ) : null}
                 {selectedType ? (
                   <p className="helper">
                     {firstPartyLabel} → {secondPartyLabel}. Survey: <b>{surveyDecision}</b>
@@ -1938,29 +1989,29 @@ export default function TransactionStart() {
                     <h2>7. Fees and payment</h2>
                   </header>
                   <div className="panel-body">
+                    {scheduleValuation ? (
+                      <>
+                        <ScheduleEditor
+                          schedules={schedules}
+                          onChange={setSchedules}
+                          readOnly={txnStatus !== 'FEE_PAYMENT_PENDING' || txn.payments.length > 0}
+                        />
+                        {txnStatus === 'FEE_PAYMENT_PENDING' && txn.payments.length === 0 ? (
+                          <div className="form-submit-row">
+                            <button type="button" className="outline" onClick={() => void saveSchedules()}>
+                              Save schedules
+                            </button>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                    <div className="row">
+                      <Field label="Number of pages" value={pageCount} onChange={(value) => setPageCount(value.replace(/\D/g, ''))} type="number" />
+                    </div>
                     {txn.feeCalculation === null ? (
                       <p className="muted">No fee calculation yet.</p>
                     ) : (
-                      <dl className="kv">
-                        <dt>Valuation basis</dt>
-                        <dd>
-                          {String(txn.feeCalculation.valuation_basis_used ?? '')} — {String(txn.feeCalculation.valuation_amount ?? '')}
-                        </dd>
-                        <dt>Stamp duty</dt>
-                        <dd>{String(txn.feeCalculation.stamp_duty ?? '')}</dd>
-                        <dt>Registration fee</dt>
-                        <dd>{String(txn.feeCalculation.registration_fee ?? '')}</dd>
-                        <dt>TDS</dt>
-                        <dd>{String(txn.feeCalculation.tds_amount ?? '')}</dd>
-                        <dt>Other charges</dt>
-                        <dd>{String(txn.feeCalculation.other_charges ?? '')}</dd>
-                        <dt>Survey fee</dt>
-                        <dd>{String(txn.feeCalculation.survey_fee ?? '0')}</dd>
-                        <dt>Total payable</dt>
-                        <dd>
-                          <b>{String(txn.feeCalculation.total_payable ?? '')}</b>
-                        </dd>
-                      </dl>
+                      <FeeSummary fee={txn.feeCalculation} scheduleLines={txn.feeScheduleLines ?? []} />
                     )}
                     <div className="row">
                       <Field
@@ -1975,6 +2026,7 @@ export default function TransactionStart() {
                         ]}
                       />
                       <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
+                      <Field label="Payment date" value={paymentDate} onChange={setPaymentDate} type="date" required />
                     </div>
                     <DataTable
                       rows={txn.payments}
@@ -1983,6 +2035,7 @@ export default function TransactionStart() {
                         { key: 'reference_no', label: 'Reference' },
                         { key: 'amount', label: 'Amount' },
                         { key: 'paid_at', label: 'Paid at' },
+                        { key: 'status', label: 'Status' },
                       ]}
                     />
                     <div className="form-submit-row">

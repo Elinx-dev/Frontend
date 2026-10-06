@@ -49,6 +49,7 @@ export interface Bootstrap {
   transactionTypes?: Row[]
   surveyFees?: Row[]
   bloodRelations?: Row[]
+  feeRelationshipCategories?: Row[]
   optionSets: Record<string, Row[]>
   relationships: Row[]
   documentTypes: Row[]
@@ -70,6 +71,8 @@ export interface TransactionDetail extends Row {
   consents: Row[]
   ruleCheckResults: Row[]
   feeCalculation: Row | null
+  schedules?: Row[]
+  feeScheduleLines?: Row[]
   payments: Row[]
   registeredOwners: Row[]
   surveyParcels: Row[]
