@@ -78,7 +78,7 @@ export interface Slot {
 
 export type StageTone = 'action' | 'waiting' | 'booked' | 'done' | 'danger'
 
-const STAGE_TONES: Record<string, StageTone> = {
+export const VAO_STAGE_TONES: Record<string, StageTone> = {
   AWAITING_PROPOSAL: 'action',
   SURVEYOR_PROPOSED: 'action',
   SURVEYOR_COUNTERED: 'action',
@@ -91,13 +91,6 @@ const STAGE_TONES: Record<string, StageTone> = {
   OBJECTION_PENDING: 'danger',
   VERIFIED: 'done',
 }
-
-export function stageTone(stage: string): StageTone {
-  return STAGE_TONES[stage] ?? 'waiting'
-}
-
-/** Stages that still need the VAO to settle a visit slot. */
-export const BOOKABLE_STAGES = new Set(['AWAITING_PROPOSAL', 'SURVEYOR_PROPOSED', 'SURVEYOR_COUNTERED', 'VAO_PROPOSED', 'VAO_COUNTERED'])
 
 export function isCompleted(record: VaoRecord): boolean {
   return record.stage === 'VERIFIED'

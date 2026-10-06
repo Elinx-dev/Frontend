@@ -5,21 +5,23 @@ import { post } from '../../api'
 import { Banner } from '../../ui'
 import { CalendarIcon, CheckCircleIcon, ClockIcon } from '../../icons'
 import { errorText, useVaoResource } from './useVao'
+import { VAO_PORTAL } from './portal'
+import type { Portal } from './portal'
 import { StagePill, VaoHeading } from './VaoUi'
-import { canBook, todayIso, when } from './vaoShared'
+import { todayIso, when } from './vaoShared'
 import type { Slot, VaoRecord } from './vaoShared'
 
-export default function SlotBooking() {
+export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }) {
   const [params, setParams] = useSearchParams()
   const [date, setDate] = useState(todayIso())
   const [time, setTime] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const records = useVaoResource<VaoRecord[]>('/api/vao/records')
-  const slots = useVaoResource<{ date: string; slots: Slot[] }>(date === '' ? null : `/api/vao/slots?date=${date}`)
+  const records = useVaoResource<VaoRecord[]>(`${portal.api}/records`)
+  const slots = useVaoResource<{ date: string; slots: Slot[] }>(date === '' ? null : `${portal.api}/slots?date=${date}`)
 
-  const bookable = useMemo(() => (records.data ?? []).filter(canBook), [records.data])
+  const bookable = useMemo(() => (records.data ?? []).filter(portal.canBook), [records.data, portal])
   const txnRef = params.get('txn') ?? bookable[0]?.txn_ref ?? ''
   const record = (records.data ?? []).find((r) => r.txn_ref === txnRef) ?? null
 
@@ -29,11 +31,11 @@ export default function SlotBooking() {
     setError('')
     setMessage('')
     try {
-      const result = await post<VaoRecord>(`/api/vao/records/${encodeURIComponent(record.txn_ref)}/book`, { visitDate: date, visitTime: time })
+      const result = await post<VaoRecord>(`${portal.api}/records/${encodeURIComponent(record.txn_ref)}/book`, { visitDate: date, visitTime: time })
       setMessage(
         result.slot_booked
-          ? `Slot booked for ${result.ulpin ?? result.txn_ref} on ${when(result.agreed_date, result.agreed_time)}. You can now verify once the record is with you.`
-          : `Proposed ${when(result.agreed_date, result.agreed_time)} to the Surveyor for ${result.ulpin ?? result.txn_ref}. The slot is booked once they accept.`,
+          ? `Slot booked for ${result.ulpin ?? result.txn_ref} on ${when(result.agreed_date, result.agreed_time)}. ${portal.key === 'VAO' ? 'You can now verify once the record is with you.' : 'You can now open the survey form.'}`
+          : `Proposed ${when(result.agreed_date, result.agreed_time)} to the ${portal.other} for ${result.ulpin ?? result.txn_ref}. The slot is booked once they accept.`,
       )
       setTime('')
       await Promise.all([records.reload(), slots.reload()])
@@ -48,7 +50,9 @@ export default function SlotBooking() {
     <div className="vao-page">
       <VaoHeading
         title="Slot Booking"
-        subtitle="Book a site-visit slot for an assigned record. A record can only be verified after its visit slot is booked."
+        subtitle={portal.key === 'VAO'
+          ? 'Book a site-visit slot for an assigned record. A record can only be verified after its visit slot is booked.'
+          : 'Propose a joint site-visit slot to the VAO. The survey form unlocks once the slot is booked.'}
       />
       <Banner kind="error" message={error || records.error || slots.error} />
       <Banner kind="success" message={message} />
@@ -68,7 +72,7 @@ export default function SlotBooking() {
                   <strong>{r.ulpin ?? r.property_ref}</strong>
                   <small>{r.txn_ref} · {r.village_name ?? r.village_code ?? '—'}</small>
                 </div>
-                <StagePill record={r} />
+                <StagePill record={r} portal={portal} />
               </button>
             ))}
           </div>
@@ -83,7 +87,7 @@ export default function SlotBooking() {
               <div className="vao-booking-summary">
                 <div><span>ULPIN</span><strong className="mono">{record.ulpin ?? record.property_ref}</strong></div>
                 <div><span>Survey no.</span><strong>{record.survey_no ?? '—'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</strong></div>
-                <div><span>Surveyor</span><strong>{record.surveyor_name ?? 'Field verification (VAO only)'}</strong></div>
+                <div><span>{portal.other}</span><strong>{portal.otherName(record) ?? (portal.key === 'VAO' ? 'Field verification (VAO only)' : 'Village VAO')}</strong></div>
                 <div><span>Current plan</span><strong>{when(record.agreed_date, record.agreed_time)}</strong></div>
               </div>
               <label className="vao-date-field">
@@ -109,7 +113,7 @@ export default function SlotBooking() {
               </div>
               <button className="vao-btn-navy wide" disabled={busy || time === ''} onClick={() => void book()}>
                 <CheckCircleIcon />
-                {record.status === 'SURVEY_PENDING' ? 'Book slot with Surveyor' : 'Book slot'}
+                {record.status === 'SURVEY_PENDING' ? `Book slot with ${portal.other}` : 'Book slot'}
                 {time === '' ? '' : ` · ${date} ${time}`}
               </button>
             </>

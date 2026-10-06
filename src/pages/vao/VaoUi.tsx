@@ -1,21 +1,24 @@
 import type { ReactNode } from 'react'
 
-import { stageTone } from './vaoShared'
+import { VAO_PORTAL } from './portal'
+import type { Portal } from './portal'
 import type { VaoRecord } from './vaoShared'
 
-export function StagePill({ record }: { record: Pick<VaoRecord, 'stage' | 'stage_label'> }) {
-  return <span className={`vao-stage vao-stage-${stageTone(record.stage)}`}>{record.stage_label}</span>
+export function StagePill({ record, portal = VAO_PORTAL }: { record: Pick<VaoRecord, 'stage' | 'stage_label'>; portal?: Portal }) {
+  return <span className={`vao-stage vao-stage-${portal.tones[record.stage] ?? 'waiting'}`}>{record.stage_label}</span>
 }
 
-export function CheckIns({ record }: { record: Pick<VaoRecord, 'vao_checkin_at' | 'surveyor_checkin_at' | 'visit_purpose'> }) {
+export function CheckIns({ record, portal = VAO_PORTAL }: { record: VaoRecord; portal?: Portal }) {
+  const self = portal.selfCheckin(record)
+  const other = portal.otherCheckin(record)
   return (
     <span className="vao-checkins">
-      <span className={record.vao_checkin_at == null ? 'vao-check' : 'vao-check done'}>
-        {record.vao_checkin_at == null ? '' : '✓ '}You
+      <span className={self == null ? 'vao-check' : 'vao-check done'}>
+        {self == null ? '' : '✓ '}You
       </span>
       {record.visit_purpose === 'FIELD_VERIFICATION' ? null : (
-        <span className={record.surveyor_checkin_at == null ? 'vao-check' : 'vao-check done'}>
-          {record.surveyor_checkin_at == null ? '' : '✓ '}Surveyor
+        <span className={other == null ? 'vao-check' : 'vao-check done'}>
+          {other == null ? '' : '✓ '}{portal.other}
         </span>
       )}
     </span>

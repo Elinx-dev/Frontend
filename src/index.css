@@ -5337,3 +5337,127 @@ a.vao-quick:hover {
   .vao-booking,
   .vao-detail-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Surveyor portal: Survey Verification Form ---------- */
+.sv-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, 100%);
+  height: min(880px, 94vh);
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-xl);
+}
+.sv-sub { color: var(--muted); font-size: 12px; }
+.sv-body { display: grid; flex: 1; grid-template-columns: minmax(380px, 45%) 1fr; min-height: 0; }
+.sv-left { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+.sv-right { display: flex; flex-direction: column; min-height: 0; padding: 0 16px 16px; overflow: auto; }
+.sv-tabs { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-bottom: 1px solid var(--line); }
+.sv-tabs.right { padding: 0; margin-bottom: 14px; }
+.sv-tabs button {
+  padding: 12px 14px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.sv-tabs button.active { border-bottom-color: var(--navy); color: var(--navy); font-weight: 600; }
+.sv-tabs em { margin-left: auto; color: var(--faint); font-size: 11px; }
+.sv-pane { flex: 1; overflow: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.sv-section { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: var(--r-lg); background: var(--surface-head); }
+.sv-section h3 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--navy); font-size: 13px; font-weight: 600; }
+.sv-section h3 svg { width: 15px; height: 15px; }
+.sv-section-head { display: flex; justify-content: space-between; align-items: center; }
+.sv-section label, .sv-field { display: flex; flex-direction: column; gap: 5px; }
+.sv-section label > span { color: var(--ink); font-size: 12.5px; font-weight: 500; }
+.sv-section input, .sv-section select, .sv-section textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: #fff;
+  font-size: 13.5px;
+}
+.sv-section textarea { resize: vertical; font-family: inherit; }
+.sv-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sv-grid-extent { display: grid; grid-template-columns: 1fr 120px; gap: 10px; }
+.sv-hint { margin: 0; color: var(--muted); font-size: 12px; }
+.sv-ok, .sv-err { margin: 0; font-size: 12px; }
+.sv-ok { color: var(--success); }
+.sv-ok::before { content: '✓ '; }
+.sv-err { color: var(--danger); }
+.sv-err::before { content: '⚠ '; }
+.sv-add { padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; color: var(--navy); font-size: 12px; font-weight: 600; }
+.sv-rows { display: flex; flex-direction: column; gap: 6px; }
+.sv-row { display: grid; align-items: center; gap: 6px; }
+.sv-row.measure { grid-template-columns: 1fr 1fr 1fr 70px 30px; }
+.sv-row.poly { grid-template-columns: 18px 1fr 58px 1fr 58px 30px; }
+.sv-row.head span { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.sv-row input, .sv-row select { padding: 7px 8px; font-family: var(--font-mono); font-size: 12.5px; }
+.sv-idx { color: var(--faint); font-size: 11.5px; text-align: right; }
+.sv-del { padding: 0; height: 28px; border: 0; background: none; color: var(--danger); font-size: 14px; }
+.sv-del:disabled { opacity: 0.3; }
+.sv-note { padding: 10px 12px; border: 1px solid var(--gold-light); border-radius: var(--r-md); background: var(--gold-soft); color: #7a5a14; font-size: 12px; line-height: 1.5; }
+.sv-footer { display: flex; flex-direction: column; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+.sv-conflict { padding: 9px 12px; border: 1px solid var(--danger); border-radius: var(--r-md); background: var(--danger-bg); color: var(--danger-text); font-size: 12px; line-height: 1.5; }
+.sv-submit {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--navy);
+  color: #fff;
+  font-weight: 600;
+}
+.sv-submit.conflict { background: var(--danger); }
+.sv-submit svg { width: 15px; height: 15px; }
+.sv-preview { display: flex; flex-direction: column; gap: 8px; }
+.sv-map { height: 380px; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.sv-map-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: 380px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  text-align: center;
+}
+.sv-map-empty svg { width: 26px; height: 26px; color: var(--faint); }
+.sv-map-empty strong { color: var(--navy); }
+.sv-map-caption { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
+.sv-map-caption span { display: inline-flex; align-items: center; gap: 4px; }
+.sv-map-caption svg { width: 13px; height: 13px; }
+.sv-map-caption .ok { color: var(--success); }
+.sv-map-caption a { color: var(--navy); font-weight: 600; }
+.sv-sketch svg { width: 100%; height: auto; border: 1px solid var(--line); border-radius: var(--r-lg); background: #fff; }
+.sv-sketch-len { fill: var(--navy); font-size: 12px; font-weight: 600; }
+.sv-sketch-pt { fill: var(--gold); font-size: 12px; font-weight: 700; }
+.sv-sketch-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+.sv-sketch-legend .ok { color: var(--success); }
+.sv-sketch-legend .warn { color: var(--danger); }
+.sv-sketch-sides { margin: 6px 0 0; padding-left: 18px; color: var(--ink); font-size: 12px; line-height: 1.7; }
+.sv-variance { font-family: var(--font-mono); }
+.sv-variance.bad { color: var(--danger); font-weight: 600; }
+.sv-notes { white-space: pre-wrap; margin: 0; line-height: 1.6; }
+.sv-gap { margin-top: 18px; }
+.vao-checklist li.warn { color: var(--danger-text); font-weight: 500; }
+.vao-checklist li.warn::before { content: '!'; display: grid; place-items: center; border-color: var(--danger); background: var(--danger); color: #fff; font-size: 11px; }
+
+@media (max-width: 900px) {
+  .sv-modal { height: auto; max-height: 94vh; overflow: auto; }
+  .sv-body { grid-template-columns: 1fr; }
+  .sv-left { border-right: 0; }
+}

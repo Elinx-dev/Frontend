@@ -4,20 +4,24 @@ import { post } from '../../api'
 import { Banner } from '../../ui'
 import { CalendarIcon, CheckCircleIcon, ClockIcon, PinIcon } from '../../icons'
 import { errorText } from './useVao'
+import { VAO_PORTAL } from './portal'
+import type { Portal } from './portal'
 import { VaoModal } from './VaoUi'
 import { todayIso, when } from './vaoShared'
 import type { VaoRecord } from './vaoShared'
 
 /**
  * Manages one record's site visit: propose or counter a date and time, accept the
- * Surveyor's proposal, or check in on the booked day (server-stamped).
+ * other party's proposal, or check in on the booked day (server-stamped).
  */
-export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; onClose: () => void; onChanged: () => void }) {
+export function VisitModal({ record, onClose, onChanged, portal = VAO_PORTAL }: { record: VaoRecord; onClose: () => void; onChanged: () => void; portal?: Portal }) {
   const [visitDate, setVisitDate] = useState(record.agreed_date ?? todayIso())
   const [visitTime, setVisitTime] = useState(record.agreed_time ?? '10:30')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const base = `/api/vao/records/${encodeURIComponent(record.txn_ref)}`
+  const base = `${portal.api}/records/${encodeURIComponent(record.txn_ref)}`
+  const selfCheckin = portal.selfCheckin(record)
+  const otherName = portal.otherName(record)
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true)
@@ -34,18 +38,18 @@ export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; 
   }
 
   const book = () => run(() => post(`${base}/book`, { visitDate, visitTime }))
-  const surveyorTurn = record.stage === 'SURVEYOR_PROPOSED' || record.stage === 'SURVEYOR_COUNTERED'
-  const fieldVisit = record.status !== 'SURVEY_PENDING'
+  const otherTurn = portal.otherTurn.includes(record.stage)
+  const fieldVisit = portal.key === 'VAO' && record.status !== 'SURVEY_PENDING'
   const proposeTitle = fieldVisit ? 'Book Field-Verification Slot' : record.visit_status == null ? 'Propose Visit Date & Time' : 'Counter-Propose Date & Time'
 
   return (
     <VaoModal title="Schedule Site Visit" onClose={onClose}>
       <p className="vao-modal-meta">
         {record.ulpin ?? record.property_ref} · <span>{record.txn_ref}</span>
-        {record.surveyor_name == null ? null : (
+        {otherName == null ? null : (
           <>
             <br />
-            Surveyor: <strong>{record.surveyor_name}</strong>
+            {portal.other}: <strong>{otherName}</strong>
           </>
         )}
       </p>
@@ -59,18 +63,18 @@ export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; 
           </h3>
           <div className="vao-visit-when">{when(record.agreed_date, record.agreed_time)}</div>
           <div className="vao-checkin-grid">
-            <div className={record.vao_checkin_at == null ? '' : 'done'}>
-              {record.vao_checkin_at == null ? 'Your check-in pending' : `You checked in · ${new Date(record.vao_checkin_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`}
+            <div className={selfCheckin == null ? '' : 'done'}>
+              {selfCheckin == null ? 'Your check-in pending' : `You checked in · ${new Date(selfCheckin).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`}
             </div>
             {fieldVisit && record.visit_purpose === 'FIELD_VERIFICATION' ? (
               <div className="muted-cell">Field verification (VAO only)</div>
             ) : (
-              <div className={record.surveyor_checkin_at == null ? '' : 'done'}>
-                {record.surveyor_checkin_at == null ? 'Surveyor check-in pending' : 'Surveyor checked in'}
+              <div className={portal.otherCheckin(record) == null ? '' : 'done'}>
+                {portal.otherCheckin(record) == null ? `${portal.other} check-in pending` : `${portal.other} checked in`}
               </div>
             )}
           </div>
-          {record.vao_checkin_at == null && record.visit_id != null ? (
+          {selfCheckin == null && record.visit_id != null ? (
             <button
               className="vao-btn-navy"
               disabled={busy || (record.agreed_date ?? '') > todayIso()}
@@ -80,17 +84,17 @@ export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; 
               Check In at Site
             </button>
           ) : null}
-          {(record.agreed_date ?? '') > todayIso() && record.vao_checkin_at == null ? (
+          {(record.agreed_date ?? '') > todayIso() && selfCheckin == null ? (
             <small className="vao-hint">Check-in opens on {record.agreed_date}. The time is taken from the server clock.</small>
           ) : null}
         </div>
       ) : null}
 
-      {surveyorTurn && record.visit_id != null ? (
+      {otherTurn && record.visit_id != null ? (
         <div className="vao-visit-box proposal">
           <h3>
             <ClockIcon />
-            {record.stage === 'SURVEYOR_COUNTERED' ? 'Surveyor counter-proposal' : 'Surveyor proposed'}
+            {record.stage.endsWith('_COUNTERED') ? `${portal.other} counter-proposal` : `${portal.other} proposed`}
           </h3>
           <div className="vao-visit-when">{when(record.agreed_date, record.agreed_time)}</div>
           <button
@@ -104,11 +108,11 @@ export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; 
         </div>
       ) : null}
 
-      {record.stage === 'VAO_PROPOSED' || record.stage === 'VAO_COUNTERED' ? (
+      {portal.ownWaiting.includes(record.stage) ? (
         <div className="vao-visit-box waiting">
           <h3>
             <ClockIcon />
-            Waiting for the Surveyor
+            Waiting for the {portal.other}
           </h3>
           <div className="vao-visit-when">{when(record.agreed_date, record.agreed_time)}</div>
           <small className="vao-hint">You can revise your proposal below.</small>
@@ -119,7 +123,7 @@ export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; 
         <div className="vao-visit-box propose">
           <h3>
             <CalendarIcon />
-            {record.slot_booked ? 'Reschedule slot' : surveyorTurn ? 'Or counter-propose' : proposeTitle}
+            {record.slot_booked ? 'Reschedule slot' : otherTurn ? 'Or counter-propose' : proposeTitle}
           </h3>
           <div className="vao-form-row">
             <label>
@@ -133,7 +137,7 @@ export function VisitModal({ record, onClose, onChanged }: { record: VaoRecord; 
           </div>
           <button className="vao-btn-navy" disabled={busy || visitDate === '' || visitTime === ''} onClick={() => void book()}>
             <CalendarIcon />
-            {fieldVisit ? 'Book slot' : surveyorTurn ? 'Send counter-proposal' : 'Propose to Surveyor'}
+            {fieldVisit ? 'Book slot' : otherTurn ? 'Send counter-proposal' : `Propose to ${portal.other}`}
           </button>
         </div>
       ) : null}

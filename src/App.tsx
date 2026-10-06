@@ -7,6 +7,7 @@ import {
   AuditIcon,
   CalendarIcon,
   ClockIcon,
+  CompassIcon,
   ShieldCheckIcon,
   DashboardIcon,
   FlagIcon,
@@ -40,7 +41,11 @@ import VerificationDetail from './pages/vao/VerificationDetail'
 import VerificationQueue from './pages/vao/VerificationQueue'
 import ResetPassword from './pages/ResetPassword'
 import Survey from './pages/Survey'
-import SurveyorQueue from './pages/SurveyorQueue'
+import FieldSurvey from './pages/surveyor/FieldSurvey'
+import SurveyorDashboard from './pages/surveyor/SurveyorDashboard'
+import SurveyorRecordView from './pages/surveyor/SurveyorRecordView'
+import SurveyorVerification from './pages/surveyor/SurveyorVerification'
+import { SURVEYOR_PORTAL } from './pages/vao/portal'
 import TransactionDetail from './pages/TransactionDetail'
 import TransactionQueue from './pages/TransactionQueue'
 import TransactionStart from './pages/TransactionStart'
@@ -69,6 +74,8 @@ function Shell({ children }: { children: ReactNode }) {
   const adminState = new URLSearchParams(window.location.search).get('stateCode') ?? user.stateCode
   const adminStateQuery = `?stateCode=${encodeURIComponent(adminState)}`
   const isVao = has('VAO') && !canAdminister
+  const isSurveyor = has('SURVEYOR') && !canAdminister && !isVao
+  const isPortal = isVao || isSurveyor
   return (
     <div className="app">
       <aside className="sidebar">
@@ -90,7 +97,18 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/properties" end><ListIcon />Property List</NavLink>
           </div>
         ) : null}
-        {isVao ? null : <div className="side-section">
+        {isSurveyor ? (
+          <div className="side-section">
+            <div className="side-portal"><CompassIcon />Surveyor Portal</div>
+            <NavLink to="/surveyor" end><DashboardIcon />Dashboard</NavLink>
+            <NavLink to="/surveyor/site-visits"><CalendarIcon />Site Visit Plan</NavLink>
+            <NavLink to="/surveyor/slots"><ClockIcon />Slot Booking</NavLink>
+            <NavLink to="/surveyor/field-survey"><QueueIcon />Field Survey</NavLink>
+            <NavLink to="/surveyor/verification"><ShieldCheckIcon />Verification View</NavLink>
+            <NavLink to="/properties" end><ListIcon />Property List</NavLink>
+          </div>
+        ) : null}
+        {isPortal ? null : <div className="side-section">
           <span>Registration</span>
           {has('REGISTRATION_OFFICER') ? <NavLink to="/ro" end><DashboardIcon />Dashboard</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties/new"><PropertyIcon />Mint Property</NavLink> : null}
@@ -123,7 +141,7 @@ function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="workspace">
         <header className="topbar">
-          {isVao ? <VaoBreadcrumb /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
+          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
           <div className="topbar-user">
             <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
             <span className="avatar">{initials(user.fullName)}</span>
@@ -142,13 +160,21 @@ const VAO_PAGES: [string, string][] = [
   ['/properties', 'Property List'],
 ]
 
-function VaoBreadcrumb() {
+const SURVEYOR_PAGES: [string, string][] = [
+  ['/surveyor/site-visits', 'Site Visit Plan'],
+  ['/surveyor/slots', 'Slot Booking'],
+  ['/surveyor/field-survey', 'Field Survey'],
+  ['/surveyor/verification', 'Verification View'],
+  ['/properties', 'Property List'],
+]
+
+function PortalBreadcrumb({ root, label, pages, detailPrefix }: { root: string; label: string; pages: [string, string][]; detailPrefix: string }) {
   const { pathname } = useLocation()
-  const page = VAO_PAGES.find(([prefix]) => pathname.startsWith(prefix))
-  const detail = pathname.startsWith('/vao/verification/') ? decodeURIComponent(pathname.split('/')[3] ?? '') : ''
+  const page = pages.find(([prefix]) => pathname.startsWith(prefix))
+  const detail = pathname.startsWith(detailPrefix) ? decodeURIComponent(pathname.slice(detailPrefix.length)) : ''
   return (
     <nav className="topbar-crumbs" aria-label="Breadcrumb">
-      <Link to="/vao">VAO Officer Portal</Link>
+      <Link to={root}>{label}</Link>
       {page === undefined ? null : <><span>›</span>{detail === '' ? <em>{page[1]}</em> : <Link to={page[0]}>{page[1]}</Link>}</>}
       {detail === '' ? null : <><span>›</span><em className="mono">{detail}</em></>}
     </nav>
@@ -187,7 +213,12 @@ export default function App() {
           <Route path="/properties/:propertyRef" element={<Protected><PropertyDetail /></Protected>} />
           <Route path="/transactions/new" element={<Protected><TransactionStart /></Protected>} />
           <Route path="/transactions/:txnRef" element={<Protected><TransactionDetail /></Protected>} />
-          <Route path="/surveyor" element={<Protected><SurveyorQueue /></Protected>} />
+          <Route path="/surveyor" element={<Protected><SurveyorDashboard /></Protected>} />
+          <Route path="/surveyor/site-visits" element={<Protected><SiteVisitPlan portal={SURVEYOR_PORTAL} /></Protected>} />
+          <Route path="/surveyor/slots" element={<Protected><SlotBooking portal={SURVEYOR_PORTAL} /></Protected>} />
+          <Route path="/surveyor/field-survey" element={<Protected><FieldSurvey /></Protected>} />
+          <Route path="/surveyor/verification" element={<Protected><SurveyorVerification /></Protected>} />
+          <Route path="/surveyor/verification/:txnRef" element={<Protected><SurveyorRecordView /></Protected>} />
           <Route path="/survey/:txnRef" element={<Protected><Survey /></Protected>} />
           <Route path="/vao" element={<Protected><VaoDashboard /></Protected>} />
           <Route path="/vao/site-visits" element={<Protected><SiteVisitPlan /></Protected>} />
