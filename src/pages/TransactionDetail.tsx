@@ -502,7 +502,7 @@ export default function TransactionDetail({
     )
   }
 
-  const sideTwoTitle = formatCell(txn.deedType.side2_role || 'Buyer').replaceAll('_', ' ')
+  const sideTwoTitle = formatCell(txn.deedType.second_party_label || txn.deedType.side2_role || 'Buyer').replaceAll('_', ' ')
 
   const latestRuleResults = Array.from(
     txn.ruleCheckResults.reduce((latest, result) => {
@@ -857,6 +857,8 @@ export default function TransactionDetail({
                   <dd>{formatCell(txn.feeCalculation.tds_amount)}</dd>
                   <dt>Other charges</dt>
                   <dd>{formatCell(txn.feeCalculation.other_charges)}</dd>
+                  <dt>Survey fee</dt>
+                  <dd>{formatCell(txn.feeCalculation.survey_fee ?? 0)}</dd>
                   <dt>Total payable</dt>
                   <dd>
                     <b>{formatCell(txn.feeCalculation.total_payable)}</b>

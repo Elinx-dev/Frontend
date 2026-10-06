@@ -541,7 +541,8 @@ main {
 .intake-page .property-stage-tabs {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: 0;
   margin-bottom: 14px;
   overflow: hidden;
@@ -1480,6 +1481,47 @@ button:disabled {
   min-width: 0;
 }
 
+.owner-type-select {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+
+.owner-entry + .owner-entry {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.owner-entry h3,
+.owner-representative h4 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.owner-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.owner-fields > div {
+  min-width: 0;
+}
+
+.owner-representative {
+  margin-top: 14px;
+  padding: 12px 14px 14px;
+  border: 1px dashed var(--line-soft);
+  border-radius: 6px;
+}
+
+.owner-representative h4 {
+  margin-bottom: 10px;
+}
+
 .boundary-measurements {
   margin-top: 22px;
   padding-top: 16px;
@@ -2350,7 +2392,8 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .chain-history-owner-fields {
+  .chain-history-owner-fields,
+  .owner-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2434,7 +2477,8 @@ button:disabled {
   }
 
   .chain-history-fields,
-  .chain-history-owner-fields {
+  .chain-history-owner-fields,
+  .owner-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -3478,6 +3522,8 @@ button:disabled {
   border-color: var(--danger);
 }
 
+.field input[readonly],
+.field select:disabled,
 .field input:disabled {
   background: var(--surface-sunken);
   color: var(--muted);
@@ -4053,4 +4099,113 @@ button:disabled {
   .adm-card-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.transaction-stage-with-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: start;
+  gap: 16px;
+}
+
+.transaction-stage-main {
+  min-width: 0;
+}
+
+.property-summary-panel {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.property-summary-head {
+  display: grid;
+  gap: 2px;
+}
+
+.property-summary-head strong {
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.property-summary-section {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.property-summary-section h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.property-summary-list {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 5px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.property-summary-list dt {
+  color: var(--muted);
+}
+
+.property-summary-list dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.property-summary-entry {
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+}
+
+.property-summary-list .property-summary-entry-title {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.property-summary-panel .property-map-frame {
+  height: 200px;
+}
+
+@media (max-width: 1100px) {
+  .transaction-stage-with-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .property-summary-panel {
+    position: static;
+    max-height: none;
+  }
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+
+.party-group-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }

@@ -38,12 +38,17 @@ export interface DeedType {
   requires_relationship_category?: boolean
   side1_role?: string
   side2_role?: string
+  first_party_label?: string
+  second_party_label?: string
 }
 
 export interface Bootstrap {
   state: Row
   modules: Row
   deedTypes: DeedType[]
+  transactionTypes?: Row[]
+  surveyFees?: Row[]
+  bloodRelations?: Row[]
   optionSets: Record<string, Row[]>
   relationships: Row[]
   documentTypes: Row[]
