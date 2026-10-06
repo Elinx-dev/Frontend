@@ -134,3 +134,57 @@ export function WorkflowIcon() {
     </svg>
   )
 }
+
+export function CalendarIcon() {
+  return (
+    <svg {...BASE}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 10h18" />
+    </svg>
+  )
+}
+
+export function ClockIcon() {
+  return (
+    <svg {...BASE}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  )
+}
+
+export function ShieldCheckIcon() {
+  return (
+    <svg {...BASE}>
+      <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  )
+}
+
+export function CheckCircleIcon() {
+  return (
+    <svg {...BASE}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 12l2.5 2.5 4.5-5" />
+    </svg>
+  )
+}
+
+export function PinIcon() {
+  return (
+    <svg {...BASE}>
+      <path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  )
+}
+
+export function CompassIcon() {
+  return (
+    <svg {...BASE}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.5 8.5l-2 5-5 2 2-5z" />
+    </svg>
+  )
+}
