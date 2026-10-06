@@ -42,6 +42,7 @@ export function Field({
   options,
   required = false,
   placeholder,
+  readOnly = false,
 }: {
   label: string
   value: string
@@ -50,6 +51,7 @@ export function Field({
   options?: { value: string; label: string }[]
   required?: boolean
   placeholder?: string
+  readOnly?: boolean
 }) {
   const handle = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => onChange(e.target.value)
   return (
@@ -59,9 +61,9 @@ export function Field({
         {required ? <b className="req"> *</b> : null}
       </span>
       {options === undefined ? (
-        <input type={type} value={value} onChange={handle} placeholder={placeholder} />
+        <input type={type} value={value} onChange={handle} placeholder={placeholder} readOnly={readOnly} />
       ) : (
-        <select value={value} onChange={handle}>
+        <select value={value} onChange={handle} disabled={readOnly}>
           <option value="">— select —</option>
           {options.map((o) => (
             <option key={o.value} value={o.value}>

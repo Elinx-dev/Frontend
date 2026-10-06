@@ -541,7 +541,8 @@ main {
 .intake-page .property-stage-tabs {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: 0;
   margin-bottom: 14px;
   overflow: hidden;
@@ -3521,6 +3522,8 @@ button:disabled {
   border-color: var(--danger);
 }
 
+.field input[readonly],
+.field select:disabled,
 .field input:disabled {
   background: var(--surface-sunken);
   color: var(--muted);
