@@ -5,7 +5,7 @@ import { ApiError, get, post, put } from '../api'
 import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel, StatusPill, formatCell } from '../ui'
-import { OwnerFields, PartyDetailsView } from './OwnerFields'
+import { MissingAadhaarCapture, OwnerFields, PartyDetailsView } from './OwnerFields'
 import {
   emptyOwner, labelFor, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm,
 } from './propertyShared'
@@ -364,6 +364,12 @@ export default function TransactionDetail({
     }
   }
 
+  const savePartyAadhaar = (partyId: number, aadhaarNumber: string) =>
+    guard(
+      () => put(`/api/transactions/${txnRef}/parties/${partyId}/aadhaar`, { aadhaarNumber }),
+      'Aadhaar saved. You can now request the OTP.',
+    )
+
   const verifyConsent = (partyId: number) =>
     guard(
       () => post(`/api/transactions/${txnRef}/consent/verify`, { partyId, otp: otpByParty[String(partyId)] ?? '' }),
@@ -698,6 +704,14 @@ export default function TransactionDetail({
             >
               {renderReadinessDetails('Aadhaar consent')}
               <p className="muted">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
+              <MissingAadhaarCapture
+                parties={txn.parties}
+                disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)}
+                onSave={savePartyAadhaar}
+                roleOf={(party) => formatCell(
+                  party.role ?? (party.side === 'SIDE_1' ? txn.deedType.side1_role : txn.deedType.side2_role) ?? 'Party',
+                ).replaceAll('_', ' ')}
+              />
               {consentRows.map((c, i) => (
                 <div className="row" key={i}>
                   <span className="grow">

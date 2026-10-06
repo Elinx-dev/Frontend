@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Row } from '../types'
 import { Field } from '../ui'
 import {
@@ -69,4 +70,56 @@ export function PartyDetailsView({ layout, party, relationship }: { layout: Owne
       </div>
     </div> : null}
   </>
+}
+
+/** Aadhaar entry for parties that have none on record, so the consent OTP can be requested. */
+export function MissingAadhaarCapture({
+  parties,
+  roleOf,
+  disabled,
+  onSave,
+}: {
+  parties: Row[]
+  roleOf: (party: Row) => string
+  disabled: boolean
+  onSave: (partyId: number, aadhaarNumber: string) => Promise<void>
+}) {
+  const [values, setValues] = useState<Record<string, string>>({})
+  const missing = parties.filter((party) => party.aadhaar_captured !== true)
+  if (missing.length === 0) return null
+  return (
+    <div className="form-section">
+      <p className="field-error">
+        These parties have no valid Aadhaar on record. Enter it before requesting the OTP.
+      </p>
+      {missing.map((party) => {
+        const id = String(party.id ?? party.party_id ?? '')
+        const value = values[id] ?? ''
+        return (
+          <div className="row" key={id}>
+            <span className="grow">
+              {roleOf(party)}: {String(party.name ?? '')}
+            </span>
+            <label className="field">
+              <span>Aadhaar</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={12}
+                value={value}
+                onChange={(event) => setValues({ ...values, [id]: digits(event.target.value, 12) })}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={disabled || !/^\d{12}$/.test(value)}
+              onClick={() => void onSave(Number(id), value)}
+            >
+              Save Aadhaar
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
 }

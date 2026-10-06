@@ -5,7 +5,7 @@ import { ApiError, get, post, put, qs } from '../api'
 import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
-import { OwnerFields } from './OwnerFields'
+import { MissingAadhaarCapture, OwnerFields } from './OwnerFields'
 import PropertySummaryPanel from './PropertySummaryPanel'
 import { emptyOwner, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
@@ -902,6 +902,21 @@ export default function TransactionStart() {
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
       await loadTransaction(createdTransactionRef, true)
+    } finally {
+      setConsentBusy(false)
+    }
+  }
+
+  const savePartyAadhaar = async (partyId: number, aadhaarNumber: string) => {
+    setError('')
+    setInfo('')
+    setConsentBusy(true)
+    try {
+      await put(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/parties/${partyId}/aadhaar`, { aadhaarNumber })
+      await loadTransaction(createdTransactionRef, true)
+      setInfo('Aadhaar saved. You can now request the OTP.')
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
     } finally {
       setConsentBusy(false)
     }
@@ -1825,6 +1840,14 @@ export default function TransactionStart() {
                   <div className="panel-body">
                     <p className="helper">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
+                    <MissingAadhaarCapture
+                      parties={txnParties}
+                      disabled={consentBusy || txnLoading || !['DRAFT', 'CONSENT_PENDING'].includes(txnStatus)}
+                      onSave={savePartyAadhaar}
+                      roleOf={(party) => String(
+                        party.role ?? (party.side === 'SIDE_1' ? selectedDeed?.side1_role : selectedDeed?.side2_role) ?? 'Party',
+                      ).replaceAll('_', ' ')}
+                    />
                     {consentRows.length === 0 ? <p className="helper">No parties are available for Aadhaar consent.</p> : consentRows.map((consent, index) => {
                       const partyId = String(consent.party_id ?? consent.partyId ?? '')
                       const party = txnParties.find((item) => String(item.id ?? item.party_id ?? item.partyId ?? '') === partyId)
