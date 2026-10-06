@@ -706,13 +706,10 @@ export default function TransactionStart() {
   const changeBuyerType = (value: string) => {
     setBuyerTypeCode(value)
     if (buyerTypeOptions.find((type) => type.value === value)?.allowMultipleOwners !== true) {
-      let kept = false
-      setParties((current) => current.filter((party) => {
-        if (party.side !== 'SIDE_2') return true
-        if (kept) return false
-        kept = true
-        return true
-      }))
+      setParties((current) => {
+        const firstBuyer = current.findIndex((party) => party.side === 'SIDE_2')
+        return current.filter((party, index) => party.side !== 'SIDE_2' || index === firstBuyer)
+      })
     }
     setPartyErrors({})
     setBuyerDetailsSaved(false)
