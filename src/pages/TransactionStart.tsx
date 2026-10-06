@@ -6,6 +6,8 @@ import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertySummaryPanel from './PropertySummaryPanel'
+import RuleCheckDetails from './RuleCheckDetails'
+import { ruleSummary, ruleWarningText } from './ruleCheckResults'
 
 interface PartyForm {
   side: string
@@ -950,15 +952,25 @@ export default function TransactionStart() {
     setError('')
     setInfo('')
     setRuleBusy(true)
+    const ref = encodeURIComponent(createdTransactionRef)
     try {
-      const results = await post<Row[]>(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/rule-checks`, {})
+      const results = await post<Row[]>(`/api/transactions/${ref}/rule-checks`, {})
       if (results.length === 0) {
         throw new Error('No rule engines ran for this transaction.')
       }
-      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/transitions`, { actionCode: 'RULE_CHECKS_CLEAR' }, true)
+      try {
+        await post(`/api/transactions/${ref}/transitions`, { actionCode: 'RULE_CHECKS_CLEAR' }, true)
+      } catch (e) {
+        // Blocked (e.g. court attachment): stay on Rule checks and show the findings.
+        await loadTransaction(createdTransactionRef, true)
+        throw e
+      }
       await loadTransaction(createdTransactionRef, true)
       setActiveStage(6)
-      setInfo('Rule checks executed. Transaction is ready for fee calculation.')
+      const warning = ruleWarningText(results)
+      setInfo(
+        `${warning.length > 0 ? `${warning} ` : 'Rule checks executed. '}Transaction is ready for fee calculation.`,
+      )
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     } finally {
@@ -1151,6 +1163,7 @@ export default function TransactionStart() {
       if (current === undefined || resultDate > currentDate) {
         latest.set(engine, {
           ...result,
+          summary: ruleSummary(result),
           executed_at: result.executed_at ?? result.checked_at ?? '',
         })
       }
@@ -1930,7 +1943,10 @@ export default function TransactionStart() {
                     <h2>6. Rule checks</h2>
                   </header>
                   <div className="panel-body">
-                    <p className="helper">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
+                    <p className="helper">
+                      A court attachment on the EC stops pre-registration. Other findings are warnings for manual
+                      review and the transaction can continue.
+                    </p>
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
                     <DataTable
                       rows={latestRuleResults}
@@ -1943,6 +1959,7 @@ export default function TransactionStart() {
                       ]}
                       empty="Rule checks have not been run."
                     />
+                    <RuleCheckDetails results={latestRuleResults} />
                     <div className="form-submit-row">
                       <button
                         className="primary"

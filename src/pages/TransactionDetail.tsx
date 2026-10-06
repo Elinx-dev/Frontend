@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ApiError, get, post, put } from '../api'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel, StatusPill, formatCell } from '../ui'
+import RuleCheckDetails from './RuleCheckDetails'
+import { ruleSummary, ruleWarningText } from './ruleCheckResults'
 
 interface PartyForm {
   side: string
@@ -417,14 +419,23 @@ export default function TransactionDetail({
       'Consent captured.',
     )
 
-  const runRules = () =>
-    guard(async () => {
+  const runRules = async () => {
+    setError('')
+    setInfo('')
+    try {
       const results = await post<Row[]>(`/api/transactions/${encodeURIComponent(txnRef)}/rule-checks`, {})
       if (results.length === 0) {
         throw new Error('No rule engines ran for this transaction.')
       }
       await post(`/api/transactions/${txnRef}/transitions`, { actionCode: 'RULE_CHECKS_CLEAR' }, true)
-    }, 'Rule checks executed. Transaction is ready for fee calculation.')
+      const warning = ruleWarningText(results)
+      setInfo(`${warning.length > 0 ? `${warning} ` : 'Rule checks executed. '}Transaction is ready for fee calculation.`)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    } finally {
+      await load()
+    }
+  }
 
   const calculateFees = () =>
     guard(
@@ -511,7 +522,7 @@ export default function TransactionDetail({
       const currentDate = current === undefined ? '' : formatCell(current.checked_at)
       const resultDate = formatCell(result.checked_at)
       if (current === undefined || resultDate > currentDate) {
-        latest.set(engine, result)
+        latest.set(engine, { ...result, summary: ruleSummary(result) })
       }
       return latest
     }, new Map<string, Row>()).values(),
@@ -817,7 +828,10 @@ export default function TransactionDetail({
           <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
             <Panel title="">
               {renderReadinessDetails('Rule checks')}
-              <p className="muted">Rule outcomes are advisory during the pilot; an officer may acknowledge and proceed.</p>
+              <p className="muted">
+                A court attachment on the EC stops pre-registration. Other findings are warnings for manual review and
+                the transaction can continue.
+              </p>
               <DataTable
                 rows={latestRuleResults}
                 columns={[
@@ -829,6 +843,7 @@ export default function TransactionDetail({
                 ]}
                 empty="Rule checks have not been run."
               />
+              <RuleCheckDetails results={latestRuleResults} />
               <div className="form-submit-row">
                 <button type="button" className="primary" disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>
               </div>
