@@ -1480,6 +1480,13 @@ button:disabled {
   min-width: 0;
 }
 
+.owner-type-select {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+
 .owner-entry + .owner-entry {
   margin-top: 18px;
   padding-top: 16px;

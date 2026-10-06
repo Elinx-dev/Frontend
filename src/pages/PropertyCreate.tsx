@@ -42,7 +42,6 @@ function jurisdictionOptions(
 }
 
 interface OwnerForm {
-  ownerTypeCode: string
   ownerName: string
   aadhaarNumber: string
   pan: string
@@ -66,20 +65,21 @@ interface OwnerLayout {
   registration?: { label: string; kind: 'CIN' | 'LLPIN' | 'TEXT'; placeholder?: string }
   representative?: { title: string; designation: boolean; mobile: boolean }
 }
-const ownerTypes: Array<{ value: string; label: string; form: OwnerFormKind }> = [
-  { value: 'INDIVIDUAL', label: 'Individual', form: 'INDIVIDUAL' },
-  { value: 'SOLE_PROPRIETORSHIP', label: 'Sole Proprietorship', form: 'DEFAULT' },
-  { value: 'PARTNERSHIP_FIRM', label: 'Partnership Firm', form: 'PARTNERSHIP_FIRM' },
-  { value: 'HUF', label: 'HUF', form: 'HUF' },
-  { value: 'LLP', label: 'LLP', form: 'LLP' },
-  { value: 'PRIVATE_LIMITED_COMPANY', label: 'Private Limited Company', form: 'COMPANY' },
-  { value: 'PUBLIC_LIMITED_COMPANY', label: 'Public Limited Company', form: 'COMPANY' },
-  { value: 'ONE_PERSON_COMPANY', label: 'One Person Company', form: 'COMPANY' },
-  { value: 'TRUST', label: 'Trust', form: 'TRUST' },
-  { value: 'SOCIETY', label: 'Society / Co-operative Society', form: 'DEFAULT' },
-  { value: 'AOP_BOI', label: 'Association of Persons / Body of Individuals', form: 'DEFAULT' },
-  { value: 'GOVERNMENT', label: 'Government / Government Department / Local Authority', form: 'DEFAULT' },
-  { value: 'OTHER_LEGAL_ENTITY', label: 'Other Legal Entity', form: 'DEFAULT' },
+interface OwnerTypeOption { value: string; label: string; allowMultipleOwners: boolean }
+const ownerTypes: Array<OwnerTypeOption & { form: OwnerFormKind }> = [
+  { value: 'INDIVIDUAL', label: 'Individual', form: 'INDIVIDUAL', allowMultipleOwners: true },
+  { value: 'SOLE_PROPRIETORSHIP', label: 'Sole Proprietorship', form: 'DEFAULT', allowMultipleOwners: false },
+  { value: 'PARTNERSHIP_FIRM', label: 'Partnership Firm', form: 'PARTNERSHIP_FIRM', allowMultipleOwners: false },
+  { value: 'HUF', label: 'HUF', form: 'HUF', allowMultipleOwners: false },
+  { value: 'LLP', label: 'LLP', form: 'LLP', allowMultipleOwners: false },
+  { value: 'PRIVATE_LIMITED_COMPANY', label: 'Private Limited Company', form: 'COMPANY', allowMultipleOwners: false },
+  { value: 'PUBLIC_LIMITED_COMPANY', label: 'Public Limited Company', form: 'COMPANY', allowMultipleOwners: false },
+  { value: 'ONE_PERSON_COMPANY', label: 'One Person Company', form: 'COMPANY', allowMultipleOwners: false },
+  { value: 'TRUST', label: 'Trust', form: 'TRUST', allowMultipleOwners: false },
+  { value: 'SOCIETY', label: 'Society / Co-operative Society', form: 'DEFAULT', allowMultipleOwners: false },
+  { value: 'AOP_BOI', label: 'Association of Persons / Body of Individuals', form: 'DEFAULT', allowMultipleOwners: false },
+  { value: 'GOVERNMENT', label: 'Government / Government Department / Local Authority', form: 'DEFAULT', allowMultipleOwners: false },
+  { value: 'OTHER_LEGAL_ENTITY', label: 'Other Legal Entity', form: 'DEFAULT', allowMultipleOwners: true },
 ]
 const ownerLayouts: Record<OwnerFormKind, OwnerLayout> = {
   INDIVIDUAL: { nameLabel: 'Name', panLabel: 'PAN', addressLabel: 'Address', aadhaar: true, mobile: true },
@@ -133,7 +133,7 @@ type ChainHistoryField = keyof ChainHistoryEntry
 type ChainHistoryErrors = Record<number, Partial<Record<ChainHistoryField, string>>>
 
 const emptyOwner = (): OwnerForm => ({
-  ownerTypeCode: 'INDIVIDUAL', ownerName: '', aadhaarNumber: '', pan: '', mobile: '', address: '', registrationNo: '',
+  ownerName: '', aadhaarNumber: '', pan: '', mobile: '', address: '', registrationNo: '',
   repName: '', repDesignation: '', repAadhaar: '', repPan: '', repMobile: '',
 })
 const emptyBoundaryMeasurement = (): BoundaryMeasurement => ({ fromPoint: '', toPoint: '', value: '', unit: 'SQ_FT' })
@@ -163,10 +163,8 @@ const MOBILE_PATTERN = /^[6-9]\d{9}$/
 const CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
 const LLPIN_PATTERN = /^[A-Z]{3}-\d{4}$/
 
-function validateOwner(owner: OwnerForm): Partial<Record<OwnerField, string>> {
-  const layout = ownerLayout(owner.ownerTypeCode)
+function validateOwner(owner: OwnerForm, layout: OwnerLayout): Partial<Record<OwnerField, string>> {
   const errors: Partial<Record<OwnerField, string>> = {}
-  if (!ownerTypes.some((type) => type.value === owner.ownerTypeCode)) errors.ownerTypeCode = 'Owner type is required.'
   if (owner.ownerName.trim().length === 0) errors.ownerName = `${layout.nameLabel} is required.`
   if (layout.aadhaar && !AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
   if (owner.pan.trim().length === 0) errors.pan = `${layout.panLabel} is required.`
@@ -191,11 +189,9 @@ function validateOwner(owner: OwnerForm): Partial<Record<OwnerField, string>> {
   return errors
 }
 
-function ownerPayload(owner: OwnerForm) {
-  const layout = ownerLayout(owner.ownerTypeCode)
+function ownerPayload(owner: OwnerForm, layout: OwnerLayout) {
   const representative = layout.representative
   return {
-    ownerTypeCode: owner.ownerTypeCode,
     ownerName: owner.ownerName.trim(),
     aadhaarNumber: layout.aadhaar ? owner.aadhaarNumber : undefined,
     pan: owner.pan,
@@ -240,6 +236,7 @@ export default function PropertyCreate() {
   const navigate = useNavigate()
   const { bootstrap } = useAuth()
   const [property, setProperty] = useState<PropertyState>(initialProperty)
+  const [ownerTypeCode, setOwnerTypeCode] = useState('')
   const [owners, setOwners] = useState<OwnerForm[]>([emptyOwner()])
   const [boundaryMeasurements, setBoundaryMeasurements] = useState<BoundaryMeasurement[]>([emptyBoundaryMeasurement()])
   const [chainHistory, setChainHistory] = useState<ChainHistoryEntry[]>([])
@@ -341,6 +338,38 @@ export default function PropertyCreate() {
     return mapped.length > 0 ? mapped : fallback
   }
 
+  const ownerTypeOptions: OwnerTypeOption[] = (() => {
+    const rows = bootstrap?.optionSets.OWNER_TYPE ?? []
+    const configured = rows.map((row) => {
+      const attributes = (row.attributes ?? {}) as Row
+      return { value: String(row.code ?? ''), label: String(row.label ?? row.code ?? ''), allowMultipleOwners: attributes.allowMultipleOwners === true }
+    }).filter((row) => ownerTypes.some((type) => type.value === row.value))
+    return configured.length > 0 ? configured : ownerTypes
+  })()
+  const selectedOwnerType = ownerTypeOptions.find((type) => type.value === ownerTypeCode)
+  const allowMultipleOwners = selectedOwnerType?.allowMultipleOwners === true
+  const layout = ownerLayout(ownerTypeCode)
+  const ownerTypeError = selectedOwnerType ? undefined : 'Owner type is required.'
+  const changeOwnerType = (value: string) => {
+    setOwnerTypeCode(value)
+    if (!ownerTypeOptions.find((type) => type.value === value)?.allowMultipleOwners) setOwners((current) => current.slice(0, 1))
+    setOwnerErrors({})
+    setFieldErrors((current) => {
+      const next = { ...current }
+      delete next.ownerTypeCode
+      return next
+    })
+  }
+  const collectOwnerErrors = () => {
+    const errors: OwnerErrors = {}
+    if (!selectedOwnerType) return errors
+    owners.forEach((owner, index) => {
+      const ownerErrorsForIndex = validateOwner(owner, layout)
+      if (Object.keys(ownerErrorsForIndex).length > 0) errors[index] = ownerErrorsForIndex
+    })
+    return errors
+  }
+
   const validateBoundaryMeasurements = () => {
     const nextErrors: BoundaryMeasurementErrors = {}
     boundaryMeasurements.forEach((measurement, index) => {
@@ -416,11 +445,12 @@ export default function PropertyCreate() {
 
     let currentOwnerErrors: OwnerErrors = {}
     if (stageIndex === 1) {
-      owners.forEach((owner, index) => {
-        const errors = validateOwner(owner)
-        if (Object.keys(errors).length > 0) currentOwnerErrors[index] = errors
-      })
+      currentOwnerErrors = collectOwnerErrors()
       setOwnerErrors(currentOwnerErrors)
+      if (ownerTypeError) {
+        setFieldErrors((current) => ({ ...current, ownerTypeCode: ownerTypeError }))
+        return false
+      }
     }
     const currentMeasurementErrors = stageIndex === 3 ? validateBoundaryMeasurements() : {}
     const currentChainHistoryErrors = stageIndex === 4 ? validateChainHistory() : {}
@@ -465,18 +495,15 @@ export default function PropertyCreate() {
     if (property.extentValue.trim().length > 0 && Number.isNaN(Number(property.extentValue))) {
       validationErrors.extentValue = 'Extent must be numeric.'
     }
-    const validationOwnerErrors: OwnerErrors = {}
-    owners.forEach((owner, index) => {
-      const errors = validateOwner(owner)
-      if (Object.keys(errors).length > 0) validationOwnerErrors[index] = errors
-    })
+    if (ownerTypeError) validationErrors.ownerTypeCode = ownerTypeError
+    const validationOwnerErrors = collectOwnerErrors()
     const validationMeasurementErrors = validateBoundaryMeasurements()
     const validationChainHistoryErrors = validateChainHistory()
     setFieldErrors(validationErrors)
     setOwnerErrors(validationOwnerErrors)
     if (Object.keys(validationErrors).length > 0 || Object.keys(validationOwnerErrors).length > 0
       || Object.keys(validationMeasurementErrors).length > 0 || Object.keys(validationChainHistoryErrors).length > 0) {
-      if (Object.keys(validationOwnerErrors).length > 0) setActiveStage(1)
+      if (Object.keys(validationOwnerErrors).length > 0 || validationErrors.ownerTypeCode) setActiveStage(1)
       else if (['sroCode', 'districtCode', 'talukCode', 'villageCode', 'surveyNo', 'extentValue'].some((key) => validationErrors[key])) setActiveStage(2)
       else if (Object.keys(validationMeasurementErrors).length > 0 || ['boundaryNorth', 'boundarySouth', 'boundaryEast', 'boundaryWest'].some((key) => validationErrors[key])) setActiveStage(3)
       else if (Object.keys(validationChainHistoryErrors).length > 0) setActiveStage(4)
@@ -491,7 +518,8 @@ export default function PropertyCreate() {
         ulpin: property.ulpin || undefined,
         extentValue: Number(property.extentValue),
         guidelineValue: property.guidelineValue ? Number(property.guidelineValue) : undefined,
-        owners: owners.map(ownerPayload),
+        ownerTypeCode,
+        owners: owners.map((owner) => ownerPayload(owner, layout)),
         boundaryMeasurements: boundaryMeasurements.map((measurement) => ({
           fromPoint: measurement.fromPoint,
           toPoint: measurement.toPoint,
@@ -527,7 +555,8 @@ export default function PropertyCreate() {
   const fieldError = (key: keyof PropertyState) => fieldErrors[key] ? <span className="field-error">{fieldErrors[key]}</span> : null
   const ownerFieldError = (index: number, field: OwnerField) => ownerErrors[index]?.[field] ? <span className="field-error">{ownerErrors[index][field]}</span> : null
   const valid = property.talukCode && property.villageCode && property.sroCode && property.surveyNo && property.extentValue && property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest
-  const ownersComplete = owners.length > 0 && owners.every((owner) => Object.keys(validateOwner(owner)).length === 0)
+  const ownersComplete = Boolean(selectedOwnerType) && owners.length > 0 && (allowMultipleOwners || owners.length === 1)
+    && owners.every((owner) => Object.keys(validateOwner(owner, layout)).length === 0)
   const locationComplete = Boolean(property.sroCode && property.districtCode && property.talukCode && property.villageCode
     && property.surveyNo && property.extentValue && property.extentUnit && !Number.isNaN(Number(property.extentValue)))
   const boundariesComplete = Boolean(property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest)
@@ -541,7 +570,7 @@ export default function PropertyCreate() {
     && entry.surveyNo.trim())
   const stageComplete = [Boolean(property.propertyTypeCode && property.classificationCode), ownersComplete, locationComplete,
     boundariesComplete, chainHistoryComplete, Boolean(property.guidelineValue)]
-  const stageHasErrors = [['propertyTypeCode', 'classificationCode'].some((key) => fieldErrors[key] !== undefined), Object.keys(ownerErrors).length > 0,
+  const stageHasErrors = [['propertyTypeCode', 'classificationCode'].some((key) => fieldErrors[key] !== undefined), Object.keys(ownerErrors).length > 0 || fieldErrors.ownerTypeCode !== undefined,
     ['sroCode', 'districtCode', 'talukCode', 'villageCode', 'surveyNo', 'extentValue', 'extentUnit'].some((key) => fieldErrors[key] !== undefined),
     ['boundaryNorth', 'boundarySouth', 'boundaryEast', 'boundaryWest'].some((key) => fieldErrors[key] !== undefined)
       || Object.keys(boundaryMeasurementErrors).length > 0,
@@ -551,7 +580,7 @@ export default function PropertyCreate() {
     if (stageComplete[index]) return 'Complete'
     if (index === 4 || index === 5) return 'Optional'
     const stageHasInput = index === 1
-      ? owners.some((owner) => Object.entries(owner).some(([key, value]) => key !== 'ownerTypeCode' && value.trim().length > 0))
+      ? Boolean(ownerTypeCode) || owners.some((owner) => Object.values(owner).some((value) => value.trim().length > 0))
       : index === 2
         ? [property.sroCode, property.talukCode, property.villageCode, property.surveyNo, property.extentValue].some(Boolean)
         : index === 3
@@ -585,20 +614,23 @@ export default function PropertyCreate() {
           <Field label="Classification" value={property.classificationCode} onChange={(v) => update('classificationCode', v)} options={[{ value: 'Dry', label: 'Dry' }, { value: 'Wet', label: 'Wet' }]} required />
         </div>
       </Panel> : null}
-      {activeStage === 1 ? <Panel title="" actions={<button className="party-add-button" onClick={() => setOwners((current) => [...current, emptyOwner()])}><span aria-hidden="true">+</span> Add owner</button>}>
-        {owners.map((owner, index) => {
-          const layout = ownerLayout(owner.ownerTypeCode)
+      {activeStage === 1 ? <Panel title="" actions={allowMultipleOwners ? <button className="party-add-button" onClick={() => setOwners((current) => [...current, emptyOwner()])}><span aria-hidden="true">+</span> Add owner</button> : undefined}>
+        <div className="owner-type-select">
+          <Field label="Owner type" value={ownerTypeCode} onChange={changeOwnerType} options={ownerTypeOptions} required />
+          {fieldErrors.ownerTypeCode ? <span className="field-error">{fieldErrors.ownerTypeCode}</span> : null}
+          {selectedOwnerType ? <small className="muted">{allowMultipleOwners ? 'More than one owner can be added for this owner type.' : 'Only one owner can be recorded for this owner type.'}</small> : null}
+        </div>
+        {selectedOwnerType ? owners.map((owner, index) => {
           const representative = layout.representative
           return <section className="owner-entry" key={index}>
             <header className="chain-history-entry-heading">
-              <h3>{`Owner ${index + 1}`}</h3>
+              <h3>{allowMultipleOwners ? `Owner ${index + 1}` : 'Owner details'}</h3>
               {owners.length > 1 ? <button type="button" className="link" onClick={() => {
                 setOwners((current) => current.filter((_, ownerIndex) => ownerIndex !== index))
                 setOwnerErrors({})
               }}>Remove owner</button> : null}
             </header>
             <div className="owner-fields">
-              <div><Field label="Owner type" value={owner.ownerTypeCode} onChange={(v) => updateOwner(index, 'ownerTypeCode', v)} options={ownerTypes} required />{ownerFieldError(index, 'ownerTypeCode')}</div>
               <div><Field label={layout.nameLabel} value={owner.ownerName} onChange={(v) => updateOwner(index, 'ownerName', v)} required />{ownerFieldError(index, 'ownerName')}</div>
               {layout.registration ? <div><Field label={layout.registration.label} value={owner.registrationNo} onChange={(v) => updateOwner(index, 'registrationNo', layout.registration?.kind === 'TEXT' ? v : v.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, layout.registration?.kind === 'CIN' ? 21 : 8))} placeholder={layout.registration.placeholder} required />{ownerFieldError(index, 'registrationNo')}</div> : null}
               {layout.aadhaar ? <div><Field label="Aadhaar (12 digits)" value={owner.aadhaarNumber} onChange={(v) => updateOwner(index, 'aadhaarNumber', digits(v, 12))} required />{ownerFieldError(index, 'aadhaarNumber')}</div> : null}
@@ -617,7 +649,7 @@ export default function PropertyCreate() {
               </div>
             </div> : null}
           </section>
-        })}
+        }) : null}
       </Panel> : null}
       {activeStage === 2 ? <Panel title="">
         <div className="location-survey-layout">
