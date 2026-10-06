@@ -4203,3 +4203,9 @@ button:disabled {
   font-size: 14px;
 }
 
+
+.party-group-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}

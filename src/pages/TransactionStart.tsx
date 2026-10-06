@@ -1723,8 +1723,7 @@ export default function TransactionStart() {
                       Enter the {secondPartyLabel.toLowerCase()} details for this transfer. The {firstPartyLabel.toLowerCase()} is the current property owner shown on the right.
                     </p>
                     <section className="party-group">
-                      <div className="section-heading">
-                        <h3>{sideTwoTitle}</h3>
+                      <div className="party-group-actions">
                         <button type="button" className="outline" onClick={() => addParty('SIDE_2')}>
                           <span aria-hidden="true">+</span> Add {sideTwoTitle.toLowerCase()}
                         </button>
@@ -1734,19 +1733,16 @@ export default function TransactionStart() {
                         .filter(({ party }) => party.side === 'SIDE_2')
                         .map(({ party, index }, groupIndex, buyerGroup) => (
                           <section className="form-section" key={`SIDE_2-${index}`}>
-                            <div className="section-heading">
-                              <h3>
-                                {sideTwoTitle} {buyerGroup.length > 1 ? groupIndex + 1 : ''}
-                              </h3>
-                              <button
-                                type="button"
-                                className="outline"
-                                disabled={buyerGroup.length <= 1}
-                                onClick={() => removeParty('SIDE_2', index)}
-                              >
-                                Remove
-                              </button>
-                            </div>
+                            {buyerGroup.length > 1 ? (
+                              <div className="section-heading">
+                                <h3>
+                                  {sideTwoTitle} {groupIndex + 1}
+                                </h3>
+                                <button type="button" className="outline" onClick={() => removeParty('SIDE_2', index)}>
+                                  Remove
+                                </button>
+                              </div>
+                            ) : null}
                             <div className="form-grid four">
                               <div>
                                 <label className="field">
