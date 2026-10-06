@@ -522,7 +522,7 @@ export default function TransactionDetail({
       const currentDate = current === undefined ? '' : formatCell(current.checked_at)
       const resultDate = formatCell(result.checked_at)
       if (current === undefined || resultDate > currentDate) {
-        latest.set(engine, { ...result, summary: ruleSummary(result) })
+        latest.set(engine, { ...result, summary: ruleSummary(result), executed_at: result.executed_at ?? result.checked_at })
       }
       return latest
     }, new Map<string, Row>()).values(),
