@@ -7,9 +7,9 @@ import { str, type Row } from '../types'
 import { Banner, Field, Panel } from '../ui'
 
 const initialProperty = {
-  stateCode: 'TN', propertyRef: '', ulpin: '', propertyTypeCode: 'LAND',
+  stateCode: 'TN', propertyRef: '', propertyTypeCode: 'LAND',
   natureOfTitleCode: 'ABSOLUTE', landTypeCode: 'RURAL', classificationCode: 'PUNJAI_DRY',
-  extentValue: '', extentUnit: 'SQ_FT', surveyNo: '', subdivisionNo: '', oldSurveyReference: '',
+  oldSurveyReference: '',
   fmbReferenceNo: '', districtCode: '', talukCode: '', villageCode: '', sroCode: '',
   panchayat: '', wardNo: '', street: '', doorNo: '', boundaryNorth: '', boundarySouth: '',
   boundaryEast: '', boundaryWest: '', guidelineValue: '', guidelineValueReference: '',
@@ -131,11 +131,37 @@ interface ChainHistoryEntry {
 }
 type ChainHistoryField = keyof ChainHistoryEntry
 type ChainHistoryErrors = Record<number, Partial<Record<ChainHistoryField, string>>>
+interface SurveyRecord {
+  ulpin: string
+  surveyNo: string
+  subdivisionNo: string
+  extentValue: string
+  extentUnit: string
+}
+type SurveyRecordField = keyof SurveyRecord
+type SurveyRecordErrors = Record<number, Partial<Record<SurveyRecordField, string>>>
 
 const emptyOwner = (): OwnerForm => ({
   ownerName: '', aadhaarNumber: '', pan: '', mobile: '', address: '', registrationNo: '',
   repName: '', repDesignation: '', repAadhaar: '', repPan: '', repMobile: '',
 })
+const emptySurveyRecord = (): SurveyRecord => ({ ulpin: '', surveyNo: '', subdivisionNo: '', extentValue: '', extentUnit: 'SQ_FT' })
+function surveyRecordErrors(records: SurveyRecord[]): SurveyRecordErrors {
+  const errors: SurveyRecordErrors = {}
+  const seenUlpins = new Set<string>()
+  records.forEach((record, index) => {
+    const fields: Partial<Record<SurveyRecordField, string>> = {}
+    const ulpin = record.ulpin.trim()
+    if (ulpin && seenUlpins.has(ulpin)) fields.ulpin = 'This ULPIN is already entered in another survey record.'
+    if (ulpin) seenUlpins.add(ulpin)
+    if (!record.surveyNo.trim()) fields.surveyNo = 'Survey number is required.'
+    if (!record.extentValue.trim()) fields.extentValue = 'Extent is required.'
+    else if (!Number.isFinite(Number(record.extentValue)) || Number(record.extentValue) <= 0) fields.extentValue = 'Enter an extent greater than zero.'
+    if (!record.extentUnit) fields.extentUnit = 'Select an extent unit.'
+    if (Object.keys(fields).length > 0) errors[index] = fields
+  })
+  return errors
+}
 const emptyBoundaryMeasurement = (): BoundaryMeasurement => ({ fromPoint: '', toPoint: '', value: '', unit: 'SQ_FT' })
 const emptyChainHistoryEntry = (surveyNo = ''): ChainHistoryEntry => ({
   executorName: '',
@@ -208,7 +234,7 @@ function ownerPayload(owner: OwnerForm, layout: OwnerLayout) {
   }
 }
 const CITY_CENTER = { latitude: 13.0827, longitude: 80.2707 }
-const stages = ['Identification', 'Property owners', 'Location & Survey', 'Boundaries', 'Chain of Title', 'Guideline Value'] as const
+const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value'] as const
 const MAX_BOUNDARY_MEASUREMENTS = 8
 const boundaryPoints = [
   { value: 'NORTH', label: 'North' },
@@ -240,6 +266,8 @@ export default function PropertyCreate() {
   const [owners, setOwners] = useState<OwnerForm[]>([emptyOwner()])
   const [boundaryMeasurements, setBoundaryMeasurements] = useState<BoundaryMeasurement[]>([emptyBoundaryMeasurement()])
   const [chainHistory, setChainHistory] = useState<ChainHistoryEntry[]>([])
+  const [surveyRecords, setSurveyRecords] = useState<SurveyRecord[]>([emptySurveyRecord()])
+  const [surveyErrors, setSurveyErrors] = useState<SurveyRecordErrors>({})
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [ownerErrors, setOwnerErrors] = useState<OwnerErrors>({})
@@ -370,6 +398,8 @@ export default function PropertyCreate() {
     return errors
   }
 
+  const extentUnitOptions = options('EXTENT_UNIT', [{ value: 'SQ_FT', label: 'Square Feet' }, { value: 'SQ_M', label: 'Square Metres' }, { value: 'CENT', label: 'Cent' }, { value: 'ACRE', label: 'Acre' }, { value: 'HECTARE', label: 'Hectare' }])
+
   const validateBoundaryMeasurements = () => {
     const nextErrors: BoundaryMeasurementErrors = {}
     boundaryMeasurements.forEach((measurement, index) => {
@@ -418,11 +448,8 @@ export default function PropertyCreate() {
         ['districtCode', 'Registration district is required.'],
         ['talukCode', 'Taluk is required.'],
         ['villageCode', 'Revenue village is required.'],
-        ['surveyNo', 'Survey number is required.'],
-        ['extentValue', 'Extent is required.'],
-        ['extentUnit', 'Extent unit is required.'],
       ],
-      3: [
+      4: [
         ['boundaryNorth', 'North boundary is required.'],
         ['boundarySouth', 'South boundary is required.'],
         ['boundaryEast', 'East boundary is required.'],
@@ -433,9 +460,6 @@ export default function PropertyCreate() {
     const currentFieldErrors: Record<string, string> = {}
     for (const [field, message] of fields) {
       if (property[field].trim().length === 0) currentFieldErrors[field] = message
-    }
-    if (stageIndex === 2 && property.extentValue.trim().length > 0 && Number.isNaN(Number(property.extentValue))) {
-      currentFieldErrors.extentValue = 'Extent must be numeric.'
     }
     setFieldErrors((current) => {
       const next = { ...current }
@@ -452,9 +476,15 @@ export default function PropertyCreate() {
         return false
       }
     }
-    const currentMeasurementErrors = stageIndex === 3 ? validateBoundaryMeasurements() : {}
-    const currentChainHistoryErrors = stageIndex === 4 ? validateChainHistory() : {}
+    let currentSurveyErrors: SurveyRecordErrors = {}
+    if (stageIndex === 3) {
+      currentSurveyErrors = surveyRecordErrors(surveyRecords)
+      setSurveyErrors(currentSurveyErrors)
+    }
+    const currentMeasurementErrors = stageIndex === 4 ? validateBoundaryMeasurements() : {}
+    const currentChainHistoryErrors = stageIndex === 5 ? validateChainHistory() : {}
     return Object.keys(currentFieldErrors).length === 0
+      && Object.keys(currentSurveyErrors).length === 0
       && Object.keys(currentOwnerErrors).length === 0
       && Object.keys(currentMeasurementErrors).length === 0
       && Object.keys(currentChainHistoryErrors).length === 0
@@ -481,8 +511,6 @@ export default function PropertyCreate() {
       ['districtCode', 'Registration district is required.'],
       ['talukCode', 'Taluk is required.'],
       ['villageCode', 'Revenue village is required.'],
-      ['surveyNo', 'Survey number is required.'],
-      ['extentValue', 'Extent is required.'],
       ['boundaryNorth', 'North boundary is required.'],
       ['boundarySouth', 'South boundary is required.'],
       ['boundaryEast', 'East boundary is required.'],
@@ -492,21 +520,22 @@ export default function PropertyCreate() {
     for (const [field, message] of requiredFields) {
       if (property[field].trim().length === 0) validationErrors[field] = message
     }
-    if (property.extentValue.trim().length > 0 && Number.isNaN(Number(property.extentValue))) {
-      validationErrors.extentValue = 'Extent must be numeric.'
-    }
     if (ownerTypeError) validationErrors.ownerTypeCode = ownerTypeError
     const validationOwnerErrors = collectOwnerErrors()
+    const validationSurveyErrors = surveyRecordErrors(surveyRecords)
+    setSurveyErrors(validationSurveyErrors)
     const validationMeasurementErrors = validateBoundaryMeasurements()
     const validationChainHistoryErrors = validateChainHistory()
     setFieldErrors(validationErrors)
     setOwnerErrors(validationOwnerErrors)
     if (Object.keys(validationErrors).length > 0 || Object.keys(validationOwnerErrors).length > 0
+      || Object.keys(validationSurveyErrors).length > 0
       || Object.keys(validationMeasurementErrors).length > 0 || Object.keys(validationChainHistoryErrors).length > 0) {
       if (Object.keys(validationOwnerErrors).length > 0 || validationErrors.ownerTypeCode) setActiveStage(1)
-      else if (['sroCode', 'districtCode', 'talukCode', 'villageCode', 'surveyNo', 'extentValue'].some((key) => validationErrors[key])) setActiveStage(2)
-      else if (Object.keys(validationMeasurementErrors).length > 0 || ['boundaryNorth', 'boundarySouth', 'boundaryEast', 'boundaryWest'].some((key) => validationErrors[key])) setActiveStage(3)
-      else if (Object.keys(validationChainHistoryErrors).length > 0) setActiveStage(4)
+      else if (['sroCode', 'districtCode', 'talukCode', 'villageCode'].some((key) => validationErrors[key])) setActiveStage(2)
+      else if (Object.keys(validationSurveyErrors).length > 0) setActiveStage(3)
+      else if (Object.keys(validationMeasurementErrors).length > 0 || ['boundaryNorth', 'boundarySouth', 'boundaryEast', 'boundaryWest'].some((key) => validationErrors[key])) setActiveStage(4)
+      else if (Object.keys(validationChainHistoryErrors).length > 0) setActiveStage(5)
       else setActiveStage(0)
       return
     }
@@ -515,8 +544,13 @@ export default function PropertyCreate() {
       await post<Row>('/api/properties', {
         ...property,
         propertyRef: property.propertyRef || `PR-${property.stateCode}-${Date.now()}`,
-        ulpin: property.ulpin || undefined,
-        extentValue: Number(property.extentValue),
+        surveyRecords: surveyRecords.map((record) => ({
+          ulpin: record.ulpin.trim() || undefined,
+          surveyNo: record.surveyNo.trim(),
+          subdivisionNo: record.subdivisionNo.trim() || undefined,
+          extentValue: Number(record.extentValue),
+          extentUnit: record.extentUnit,
+        })),
         guidelineValue: property.guidelineValue ? Number(property.guidelineValue) : undefined,
         ownerTypeCode,
         owners: owners.map((owner) => ownerPayload(owner, layout)),
@@ -543,22 +577,24 @@ export default function PropertyCreate() {
     }
   }
 
-  const numeric = (key: keyof PropertyState, value: string) => update(key, value.replace(/[^0-9.]/g, ''))
   const digits = (value: string, length: number) => value.replace(/\D/g, '').slice(0, length)
   const panValue = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
   const updateOwner = (index: number, field: OwnerField, value: string) => {
     setOwners((current) => current.map((owner, ownerIndex) => ownerIndex === index ? { ...owner, [field]: value } : owner))
+  }
+  const updateSurveyRecord = (index: number, field: SurveyRecordField, value: string) => {
+    setSurveyRecords((current) => current.map((record, recordIndex) => recordIndex === index ? { ...record, [field]: value } : record))
   }
   const updateChainHistory = (entryIndex: number, field: ChainHistoryField, value: string) => {
     setChainHistory((current) => current.map((entry, index) => index === entryIndex ? { ...entry, [field]: value } : entry))
   }
   const fieldError = (key: keyof PropertyState) => fieldErrors[key] ? <span className="field-error">{fieldErrors[key]}</span> : null
   const ownerFieldError = (index: number, field: OwnerField) => ownerErrors[index]?.[field] ? <span className="field-error">{ownerErrors[index][field]}</span> : null
-  const valid = property.talukCode && property.villageCode && property.sroCode && property.surveyNo && property.extentValue && property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest
+  const surveyComplete = surveyRecords.length > 0 && Object.keys(surveyRecordErrors(surveyRecords)).length === 0
+  const valid = property.talukCode && property.villageCode && property.sroCode && surveyComplete && property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest
   const ownersComplete = Boolean(selectedOwnerType) && owners.length > 0 && (allowMultipleOwners || owners.length === 1)
     && owners.every((owner) => Object.keys(validateOwner(owner, layout)).length === 0)
-  const locationComplete = Boolean(property.sroCode && property.districtCode && property.talukCode && property.villageCode
-    && property.surveyNo && property.extentValue && property.extentUnit && !Number.isNaN(Number(property.extentValue)))
+  const locationComplete = Boolean(property.sroCode && property.districtCode && property.talukCode && property.villageCode)
   const boundariesComplete = Boolean(property.boundaryNorth && property.boundarySouth && property.boundaryEast && property.boundaryWest)
     && boundaryMeasurements.length > 0
     && boundaryMeasurements.every((measurement) => measurement.fromPoint && measurement.toPoint
@@ -568,31 +604,32 @@ export default function PropertyCreate() {
     && entry.transactionDate
     && entry.natureOfTransaction.trim()
     && entry.surveyNo.trim())
-  const stageComplete = [Boolean(property.propertyTypeCode && property.classificationCode), ownersComplete, locationComplete,
+  const stageComplete = [Boolean(property.propertyTypeCode && property.classificationCode), ownersComplete, locationComplete, surveyComplete,
     boundariesComplete, chainHistoryComplete, Boolean(property.guidelineValue)]
   const stageHasErrors = [['propertyTypeCode', 'classificationCode'].some((key) => fieldErrors[key] !== undefined), Object.keys(ownerErrors).length > 0 || fieldErrors.ownerTypeCode !== undefined,
-    ['sroCode', 'districtCode', 'talukCode', 'villageCode', 'surveyNo', 'extentValue', 'extentUnit'].some((key) => fieldErrors[key] !== undefined),
+    ['sroCode', 'districtCode', 'talukCode', 'villageCode'].some((key) => fieldErrors[key] !== undefined),
+    Object.keys(surveyErrors).length > 0,
     ['boundaryNorth', 'boundarySouth', 'boundaryEast', 'boundaryWest'].some((key) => fieldErrors[key] !== undefined)
       || Object.keys(boundaryMeasurementErrors).length > 0,
     Object.keys(chainHistoryErrors).length > 0, false]
   const stageStatus = (index: number) => {
     if (stageHasErrors[index]) return 'Needs attention'
     if (stageComplete[index]) return 'Complete'
-    if (index === 4 || index === 5) return 'Optional'
+    if (index === 5 || index === 6) return 'Optional'
     const stageHasInput = index === 1
       ? Boolean(ownerTypeCode) || owners.some((owner) => Object.values(owner).some((value) => value.trim().length > 0))
       : index === 2
-        ? [property.sroCode, property.talukCode, property.villageCode, property.surveyNo, property.extentValue].some(Boolean)
+        ? [property.sroCode, property.talukCode, property.villageCode].some(Boolean)
         : index === 3
-          ? [property.boundaryNorth, property.boundarySouth, property.boundaryEast, property.boundaryWest].some(Boolean)
+          ? surveyRecords.some((record) => [record.ulpin, record.surveyNo, record.subdivisionNo, record.extentValue].some((value) => value.trim().length > 0))
           : index === 4
-            ? chainHistory.length > 0
-          : false
+            ? [property.boundaryNorth, property.boundarySouth, property.boundaryEast, property.boundaryWest].some(Boolean)
+            : false
     return stageHasInput ? 'In progress' : 'Not started'
   }
   return (
     <div className="intake-page">
-      <div className="page-heading"><div><span className="eyebrow">Registration workspace</span><h1>Mint Property</h1><p className="muted">Create a property record. ULPIN is optional and can be added when already issued.</p></div></div>
+      <div className="page-heading"><div><span className="eyebrow">Registration workspace</span><h1>Mint Property</h1><p className="muted">Create a property record. ULPIN is optional and is entered per survey record when already issued.</p></div></div>
       <Banner kind="error" message={error} />
       <div className="property-stage-layout">
         <div className="property-stage-content">
@@ -607,7 +644,6 @@ export default function PropertyCreate() {
           <div role="tabpanel" id={`property-stage-panel-${activeStage}`} aria-labelledby={`property-stage-tab-${activeStage}`}>
       {activeStage === 0 ? <Panel title="">
         <div className="form-grid three">
-          <Field label="ULPIN (optional)" value={property.ulpin} onChange={(v) => update('ulpin', v)} placeholder="Enter only if already issued" />
           <Field label="Property type" value={property.propertyTypeCode} onChange={(v) => update('propertyTypeCode', v)} options={options('PROPERTY_TYPE', [{ value: 'LAND', label: 'Land Parcel' }, { value: 'HOUSE_SITE', label: 'House Site' }, { value: 'BUILDING', label: 'Building' }, { value: 'APARTMENT_UNIT', label: 'Apartment / Flat' }, { value: 'AGRICULTURAL', label: 'Agricultural Land' }, { value: 'COMMERCIAL', label: 'Commercial' }, { value: 'INDUSTRIAL', label: 'Industrial' }, { value: 'PLOT_SITE', label: 'Plot / Site' }])} required />
           <Field label="Nature of title" value={property.natureOfTitleCode} onChange={(v) => update('natureOfTitleCode', v)} options={[{ value: 'FREEHOLD', label: 'Freehold' }, { value: 'LEASEHOLD', label: 'Leasehold' }]} />
           <Field label="Land type" value={property.landTypeCode} onChange={(v) => update('landTypeCode', v)} options={[{ value: 'RURAL', label: 'Rural' }, { value: 'URBAN', label: 'Urban' }]} />
@@ -658,10 +694,6 @@ export default function PropertyCreate() {
             <div><Field label="Sub-Registrar Office (SRO)" value={property.sroCode} onChange={(v) => updateLocation('sroCode', v)} options={sroOptions} required />{fieldError('sroCode')}</div>
             <div><Field label="Taluk" value={property.talukCode} onChange={(v) => updateLocation('talukCode', v)} options={talukOptions} required />{fieldError('talukCode')}</div>
             <div><Field label="Revenue village" value={property.villageCode} onChange={(v) => updateLocation('villageCode', v)} options={villageOptions} required />{fieldError('villageCode')}</div>
-            <div><Field label="Survey no." value={property.surveyNo} onChange={(v) => update('surveyNo', v)} required />{fieldError('surveyNo')}</div>
-            <Field label="Sub-division no." value={property.subdivisionNo} onChange={(v) => update('subdivisionNo', v)} />
-            <div><Field label="Extent" value={property.extentValue} onChange={(v) => numeric('extentValue', v)} type="number" required />{fieldError('extentValue')}</div>
-            <div><Field label="Extent unit" value={property.extentUnit} onChange={(v) => update('extentUnit', v)} options={[{ value: 'SQ_FT', label: 'Square feet' }, { value: 'HECTARE', label: 'Hectare' }]} required />{fieldError('extentUnit')}</div>
             <Field label="Panchayat" value={property.panchayat} onChange={(v) => update('panchayat', v)} />
             <Field label="Ward no." value={property.wardNo} onChange={(v) => update('wardNo', v)} />
             <Field label="Street / door no." value={`${property.street}${property.doorNo ? ` / ${property.doorNo}` : ''}`} onChange={(v) => update('street', v)} />
@@ -692,7 +724,30 @@ export default function PropertyCreate() {
           </aside>
         </div>
       </Panel> : null}
-      {activeStage === 3 ? <Panel title="">
+      {activeStage === 3 ? <Panel title="" actions={<button type="button" className="party-add-button" onClick={() => setSurveyRecords((current) => [...current, emptySurveyRecord()])}><span aria-hidden="true">+</span> Add survey record</button>}>
+        <p className="muted">Add one record for each survey number that forms part of this property. Enter ULPIN only if it is already issued.</p>
+        {surveyRecords.map((record, index) => {
+          const recordErrors = surveyErrors[index]
+          const surveyError = (field: SurveyRecordField) => recordErrors?.[field] ? <span className="field-error">{recordErrors[field]}</span> : null
+          return <section className="owner-entry" key={index}>
+            <header className="chain-history-entry-heading">
+              <h3>{`Survey record ${index + 1}`}</h3>
+              {surveyRecords.length > 1 ? <button type="button" className="link" onClick={() => {
+                setSurveyRecords((current) => current.filter((_, recordIndex) => recordIndex !== index))
+                setSurveyErrors({})
+              }}>Remove record</button> : null}
+            </header>
+            <div className="owner-fields">
+              <div><Field label="ULPIN (optional)" value={record.ulpin} onChange={(v) => updateSurveyRecord(index, 'ulpin', v)} placeholder="Enter only if already issued" />{surveyError('ulpin')}</div>
+              <div><Field label="Survey no." value={record.surveyNo} onChange={(v) => updateSurveyRecord(index, 'surveyNo', v)} required />{surveyError('surveyNo')}</div>
+              <div><Field label="Sub-division no." value={record.subdivisionNo} onChange={(v) => updateSurveyRecord(index, 'subdivisionNo', v)} /></div>
+              <div><Field label="Extent" type="number" value={record.extentValue} onChange={(v) => updateSurveyRecord(index, 'extentValue', v.replace(/[^0-9.]/g, ''))} required />{surveyError('extentValue')}</div>
+              <div><Field label="Extent unit" value={record.extentUnit} onChange={(v) => updateSurveyRecord(index, 'extentUnit', v)} options={extentUnitOptions} required />{surveyError('extentUnit')}</div>
+            </div>
+          </section>
+        })}
+      </Panel> : null}
+      {activeStage === 4 ? <Panel title="">
         <div className="form-grid four"><div><Field label="North boundary" value={property.boundaryNorth} onChange={(v) => update('boundaryNorth', v)} required />{fieldError('boundaryNorth')}</div><div><Field label="South boundary" value={property.boundarySouth} onChange={(v) => update('boundarySouth', v)} required />{fieldError('boundarySouth')}</div><div><Field label="East boundary" value={property.boundaryEast} onChange={(v) => update('boundaryEast', v)} required />{fieldError('boundaryEast')}</div><div><Field label="West boundary" value={property.boundaryWest} onChange={(v) => update('boundaryWest', v)} required />{fieldError('boundaryWest')}</div></div>
         <div className="boundary-measurements">
           <div className="boundary-measurements-heading">
@@ -713,7 +768,7 @@ export default function PropertyCreate() {
           ))}
         </div>
       </Panel> : null}
-      {activeStage === 4 ? <Panel title="" actions={<button type="button" className="outline" onClick={() => setChainHistory((current) => [...current, emptyChainHistoryEntry(property.surveyNo)])}>Add record</button>}>
+      {activeStage === 5 ? <Panel title="" actions={<button type="button" className="outline" onClick={() => setChainHistory((current) => [...current, emptyChainHistoryEntry(surveyRecords[0]?.surveyNo ?? '')])}>Add record</button>}>
         <p className="muted">Add the earlier registered transfers for this property. Start with the earliest known owner and leave the section empty if there is no prior history to record.</p>
         {chainHistory.length === 0 ? <p className="chain-history-empty">No chain-of-title records added.</p> : null}
         {chainHistory.map((entry, entryIndex) => {
@@ -737,7 +792,7 @@ export default function PropertyCreate() {
           </section>
         })}
       </Panel> : null}
-      {activeStage === 5 ? <Panel title="">
+      {activeStage === 6 ? <Panel title="">
         <div className="form-grid three"><Field label="Guideline value" value={property.guidelineValue} onChange={(v) => update('guidelineValue', v)} type="number" /><Field label="Notification / register reference" value={property.guidelineValueReference} onChange={(v) => update('guidelineValueReference', v)} /></div>
         <p className="advisory">Not fetched from an API. Editable again during transaction review; every change is written to the audit trail.</p>
       </Panel> : null}

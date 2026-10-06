@@ -67,6 +67,21 @@ export default function PropertyDetail() {
         </dl>
       </Panel>
 
+      <Panel title="Survey records">
+        <DataTable
+          rows={(property.surveyRecords as Row[]) ?? []}
+          columns={[
+            { key: 'seq', label: '#' },
+            { key: 'ulpin', label: 'ULPIN' },
+            { key: 'survey_no', label: 'Survey no.' },
+            { key: 'subdivision_no', label: 'Sub-division no.' },
+            { key: 'extent_value', label: 'Extent' },
+            { key: 'extent_unit', label: 'Unit' },
+          ]}
+          empty="No survey records."
+        />
+      </Panel>
+
       <Panel title="Registered owners (registration record)">
         <DataTable
           rows={(property.registeredOwners as Row[]) ?? []}
