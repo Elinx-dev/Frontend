@@ -106,7 +106,11 @@ export const mapEmbedUrl = ({ latitude, longitude }: MapLocation) => {
 
 export const propertyTypeFallback: SelectOption[] = [{ value: 'LAND', label: 'Land Parcel' }, { value: 'HOUSE_SITE', label: 'House Site' }, { value: 'BUILDING', label: 'Building' }, { value: 'APARTMENT_UNIT', label: 'Apartment / Flat' }, { value: 'AGRICULTURAL', label: 'Agricultural Land' }, { value: 'COMMERCIAL', label: 'Commercial' }, { value: 'INDUSTRIAL', label: 'Industrial' }, { value: 'PLOT_SITE', label: 'Plot / Site' }]
 export const natureOfTitleOptions: SelectOption[] = [{ value: 'FREEHOLD', label: 'Freehold' }, { value: 'LEASEHOLD', label: 'Leasehold' }]
-export const landTypeOptions: SelectOption[] = [{ value: 'RURAL', label: 'Rural' }, { value: 'URBAN', label: 'Urban' }]
+export const landTypeOptions: SelectOption[] = [
+  { value: 'RURAL', label: 'Rural' },
+  { value: 'NATHAM', label: 'Natham' },
+  { value: 'URBAN', label: 'Urban' },
+]
 export const classificationOptions: SelectOption[] = [{ value: 'Dry', label: 'Dry' }, { value: 'Wet', label: 'Wet' }]
 export const extentUnitFallback: SelectOption[] = [{ value: 'SQ_FT', label: 'Square Feet' }, { value: 'SQ_M', label: 'Square Metres' }, { value: 'CENT', label: 'Cent' }, { value: 'ACRE', label: 'Acre' }, { value: 'HECTARE', label: 'Hectare' }]
 
