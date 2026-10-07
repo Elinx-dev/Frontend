@@ -33,9 +33,7 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
     try {
       const result = await post<VaoRecord>(`${portal.api}/records/${encodeURIComponent(record.txn_ref)}/book`, { visitDate: date, visitTime: time })
       setMessage(
-        result.slot_booked
-          ? `Slot booked for ${result.ulpin ?? result.txn_ref} on ${when(result.agreed_date, result.agreed_time)}. ${portal.key === 'VAO' ? 'You can now verify once the record is with you.' : 'You can now open the survey form.'}`
-          : `Proposed ${when(result.agreed_date, result.agreed_time)} to the ${portal.other} for ${result.ulpin ?? result.txn_ref}. The slot is booked once they accept.`,
+        `Slot booked for ${result.ulpin ?? result.txn_ref} on ${when(result.agreed_date, result.agreed_time)}. ${portal.key === 'VAO' ? 'You can now verify and forward the record.' : 'You can now open the survey form.'}`,
       )
       setTime('')
       await Promise.all([records.reload(), slots.reload()])
@@ -51,8 +49,8 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
       <VaoHeading
         title="Slot Booking"
         subtitle={portal.key === 'VAO'
-          ? 'Book a site-visit slot for an assigned record. A record can only be verified after its visit slot is booked.'
-          : 'Propose a joint site-visit slot to the VAO. The survey form unlocks once the slot is booked.'}
+          ? 'Book your field-verification slot for a record the Surveyor has submitted. A record can only be verified after your slot is booked.'
+          : 'Book your survey slot for an assigned record. The survey form unlocks once your slot is booked.'}
       />
       <Banner kind="error" message={error || records.error || slots.error} />
       <Banner kind="success" message={message} />
@@ -60,7 +58,7 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
       <div className="vao-booking">
         <section className="vao-card">
           <h2>1. Select record</h2>
-          {bookable.length === 0 && !records.loading ? <p className="muted">Every assigned record already has a booked slot.</p> : null}
+          {bookable.length === 0 && !records.loading ? <p className="muted">{portal.key === 'VAO' ? 'No record is waiting for a field-verification slot. Records appear here once the Surveyor submits the survey.' : 'Every assigned record already has a booked slot.'}</p> : null}
           <div className="vao-record-pick">
             {bookable.map((r) => (
               <button
@@ -87,7 +85,7 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
               <div className="vao-booking-summary">
                 <div><span>ULPIN</span><strong className="mono">{record.ulpin ?? record.property_ref}</strong></div>
                 <div><span>Survey no.</span><strong>{record.survey_no ?? '—'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</strong></div>
-                <div><span>{portal.other}</span><strong>{portal.otherName(record) ?? (portal.key === 'VAO' ? 'Field verification (VAO only)' : 'Village VAO')}</strong></div>
+                <div><span>Purpose</span><strong>{portal.key === 'VAO' ? 'Field verification' : 'Field survey'}</strong></div>
                 <div><span>Current plan</span><strong>{when(record.agreed_date, record.agreed_time)}</strong></div>
               </div>
               <label className="vao-date-field">
@@ -113,7 +111,7 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
               </div>
               <button className="vao-btn-navy wide" disabled={busy || time === ''} onClick={() => void book()}>
                 <CheckCircleIcon />
-                {record.status === 'SURVEY_PENDING' ? `Book slot with ${portal.other}` : 'Book slot'}
+                {record.slot_booked ? 'Reschedule slot' : 'Book slot'}
                 {time === '' ? '' : ` · ${date} ${time}`}
               </button>
             </>

@@ -53,10 +53,7 @@ export default function Survey() {
   }
 
   const proposeVisit = () =>
-    guard(() => post(`/api/transactions/${txnRef}/survey/visits`, { visitDate, visitTime }), 'Visit proposed.')
-
-  const acceptVisit = (visitId: number) =>
-    guard(() => post(`/api/transactions/${txnRef}/survey/visits/${visitId}/accept`, {}), 'Visit accepted.')
+    guard(() => post(`/api/transactions/${txnRef}/survey/visits`, { visitDate, visitTime }), 'Visit booked.')
 
   const checkIn = (visitId: number) =>
     guard(() => post(`/api/transactions/${txnRef}/survey/visits/${visitId}/check-in`, {}), 'Checked in on site.')
@@ -119,12 +116,11 @@ export default function Survey() {
             { key: 'status', label: 'Status' },
             { key: 'checked_in_at', label: 'Checked in' },
           ]}
-          empty="No visits proposed."
+          empty="No visits booked."
         />
         <div className="actions">
           {visits.map((v) => (
             <span key={String(v.id)}>
-              <button onClick={() => void acceptVisit(Number(v.id))}>Accept #{formatCell(v.id)}</button>
               <button onClick={() => void checkIn(Number(v.id))}>Check in #{formatCell(v.id)}</button>
             </span>
           ))}

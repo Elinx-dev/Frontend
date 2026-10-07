@@ -8,7 +8,7 @@ import { CalendarIcon, CheckCircleIcon, ClockIcon, PinIcon, UsersIcon } from '..
 import { errorText, useVaoResource } from './useVao'
 import { StagePill, VaoModal } from './VaoUi'
 import { VisitModal } from './VisitModal'
-import { deedLabel, formatTimestamp, parties, rupees, when } from './vaoShared'
+import { deedLabel, formatTimestamp, parties, purposeLabel, rupees, when } from './vaoShared'
 import type { VaoDetail } from './vaoShared'
 
 type Tab = 'identity' | 'parties' | 'visits' | 'mutation'
@@ -106,13 +106,15 @@ export default function VerificationDetail() {
           <CalendarIcon />
           {record.slot_booked ? (
             <span>
-              Site visit slot booked for <b>{when(record.agreed_date, record.agreed_time)}</b>
+              Field-verification slot booked for <b>{when(record.agreed_date, record.agreed_time)}</b>
               {record.vao_checkin_at == null ? ' · check-in pending' : ` · checked in ${formatTimestamp(record.vao_checkin_at)}`}
             </span>
+          ) : record.status === 'SURVEY_PENDING' ? (
+            <span><b>Survey in progress.</b> You can book your field-verification slot once the Surveyor submits the survey.</span>
           ) : (
-            <span><b>No visit slot booked.</b> Verification stays locked until you book a site-visit slot for this record.</span>
+            <span><b>No visit slot booked.</b> Verification stays locked until you book your field-verification slot for this record.</span>
           )}
-          {awaitingVerification || record.status === 'OBJECTION_PENDING' || record.status === 'SURVEY_PENDING' ? (
+          {awaitingVerification || record.status === 'OBJECTION_PENDING' ? (
             <button className="vao-btn-light" onClick={() => setShowVisit(true)}>
               {record.slot_booked ? 'Manage visit' : 'Book slot'}
             </button>
@@ -162,16 +164,15 @@ export default function VerificationDetail() {
           {tab === 'visits' ? (
             record.visits.length === 0 ? <p className="muted">No site visit planned yet.</p> : (
               <table className="vao-table compact">
-                <thead><tr><th>Purpose</th><th>Proposed by</th><th>Planned slot</th><th>Status</th><th>VAO check-in</th><th>Surveyor check-in</th></tr></thead>
+                <thead><tr><th>Purpose</th><th>Booked by</th><th>Planned slot</th><th>Status</th><th>Check-in</th></tr></thead>
                 <tbody>
                   {record.visits.map((v: Row) => (
                     <tr key={String(v.id)}>
-                      <td>{v.visit_purpose === 'FIELD_VERIFICATION' ? 'Field verification' : 'Joint survey'}</td>
+                      <td>{purposeLabel(v.visit_purpose)}</td>
                       <td>{formatCell(v.proposed_by_name)} ({formatCell(v.proposed_by_role)})</td>
                       <td className="mono">{when((v.agreed_date as string | null) ?? null, (v.agreed_time as string | null) ?? null)}</td>
                       <td>{formatCell(v.status)}</td>
-                      <td>{formatTimestamp(v.vao_checkin_at)}</td>
-                      <td>{formatTimestamp(v.surveyor_checkin_at)}</td>
+                      <td>{formatTimestamp(v.visit_purpose === 'FIELD_VERIFICATION' ? v.vao_checkin_at : v.surveyor_checkin_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -221,7 +222,7 @@ export default function VerificationDetail() {
         <section className="vao-card">
           <p className="vao-card-eyebrow">Verification checklist</p>
           <ul className="vao-checklist">
-            <li className={record.slot_booked ? 'ok' : ''}>Site-visit slot booked {record.slot_booked ? `· ${when(record.agreed_date, record.agreed_time)}` : ''}</li>
+            <li className={record.slot_booked ? 'ok' : ''}>Field-verification slot booked {record.slot_booked ? `· ${when(record.agreed_date, record.agreed_time)}` : ''}</li>
             <li className={record.vao_checkin_at == null ? '' : 'ok'}>Checked in at site {record.vao_checkin_at == null ? '(recommended)' : `· ${formatTimestamp(record.vao_checkin_at)}`}</li>
             <li className={survey == null && record.survey_required ? '' : 'ok'}>{record.survey_required ? 'Survey submitted by Surveyor' : 'No survey required for this transfer'}</li>
             <li className={record.stage === 'VERIFIED' ? 'ok' : ''}>Verified &amp; forwarded to Tahsildar</li>

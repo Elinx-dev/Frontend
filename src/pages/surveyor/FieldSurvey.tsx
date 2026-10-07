@@ -26,7 +26,7 @@ export default function FieldSurvey() {
     <div className="vao-page">
       <VaoHeading
         title="Field Survey"
-        subtitle="Capture GPS, extent, measurements, boundaries and the parcel polygon. The form opens once the joint visit slot with the VAO is booked."
+        subtitle="Capture GPS, extent, measurements, boundaries and the parcel polygon. The form opens once your survey visit slot is booked."
         actions={<button className="outline" onClick={() => void reload()}>Refresh</button>}
       />
       <Banner kind="error" message={error} />
@@ -62,7 +62,7 @@ export default function FieldSurvey() {
                         <ListIcon /> {r.submission_id == null ? 'Open Survey Form' : 'Resurvey'}
                       </button>
                     ) : (
-                      <Link className="vao-btn-light" to={`/surveyor/slots?txn=${encodeURIComponent(r.txn_ref)}`} title="Book the joint visit slot before surveying">
+                      <Link className="vao-btn-light" to={`/surveyor/slots?txn=${encodeURIComponent(r.txn_ref)}`} title="Book your visit slot before surveying">
                         Book slot first
                       </Link>
                     )}

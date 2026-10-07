@@ -9,10 +9,10 @@ import { when } from './vaoShared'
 import type { VaoDashboardData } from './vaoShared'
 
 const LIFECYCLE = [
-  { label: 'Agree a visit slot with the Surveyor', stages: ['AWAITING_PROPOSAL', 'SURVEYOR_PROPOSED', 'SURVEYOR_COUNTERED', 'VAO_PROPOSED', 'VAO_COUNTERED'] },
-  { label: 'Slot booked — confirm the visit', stages: ['SLOT_BOOKED', 'CHECK_IN_DUE'] },
-  { label: 'Check in at site', stages: ['VISIT_DONE'] },
-  { label: 'Verify & forward to Tahsildar', stages: ['READY_TO_VERIFY', 'VERIFIED'] },
+  { label: 'Surveyor field survey', stages: ['WITH_SURVEYOR'] },
+  { label: 'Book your field-verification slot', stages: ['AWAITING_PROPOSAL'] },
+  { label: 'Verify & forward to Tahsildar', stages: ['READY_TO_VERIFY', 'OBJECTION_PENDING'] },
+  { label: 'Forwarded to Tahsildar', stages: ['VERIFIED'] },
 ]
 
 export default function VaoDashboard() {
@@ -65,7 +65,7 @@ export default function VaoDashboard() {
               <CalendarIcon />
               <div>
                 <strong>Site Visit Plan</strong>
-                <small>Planned dates and times, accept or counter the Surveyor, check in</small>
+                <small>Your planned dates and times, reschedule, check in</small>
               </div>
             </Link>
             <Link className="vao-quick" to="/vao/slots">

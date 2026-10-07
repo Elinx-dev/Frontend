@@ -11,7 +11,7 @@ import { surveyorRecordLink } from './surveyorShared'
 import type { SurveyorDashboardData } from './surveyorShared'
 
 const LIFECYCLE = [
-  { label: 'Agree a joint visit slot with the VAO', stages: ['AWAITING_PROPOSAL', 'VAO_PROPOSED', 'VAO_COUNTERED', 'SURVEYOR_PROPOSED', 'SURVEYOR_COUNTERED'] },
+  { label: 'Book your survey slot', stages: ['AWAITING_PROPOSAL'] },
   { label: 'Slot booked — check in at site', stages: ['SLOT_BOOKED', 'CHECK_IN_DUE'] },
   { label: 'Fill the survey verification form', stages: ['SURVEY_DUE', 'CONFLICT_FLAGGED'] },
   { label: 'Submitted — VAO verification', stages: ['SUBMITTED', 'OBJECTION_PENDING', 'VERIFIED'] },
@@ -45,7 +45,7 @@ export default function SurveyorDashboard() {
         <div className="vao-kpi tone-navy">
           <span>Scheduled <CalendarIcon /></span>
           <strong>{count(kpis?.scheduled)}</strong>
-          <small>Joint visits booked</small>
+          <small>Survey visits booked</small>
         </div>
         <div className="vao-kpi tone-gold">
           <span>Survey due <PinIcon /></span>
@@ -67,14 +67,14 @@ export default function SurveyorDashboard() {
               <CalendarIcon />
               <div>
                 <strong>Site Visit Plan</strong>
-                <small>Planned dates and times, accept or counter the VAO, check in</small>
+                <small>Your planned dates and times, reschedule, check in</small>
               </div>
             </Link>
             <Link className="vao-quick" to="/surveyor/slots">
               <ClockIcon />
               <div>
                 <strong>Slot Booking</strong>
-                <small>Book the joint visit — required before the survey form opens</small>
+                <small>Book your visit — required before the survey form opens</small>
               </div>
             </Link>
             <Link className="vao-quick" to="/surveyor/field-survey">

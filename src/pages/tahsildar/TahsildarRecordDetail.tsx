@@ -7,7 +7,7 @@ import type { Row } from '../../types'
 import { CheckCircleIcon, ClockIcon, PinIcon, UsersIcon } from '../../icons'
 import { errorText, useVaoResource } from '../vao/useVao'
 import { VaoModal } from '../vao/VaoUi'
-import { deedLabel, formatTimestamp, rupees, when } from '../vao/vaoShared'
+import { deedLabel, formatTimestamp, purposeLabel, rupees, when } from '../vao/vaoShared'
 import { TahsildarStagePill } from './TahsildarUi'
 import type { TahsildarDetail } from './tahsildarShared'
 
@@ -245,7 +245,7 @@ export default function TahsildarRecordDetail() {
                 rows={record.siteVisits}
                 empty="No site visit recorded."
                 columns={[
-                  ['visit_purpose', 'Purpose', (v) => (v === 'FIELD_VERIFICATION' ? 'Field verification' : 'Joint survey')],
+                  ['visit_purpose', 'Purpose', (v) => purposeLabel(v)],
                   ['agreed_date', 'Slot', (v) => String(v ?? '—')],
                   ['agreed_time', 'Time', (v) => String(v ?? '—')],
                   ['status', 'Status'],
