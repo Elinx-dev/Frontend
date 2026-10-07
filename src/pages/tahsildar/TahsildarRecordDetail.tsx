@@ -14,7 +14,7 @@ import type { TahsildarDetail } from './tahsildarShared'
 type Tab = 'transaction' | 'parties' | 'fees' | 'survey' | 'verification' | 'timeline'
 
 const TABS: [Tab, string][] = [
-  ['transaction', 'Transaction & Property'],
+  ['transaction', 'Deed Details'],
   ['parties', 'Parties'],
   ['fees', 'Fees & Payments'],
   ['survey', 'Survey'],
@@ -54,6 +54,7 @@ export default function TahsildarRecordDetail() {
   const { data, error, reload } = useVaoResource<TahsildarDetail>(`/api/tahsildar/records/${encodeURIComponent(txnRef)}`)
   const [tab, setTab] = useState<Tab>('transaction')
   const [showApprove, setShowApprove] = useState(false)
+  const [showPatta, setShowPatta] = useState(false)
   const [registerNumber, setRegisterNumber] = useState('')
   const [remarks, setRemarks] = useState('')
   const [busy, setBusy] = useState(false)
@@ -79,7 +80,7 @@ export default function TahsildarRecordDetail() {
         mutationRegisterNumber: registerNumber.trim() === '' ? null : registerNumber.trim(),
         remarks: remarks.trim() === '' ? null : remarks.trim(),
       }, true)
-      setMessage('Mutation approved. The Revenue record has been updated.')
+      setMessage('Mutation approved. The Revenue record has been updated and the revenue document generated.')
       setShowApprove(false)
       await reload()
     } catch (e) {
@@ -93,7 +94,7 @@ export default function TahsildarRecordDetail() {
     <div className="vao-page">
       <div className="vao-detail-card">
         <div className="vao-detail-head">
-          <Link className="vao-back" to={awaiting ? '/tahsildar/approvals' : '/tahsildar/transactions'}>← Back</Link>
+          <Link className="vao-back" to="/tahsildar/verification">← Back to Queue</Link>
           <strong className="mono">{record.txn_ref}</strong>
           <span className="vao-detail-parties">{record.sellers ?? '—'} → {record.buyers ?? '—'}</span>
           <span className="vao-detail-spacer" />
@@ -105,9 +106,12 @@ export default function TahsildarRecordDetail() {
               title={record.can_approve ? undefined : `Pending: ${failed.map((c) => c.label).join(', ')}`}
               onClick={() => setShowApprove(true)}
             >
-              <CheckCircleIcon /> Approve Mutation
+              <CheckCircleIcon /> Approve and Generate Revenue Document
             </button>
           ) : null}
+          {record.approved_at == null ? null : (
+            <button className="vao-btn-light" onClick={() => setShowPatta(true)}>Preview Revenue Document</button>
+          )}
         </div>
         <div className="vao-detail-meta">
           <span>Type: <b>{deedLabel(record.deed_type_code)}</b></span>
@@ -255,11 +259,21 @@ export default function TahsildarRecordDetail() {
           ) : null}
 
           {tab === 'timeline' ? (
-            <Rows
-              rows={record.timeline}
-              empty="No audit events yet."
-              columns={[['occurred_at', 'When', formatTimestamp], ['action', 'Action'], ['actor_username', 'By'], ['actor_role', 'Role'], ['to_status', 'Status'], ['detail', 'Remarks']]}
-            />
+            record.timeline.length === 0 ? <p className="muted">No audit events yet.</p> : (
+              <div className="vao-lifecycle">
+                {record.timeline.map((t, i) => (
+                  <div key={i} className="vao-lifecycle-step">
+                    <span className="tick">✓</span>
+                    <span>
+                      <b>{String(t.action).replace(/_/g, ' ').toLowerCase()}</b>
+                      {t.to_status == null ? '' : ` → ${String(t.to_status)}`}
+                      <br />
+                      <small className="muted">{formatTimestamp(t.occurred_at)} · {formatCell(t.actor_username)} ({formatCell(t.actor_role)}){t.detail == null ? '' : ` · “${String(t.detail)}”`}</small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
           ) : null}
         </section>
 
@@ -283,7 +297,7 @@ export default function TahsildarRecordDetail() {
       </div>
 
       {showApprove ? (
-        <VaoModal title="Approve Mutation" onClose={() => setShowApprove(false)}>
+        <VaoModal title="Approve and Generate Revenue Document" onClose={() => setShowApprove(false)}>
           <ul className="vao-checklist">
             {record.checklist.map((c) => <li key={c.code} className={c.passed ? 'ok' : ''}>{c.label}</li>)}
           </ul>
@@ -298,6 +312,26 @@ export default function TahsildarRecordDetail() {
           <button className="vao-btn-green wide" disabled={busy} onClick={() => void approve()}>
             <CheckCircleIcon /> {busy ? 'Approving…' : 'Approve & Update Revenue Record'}
           </button>
+        </VaoModal>
+      ) : null}
+
+      {showPatta ? (
+        <VaoModal title="Revenue Document Preview" onClose={() => setShowPatta(false)}>
+          <div className="vao-facts">
+            <Fact label="Revenue record (Patta) no." value={record.revenue_record_number} mono />
+            <Fact label="Mutation register no." value={record.mutation_register_number} mono />
+            <Fact label="Approved" value={formatTimestamp(record.approved_at)} />
+            <Fact label="Approved by" value={record.timeline.find((t) => t.action === 'MUTATION_APPROVED')?.actor_username} />
+            <Fact label="Village / Taluk" value={`${formatCell(record.village_name)} / ${formatCell(property.taluk_code)}`} />
+            <Fact label="Survey no." value={`${formatCell(property.survey_no)}${property.subdivision_no == null ? '' : `/${formatCell(property.subdivision_no)}`}`} />
+            <Fact label="Extent" value={`${formatCell(property.extent_value)} ${formatCell(property.extent_unit)}`} />
+            <Fact label="Classification" value={property.classification_code} />
+            <Fact label="New owner(s)" value={record.buyers} />
+            <Fact label="Previous owner(s)" value={record.sellers} />
+            <Fact label="Deed" value={`${deedLabel(record.deed_type_code)} · ${formatCell(record.registered_document_no)}`} />
+            <Fact label="Tahsildar remarks" value={record.tahsildar_remarks} />
+          </div>
+          <button className="vao-btn-light wide" onClick={() => window.print()}>Download / Print</button>
         </VaoModal>
       ) : null}
     </div>

@@ -103,5 +103,5 @@ export const TAHSILDAR_STAGE_TONES: Record<string, StageTone> = {
 }
 
 export function recordPath(txnRef: string): string {
-  return `/tahsildar/transactions/${encodeURIComponent(txnRef)}`
+  return `/tahsildar/verification/${encodeURIComponent(txnRef)}`
 }

@@ -115,7 +115,7 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="side-section">
             <span>Tahsildar Portal</span>
             <NavLink to="/tahsildar" end><DashboardIcon />Dashboard</NavLink>
-            <NavLink to="/tahsildar/approvals"><ShieldCheckIcon />Approval Queue</NavLink>
+            <NavLink to="/tahsildar/verification"><ShieldCheckIcon />Verification Queue</NavLink>
             <NavLink to="/tahsildar/transactions"><TransferIcon />Transactions</NavLink>
             <NavLink to="/properties" end><ListIcon />Property List</NavLink>
             <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink>
@@ -154,7 +154,7 @@ function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="workspace">
         <header className="topbar">
-          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : isTahsildar ? <PortalBreadcrumb root="/tahsildar" label="Tahsildar Portal" pages={TAHSILDAR_PAGES} detailPrefix="/tahsildar/transactions/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
+          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : isTahsildar ? <PortalBreadcrumb root="/tahsildar" label="Tahsildar Portal" pages={TAHSILDAR_PAGES} detailPrefix="/tahsildar/verification/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
           <div className="topbar-user">
             <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
             <span className="avatar">{initials(user.fullName)}</span>
@@ -182,7 +182,7 @@ const SURVEYOR_PAGES: [string, string][] = [
 ]
 
 const TAHSILDAR_PAGES: [string, string][] = [
-  ['/tahsildar/approvals', 'Approval Queue'],
+  ['/tahsildar/verification', 'Verification Queue'],
   ['/tahsildar/transactions', 'Transactions'],
   ['/properties', 'Property List'],
   ['/audit', 'Audit Trail'],
@@ -246,9 +246,9 @@ export default function App() {
           <Route path="/vao/verification" element={<Protected><VerificationQueue /></Protected>} />
           <Route path="/vao/verification/:txnRef" element={<Protected><VerificationDetail /></Protected>} />
           <Route path="/tahsildar" element={<Protected><TahsildarDashboard /></Protected>} />
-          <Route path="/tahsildar/approvals" element={<Protected><TahsildarRecords view="approvals" /></Protected>} />
+          <Route path="/tahsildar/verification" element={<Protected><TahsildarRecords view="approvals" /></Protected>} />
           <Route path="/tahsildar/transactions" element={<Protected><TahsildarRecords key="transactions" view="transactions" /></Protected>} />
-          <Route path="/tahsildar/transactions/:txnRef" element={<Protected><TahsildarRecordDetail /></Protected>} />
+          <Route path="/tahsildar/verification/:txnRef" element={<Protected><TahsildarRecordDetail /></Protected>} />
           <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
           <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
           <Route path="/admin/users" element={<AdminOnly><AdminUsers /></AdminOnly>} />

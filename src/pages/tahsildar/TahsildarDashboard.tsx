@@ -2,12 +2,19 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth'
 import { Banner } from '../../ui'
-import { CheckCircleIcon, ClockIcon, ListIcon, QueueIcon, ShieldCheckIcon, WorkflowIcon } from '../../icons'
+import { CheckCircleIcon, ClockIcon, ListIcon, ShieldCheckIcon, WorkflowIcon } from '../../icons'
 import { useVaoResource } from '../vao/useVao'
 import { formatTimestamp, rupees } from '../vao/vaoShared'
 import { recordPath } from './tahsildarShared'
 import { TahsildarStagePill } from './TahsildarUi'
 import type { TahsildarDashboardData } from './tahsildarShared'
+
+const LIFECYCLE = [
+  { label: 'Surveyor field survey', stages: ['WITH_SURVEYOR'] },
+  { label: 'VAO verifies & forwards', stages: ['WITH_VAO', 'OBJECTION_PENDING'] },
+  { label: 'Tahsildar reviews the checklist', stages: ['READY_FOR_APPROVAL', 'ON_HOLD'] },
+  { label: 'Tahsildar approves & generates patta', stages: ['APPROVED'] },
+]
 
 export default function TahsildarDashboard() {
   const { user } = useAuth()
@@ -31,14 +38,14 @@ export default function TahsildarDashboard() {
 
       <div className="vao-kpis">
         <div className="vao-kpi tone-warning">
-          <span>Awaiting approval <ClockIcon /></span>
+          <span>Pending approval <ClockIcon /></span>
           <strong>{value(kpis?.awaitingApproval)}</strong>
           <small>{kpis?.readyForApproval ?? 0} ready · {kpis?.onHold ?? 0} checks pending</small>
         </div>
         <div className="vao-kpi tone-navy">
-          <span>In progress <WorkflowIcon /></span>
-          <strong>{value(kpis?.inProgress)}</strong>
-          <small>With Surveyor / VAO · {kpis?.objections ?? 0} objections</small>
+          <span>Total in queue <WorkflowIcon /></span>
+          <strong>{value(kpis?.total)}</strong>
+          <small>{kpis?.inProgress ?? 0} with Surveyor / VAO · {kpis?.objections ?? 0} objections</small>
         </div>
         <div className="vao-kpi tone-gold">
           <span>Approved today <CheckCircleIcon /></span>
@@ -46,9 +53,9 @@ export default function TahsildarDashboard() {
           <small>{kpis?.approvedThisMonth ?? 0} this month</small>
         </div>
         <div className="vao-kpi tone-success">
-          <span>Total approved <ShieldCheckIcon /></span>
+          <span>Approved <ShieldCheckIcon /></span>
           <strong>{value(kpis?.approved)}</strong>
-          <small>{kpis?.total ?? 0} transactions in your taluk</small>
+          <small>Revenue record updated, patta issued</small>
         </div>
       </div>
 
@@ -56,11 +63,11 @@ export default function TahsildarDashboard() {
         <section className="vao-card">
           <h2>Quick actions</h2>
           <div className="vao-quick-grid">
-            <Link className="vao-quick" to="/tahsildar/approvals">
-              <QueueIcon />
+            <Link className="vao-quick" to="/tahsildar/verification">
+              <ShieldCheckIcon />
               <div>
-                <strong>Approval Queue</strong>
-                <small>{kpis?.readyForApproval ?? 0} ready for your approval</small>
+                <strong>Verification Queue</strong>
+                <small>Review pending patta mutation requests from the VAO · {kpis?.readyForApproval ?? 0} ready</small>
               </div>
             </Link>
             <Link className="vao-quick" to="/tahsildar/transactions">
@@ -70,14 +77,22 @@ export default function TahsildarDashboard() {
                 <small>Search every transaction in your taluk</small>
               </div>
             </Link>
+            <div className="vao-quick info">
+              <ShieldCheckIcon />
+              <div>
+                <strong>Your jurisdiction</strong>
+                <small>{taluks.length > 0 ? `${taluks.join(', ')} Taluk` : '—'}</small>
+                <small>{kpis?.total ?? 0} transactions · {kpis?.awaitingApproval ?? 0} pending approval</small>
+              </div>
+            </div>
           </div>
           <div className="vao-lifecycle">
-            <h3>Workflow pipeline</h3>
-            {(data?.byStage ?? []).map((s) => (
-              <div key={s.stage} className="vao-lifecycle-step">
+            <h3>Mutation lifecycle</h3>
+            {LIFECYCLE.map((step) => (
+              <div key={step.label} className="vao-lifecycle-step">
                 <span className="tick">✓</span>
-                <span>{s.label}</span>
-                <b>{s.count}</b>
+                <span>{step.label}</span>
+                <b>{step.stages.reduce((sum, stage) => sum + (data?.byStage.find((s) => s.stage === stage)?.count ?? 0), 0)}</b>
               </div>
             ))}
           </div>
@@ -98,10 +113,10 @@ export default function TahsildarDashboard() {
 
         <section className="vao-card">
           <div className="vao-card-head">
-            <h2>Approval queue</h2>
-            <Link to="/tahsildar/approvals">View all →</Link>
+            <h2>Pending queue</h2>
+            <Link to="/tahsildar/verification">View all →</Link>
           </div>
-          {data != null && data.approvalQueue.length === 0 ? <p className="muted">Nothing is waiting for your approval.</p> : null}
+          {data != null && data.approvalQueue.length === 0 ? <p className="muted">No pending items. Items appear once the VAO forwards a mutation request.</p> : null}
           <div className="vao-snapshot">
             {(data?.approvalQueue ?? []).map((r) => (
               <button key={r.txn_ref} className="vao-snapshot-item" onClick={() => navigate(recordPath(r.txn_ref))}>

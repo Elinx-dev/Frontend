@@ -10,17 +10,17 @@ import { recordPath } from './tahsildarShared'
 import { TahsildarStagePill } from './TahsildarUi'
 import type { TahsildarRecord } from './tahsildarShared'
 
-type Tab = 'ready' | 'hold' | 'progress' | 'approved' | 'all'
+type Tab = 'pending' | 'completed' | 'progress' | 'approved' | 'all'
 
 const TABS: Record<'approvals' | 'transactions', [Tab, string][]> = {
-  approvals: [['ready', 'Ready for Approval'], ['hold', 'Checks Pending']],
+  approvals: [['pending', 'Pending Approval'], ['completed', 'Completed']],
   transactions: [['all', 'All'], ['progress', 'In Progress'], ['approved', 'Approved']],
 }
 
 function matches(tab: Tab, r: TahsildarRecord): boolean {
   switch (tab) {
-    case 'ready': return r.stage === 'READY_FOR_APPROVAL'
-    case 'hold': return r.stage === 'ON_HOLD'
+    case 'pending': return r.action_required
+    case 'completed':
     case 'progress': return !r.action_required && r.stage !== 'APPROVED'
     case 'approved': return r.stage === 'APPROVED'
     default: return true
@@ -41,14 +41,14 @@ export default function TahsildarRecords({ view }: { view: 'approvals' | 'transa
     needle === '' ? true : [r.txn_ref, r.ulpin, r.property_ref, r.sellers, r.buyers, r.village_name, r.survey_no, r.registered_document_no, r.mutation_register_number]
       .some((v) => (v ?? '').toLowerCase().includes(needle)),
   )
-  const icon = (key: Tab) => (key === 'ready' ? <ShieldCheckIcon /> : key === 'approved' ? <CheckCircleIcon /> : key === 'all' ? <ListIcon /> : <ClockIcon />)
+  const icon = (key: Tab) => (key === 'pending' ? <ClockIcon /> : key === 'approved' || key === 'completed' ? <CheckCircleIcon /> : key === 'all' ? <ListIcon /> : <ClockIcon />)
 
   return (
     <div className="vao-page">
       <VaoHeading
-        title={view === 'approvals' ? 'Approval Queue' : 'Transactions'}
+        title={view === 'approvals' ? 'Verification Queue' : 'Transactions'}
         subtitle={view === 'approvals'
-          ? 'Mutations verified and forwarded by the VAO. Approve once every check on the record has passed.'
+          ? 'Patta mutation requests verified and forwarded by the VAO. Approval unlocks once every check on the record has passed.'
           : 'Every registered transaction in your taluk, from survey to Revenue approval.'}
         actions={<button className="outline" onClick={() => void reload()}>Refresh</button>}
       />
@@ -63,7 +63,7 @@ export default function TahsildarRecords({ view }: { view: 'approvals' | 'transa
           <input className="vao-search" placeholder="Search ID, ULPIN, parties, village…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {rows.length === 0 ? (
-          <p className="muted vao-empty">{data == null ? 'Loading…' : 'No transactions here.'}</p>
+          <p className="muted vao-empty">{data == null ? 'Loading…' : activeTab === 'pending' ? 'No pending approvals. Deeds appear here once the VAO has verified them and forwarded them for Tahsildar approval.' : 'No transactions here.'}</p>
         ) : (
           <table className="vao-table">
             <thead>
@@ -74,7 +74,7 @@ export default function TahsildarRecords({ view }: { view: 'approvals' | 'transa
                 <th>Parties</th>
                 <th>Village</th>
                 <th>Amount</th>
-                <th>{view === 'approvals' ? 'Forwarded by VAO' : 'Registered'}</th>
+                <th>{view === 'approvals' ? 'Submitted' : 'Registered'}</th>
                 <th>Status</th>
                 <th />
               </tr>
@@ -88,7 +88,7 @@ export default function TahsildarRecords({ view }: { view: 'approvals' | 'transa
                   <td className="vao-parties">{r.sellers ?? '—'} → {r.buyers ?? '—'}</td>
                   <td>{r.village_name ?? r.village_code}</td>
                   <td className="vao-amount">{rupees(r.declared_consideration)}</td>
-                  <td>{formatTimestamp(view === 'approvals' ? r.vao_verified_at : r.registered_at)}</td>
+                  <td>{formatTimestamp(view === 'approvals' ? (r.vao_verified_at ?? r.forwarded_at) : r.registered_at)}</td>
                   <td><TahsildarStagePill record={r} /></td>
                   <td className="vao-row-action">
                     <button className="vao-btn-review">
