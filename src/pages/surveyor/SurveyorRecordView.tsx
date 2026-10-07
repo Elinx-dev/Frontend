@@ -8,7 +8,7 @@ import { SURVEYOR_PORTAL } from '../vao/portal'
 import { useVaoResource } from '../vao/useVao'
 import { StagePill } from '../vao/VaoUi'
 import { VisitModal } from '../vao/VisitModal'
-import { deedLabel, formatTimestamp, parties, when } from '../vao/vaoShared'
+import { deedLabel, formatTimestamp, parties, purposeLabel, when } from '../vao/vaoShared'
 import { SketchDiagram } from './SketchDiagram'
 import { SurveyForm } from './SurveyForm'
 import { SurveyMap } from './SurveyMap'
@@ -133,15 +133,15 @@ export default function SurveyorRecordView() {
           {tab === 'visits' ? (
             record.visits.length === 0 ? <p className="muted">No site visit planned yet.</p> : (
               <table className="vao-table compact">
-                <thead><tr><th>Proposed by</th><th>Planned slot</th><th>Status</th><th>Your check-in</th><th>VAO check-in</th></tr></thead>
+                <thead><tr><th>Purpose</th><th>Booked by</th><th>Planned slot</th><th>Status</th><th>Check-in</th></tr></thead>
                 <tbody>
                   {record.visits.map((v) => (
                     <tr key={String(v.id)}>
+                      <td>{purposeLabel(v.visit_purpose)}</td>
                       <td>{formatCell(v.proposed_by_name)} ({formatCell(v.proposed_by_role)})</td>
                       <td className="mono">{when((v.agreed_date as string | null) ?? null, (v.agreed_time as string | null) ?? null)}</td>
                       <td>{formatCell(v.status)}</td>
-                      <td>{formatTimestamp(v.surveyor_checkin_at)}</td>
-                      <td>{formatTimestamp(v.vao_checkin_at)}</td>
+                      <td>{formatTimestamp(v.visit_purpose === 'FIELD_VERIFICATION' ? v.vao_checkin_at : v.surveyor_checkin_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -175,7 +175,7 @@ export default function SurveyorRecordView() {
             : <SketchDiagram rows={segments} />}
           <p className="vao-card-eyebrow sv-gap">VAO verification</p>
           <ul className="vao-checklist">
-            <li className={record.slot_booked || survey != null ? 'ok' : ''}>Joint visit slot booked {record.agreed_date == null ? '' : `· ${when(record.agreed_date, record.agreed_time)}`}</li>
+            <li className={record.slot_booked || survey != null ? 'ok' : ''}>Survey visit slot booked {record.agreed_date == null ? '' : `· ${when(record.agreed_date, record.agreed_time)}`}</li>
             <li className={record.surveyor_checkin_at == null ? '' : 'ok'}>Checked in at site {record.surveyor_checkin_at == null ? '' : `· ${formatTimestamp(record.surveyor_checkin_at)}`}</li>
             <li className={survey == null ? '' : survey.within_tolerance === false ? 'warn' : 'ok'}>{survey == null ? 'Survey form submitted' : survey.within_tolerance === false ? 'Survey submitted with conflict flag' : 'Survey submitted and forwarded to VAO'}</li>
             <li className={vaoVerifiedAt == null ? '' : 'ok'}>VAO verified {vaoVerifiedAt == null ? '' : `· ${formatTimestamp(vaoVerifiedAt)}`}</li>

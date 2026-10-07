@@ -10,17 +10,11 @@ export function StagePill({ record, portal = VAO_PORTAL }: { record: Pick<VaoRec
 
 export function CheckIns({ record, portal = VAO_PORTAL }: { record: VaoRecord; portal?: Portal }) {
   const self = portal.selfCheckin(record)
-  const other = portal.otherCheckin(record)
   return (
     <span className="vao-checkins">
       <span className={self == null ? 'vao-check' : 'vao-check done'}>
         {self == null ? '' : '✓ '}You
       </span>
-      {record.visit_purpose === 'FIELD_VERIFICATION' ? null : (
-        <span className={other == null ? 'vao-check' : 'vao-check done'}>
-          {other == null ? '' : '✓ '}{portal.other}
-        </span>
-      )}
     </span>
   )
 }

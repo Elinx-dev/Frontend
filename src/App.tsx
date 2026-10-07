@@ -33,7 +33,9 @@ import PropertyCreate from './pages/PropertyCreate'
 import PropertyDetail from './pages/PropertyDetail'
 import PropertySearch from './pages/PropertySearch'
 import PublicView from './pages/PublicView'
-import RevenueQueue from './pages/RevenueQueue'
+import TahsildarDashboard from './pages/tahsildar/TahsildarDashboard'
+import TahsildarRecordDetail from './pages/tahsildar/TahsildarRecordDetail'
+import TahsildarRecords from './pages/tahsildar/TahsildarRecords'
 import SiteVisitPlan from './pages/vao/SiteVisitPlan'
 import SlotBooking from './pages/vao/SlotBooking'
 import VaoDashboard from './pages/vao/VaoDashboard'
@@ -75,7 +77,8 @@ function Shell({ children }: { children: ReactNode }) {
   const adminStateQuery = `?stateCode=${encodeURIComponent(adminState)}`
   const isVao = has('VAO') && !canAdminister
   const isSurveyor = has('SURVEYOR') && !canAdminister && !isVao
-  const isPortal = isVao || isSurveyor
+  const isTahsildar = has('TAHSILDAR') && !canAdminister && !isVao && !isSurveyor
+  const isPortal = isVao || isSurveyor || isTahsildar
   return (
     <div className="app">
       <aside className="sidebar">
@@ -106,6 +109,16 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/surveyor/field-survey"><QueueIcon />Field Survey</NavLink>
             <NavLink to="/surveyor/verification"><ShieldCheckIcon />Verification View</NavLink>
             <NavLink to="/properties" end><ListIcon />Property List</NavLink>
+          </div>
+        ) : null}
+        {isTahsildar ? (
+          <div className="side-section">
+            <span>Tahsildar Portal</span>
+            <NavLink to="/tahsildar" end><DashboardIcon />Dashboard</NavLink>
+            <NavLink to="/tahsildar/verification"><ShieldCheckIcon />Verification Queue</NavLink>
+            <NavLink to="/tahsildar/transactions"><TransferIcon />Transactions</NavLink>
+            <NavLink to="/properties" end><ListIcon />Property List</NavLink>
+            <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink>
           </div>
         ) : null}
         {isPortal ? null : <div className="side-section">
@@ -141,7 +154,7 @@ function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="workspace">
         <header className="topbar">
-          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
+          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : isTahsildar ? <PortalBreadcrumb root="/tahsildar" label="Tahsildar Portal" pages={TAHSILDAR_PAGES} detailPrefix="/tahsildar/verification/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
           <div className="topbar-user">
             <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
             <span className="avatar">{initials(user.fullName)}</span>
@@ -166,6 +179,13 @@ const SURVEYOR_PAGES: [string, string][] = [
   ['/surveyor/field-survey', 'Field Survey'],
   ['/surveyor/verification', 'Verification View'],
   ['/properties', 'Property List'],
+]
+
+const TAHSILDAR_PAGES: [string, string][] = [
+  ['/tahsildar/verification', 'Verification Queue'],
+  ['/tahsildar/transactions', 'Transactions'],
+  ['/properties', 'Property List'],
+  ['/audit', 'Audit Trail'],
 ]
 
 function PortalBreadcrumb({ root, label, pages, detailPrefix }: { root: string; label: string; pages: [string, string][]; detailPrefix: string }) {
@@ -225,7 +245,10 @@ export default function App() {
           <Route path="/vao/slots" element={<Protected><SlotBooking /></Protected>} />
           <Route path="/vao/verification" element={<Protected><VerificationQueue /></Protected>} />
           <Route path="/vao/verification/:txnRef" element={<Protected><VerificationDetail /></Protected>} />
-          <Route path="/tahsildar" element={<Protected><RevenueQueue role="TAHSILDAR" /></Protected>} />
+          <Route path="/tahsildar" element={<Protected><TahsildarDashboard /></Protected>} />
+          <Route path="/tahsildar/verification" element={<Protected><TahsildarRecords view="approvals" /></Protected>} />
+          <Route path="/tahsildar/transactions" element={<Protected><TahsildarRecords key="transactions" view="transactions" /></Protected>} />
+          <Route path="/tahsildar/verification/:txnRef" element={<Protected><TahsildarRecordDetail /></Protected>} />
           <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
           <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
           <Route path="/admin/users" element={<AdminOnly><AdminUsers /></AdminOnly>} />

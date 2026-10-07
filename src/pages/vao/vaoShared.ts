@@ -79,14 +79,8 @@ export interface Slot {
 export type StageTone = 'action' | 'waiting' | 'booked' | 'done' | 'danger'
 
 export const VAO_STAGE_TONES: Record<string, StageTone> = {
+  WITH_SURVEYOR: 'waiting',
   AWAITING_PROPOSAL: 'action',
-  SURVEYOR_PROPOSED: 'action',
-  SURVEYOR_COUNTERED: 'action',
-  VAO_PROPOSED: 'waiting',
-  VAO_COUNTERED: 'waiting',
-  SLOT_BOOKED: 'booked',
-  CHECK_IN_DUE: 'booked',
-  VISIT_DONE: 'done',
   READY_TO_VERIFY: 'booked',
   OBJECTION_PENDING: 'danger',
   VERIFIED: 'done',
@@ -97,18 +91,17 @@ export function isCompleted(record: VaoRecord): boolean {
 }
 
 export function canBook(record: VaoRecord): boolean {
-  if (record.status === 'SURVEY_PENDING') return !record.slot_booked
-  if (record.status === 'VAO_PENDING' || record.status === 'OBJECTION_PENDING') {
-    return !record.slot_booked || (record.visit_purpose === 'FIELD_VERIFICATION' && record.vao_checkin_at == null)
-  }
-  return false
+  if (record.status !== 'VAO_PENDING' && record.status !== 'OBJECTION_PENDING') return false
+  return !record.slot_booked || record.vao_checkin_at == null
+}
+
+export function purposeLabel(purpose: unknown): string {
+  return purpose === 'FIELD_VERIFICATION' ? 'Field verification' : purpose === 'FIELD_SURVEY' ? 'Field survey' : '—'
 }
 
 export function planLabel(record: VaoRecord): string {
   if (record.visit_status == null) return '—'
-  if (record.slot_booked) return 'Agreed'
-  if (record.visit_status === 'COUNTER_PROPOSED') return 'Counter'
-  return 'Proposed'
+  return record.visit_status === 'COMPLETED' ? 'Completed' : 'Booked'
 }
 
 export function when(date: string | null, time: string | null): string {

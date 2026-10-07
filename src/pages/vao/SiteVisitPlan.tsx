@@ -6,11 +6,11 @@ import { VAO_PORTAL } from './portal'
 import type { Portal } from './portal'
 import { CheckIns, StagePill, UlpinCell, VaoHeading } from './VaoUi'
 import { VisitModal } from './VisitModal'
-import { planLabel, when } from './vaoShared'
+import { planLabel, purposeLabel, when } from './vaoShared'
 import type { VaoRecord } from './vaoShared'
 
 function PlanTable({ rows, onManage, portal }: { rows: VaoRecord[]; onManage: (r: VaoRecord) => void; portal: Portal }) {
-  const done = (r: VaoRecord) => portal.isCompleted(r) || r.stage === 'VISIT_DONE'
+  const done = (r: VaoRecord) => portal.isCompleted(r) || !portal.canBook(r)
   if (rows.length === 0) return <p className="muted vao-empty">Nothing here.</p>
   return (
     <table className="vao-table">
@@ -30,7 +30,7 @@ function PlanTable({ rows, onManage, portal }: { rows: VaoRecord[]; onManage: (r
           <tr key={r.txn_ref}>
             <td><UlpinCell record={r} /></td>
             <td>{portal.otherName(r) ?? '—'}</td>
-            <td className="vao-purpose">{r.visit_purpose === 'FIELD_VERIFICATION' ? 'Field verification' : r.status === 'SURVEY_PENDING' || r.visit_purpose === 'JOINT_SURVEY' ? 'Joint survey' : '—'}</td>
+            <td className="vao-purpose">{purposeLabel(r.visit_purpose)}</td>
             <td>
               <StagePill record={r} portal={portal} />
               {r.action_required ? <small className="vao-action-needed">Action needed</small> : null}
@@ -39,9 +39,6 @@ function PlanTable({ rows, onManage, portal }: { rows: VaoRecord[]; onManage: (r
               {r.agreed_date == null ? '—' : (
                 <span className="vao-when"><small>{planLabel(r)}:</small> {when(r.agreed_date, r.agreed_time)}</span>
               )}
-              {r.visit_status === 'COUNTER_PROPOSED' && r.visit_date != null ? (
-                <small className="vao-when-prev">Originally {when(r.visit_date, r.visit_time)}</small>
-              ) : null}
             </td>
             <td>{r.visit_status == null ? <span className="muted">—</span> : <CheckIns record={r} portal={portal} />}</td>
             <td className="vao-row-action">
@@ -68,7 +65,9 @@ export default function SiteVisitPlan({ portal = VAO_PORTAL }: { portal?: Portal
     <div className="vao-page">
       <VaoHeading
         title="Site Visit Plan"
-        subtitle={`Planned site visits with date and time. Propose or accept a slot with the ${portal.other}, then check in on the day of the visit.`}
+        subtitle={portal.key === 'VAO'
+          ? 'Your planned field-verification visits with date and time. Book or reschedule your own slot, then check in on the day of the visit.'
+          : 'Your planned survey visits with date and time. Book or reschedule your own slot, then check in on the day of the visit.'}
       />
       <Banner kind="error" message={error} />
       <Banner kind="success" message={message} />
