@@ -128,53 +128,61 @@ function RevenueDetails({ revenue }: { revenue: Row }) {
         <dd>{label(RESULT_LABELS, payload.extentResult)}</dd>
       </dl>
       <h4>Findings</h4>
-      <DataTable
-        rows={findings}
-        columns={[
-          { key: 'severity', label: 'Severity' },
-          { key: 'code', label: 'Finding' },
-          { key: 'reference', label: 'Survey / record' },
-          { key: 'message', label: 'Detail' },
-        ]}
-        empty="No findings."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={findings}
+          columns={[
+            { key: 'severity', label: 'Severity' },
+            { key: 'code', label: 'Finding' },
+            { key: 'reference', label: 'Survey / record' },
+            { key: 'message', label: 'Detail' },
+          ]}
+          empty="No findings."
+        />
+      </div>
       <h4>Property identity</h4>
-      <DataTable
-        rows={identity}
-        columns={[
-          { key: 'field', label: 'Field' },
-          { key: 'slate', label: 'SLATE' },
-          { key: 'revenue', label: 'Revenue' },
-          { key: 'result', label: 'Result' },
-        ]}
-        empty="No Revenue record to compare."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={identity}
+          columns={[
+            { key: 'field', label: 'Field' },
+            { key: 'slate', label: 'SLATE' },
+            { key: 'revenue', label: 'Revenue' },
+            { key: 'result', label: 'Result' },
+          ]}
+          empty="No Revenue record to compare."
+        />
+      </div>
       <h4>Survey-wise extent</h4>
-      <DataTable
-        rows={parcels}
-        columns={[
-          { key: 'slateParcel', label: 'SLATE survey' },
-          { key: 'revenueParcel', label: 'Revenue survey' },
-          { key: 'match', label: 'Survey match' },
-          { key: 'slateText', label: 'SLATE extent' },
-          { key: 'revenueText', label: 'Revenue extent' },
-          { key: 'slateStd', label: 'SLATE (converted)' },
-          { key: 'revenueStd', label: 'Revenue (converted)' },
-          { key: 'extent', label: 'Extent result' },
-        ]}
-        empty="No survey rows compared."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={parcels}
+          columns={[
+            { key: 'slateParcel', label: 'SLATE survey' },
+            { key: 'revenueParcel', label: 'Revenue survey' },
+            { key: 'match', label: 'Survey match' },
+            { key: 'slateText', label: 'SLATE extent' },
+            { key: 'revenueText', label: 'Revenue extent' },
+            { key: 'slateStd', label: 'SLATE (converted)' },
+            { key: 'revenueStd', label: 'Revenue (converted)' },
+            { key: 'extent', label: 'Extent result' },
+          ]}
+          empty="No survey rows compared."
+        />
+      </div>
       <h4>Owners</h4>
-      <DataTable
-        rows={owners}
-        columns={[
-          { key: 'slateOwner', label: 'Aadhaar-verified owner (SLATE)' },
-          { key: 'revenueOwner', label: 'Revenue owner' },
-          { key: 'recordNumber', label: 'Patta / record' },
-          { key: 'result', label: 'Result' },
-        ]}
-        empty="No owners compared."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={owners}
+          columns={[
+            { key: 'slateOwner', label: 'Aadhaar-verified owner (SLATE)' },
+            { key: 'revenueOwner', label: 'Revenue owner' },
+            { key: 'recordNumber', label: 'Patta / record' },
+            { key: 'result', label: 'Result' },
+          ]}
+          empty="No owners compared."
+        />
+      </div>
     </div>
   )
 }
@@ -226,46 +234,52 @@ function EcDetails({ ec }: { ec: Row }) {
         <dd>{formatCell(payload.certificateNo)}</dd>
       </dl>
       <h4>Findings</h4>
-      <DataTable
-        rows={findings}
-        columns={[
-          { key: 'code', label: 'Finding' },
-          { key: 'reference', label: 'Document' },
-          { key: 'message', label: 'Detail' },
-        ]}
-        empty="No findings."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={findings}
+          columns={[
+            { key: 'code', label: 'Finding' },
+            { key: 'reference', label: 'Document' },
+            { key: 'message', label: 'Detail' },
+          ]}
+          empty="No findings."
+        />
+      </div>
       <h4>Mortgages</h4>
-      <DataTable
-        rows={mortgages}
-        columns={[
-          { key: 'documentId', label: 'Mortgage doc' },
-          { key: 'registrationDate', label: 'Registered' },
-          { key: 'mortgagee', label: 'Mortgagee' },
-          { key: 'status', label: 'Status' },
-          { key: 'releaseDocumentId', label: 'Receipt doc' },
-        ]}
-        empty="No mortgage on this property."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={mortgages}
+          columns={[
+            { key: 'documentId', label: 'Mortgage doc' },
+            { key: 'registrationDate', label: 'Registered' },
+            { key: 'mortgagee', label: 'Mortgagee' },
+            { key: 'status', label: 'Status' },
+            { key: 'releaseDocumentId', label: 'Receipt doc' },
+          ]}
+          empty="No mortgage on this property."
+        />
+      </div>
       <h4>EC entries</h4>
-      <DataTable
-        rows={entries}
-        columns={[
-          { key: 'documentNo', label: 'Doc no./year' },
-          { key: 'registrationDate', label: 'Registered' },
-          { key: 'nature', label: 'Nature' },
-          { key: 'executantText', label: 'Executant' },
-          { key: 'claimantText', label: 'Claimant' },
-          { key: 'previousDocumentReference', label: 'Previous doc' },
-          { key: 'remarks', label: 'Remarks' },
-          { key: 'parcel', label: 'Survey/sub-div' },
-          { key: 'extentText', label: 'Extent' },
-          { key: 'boundaries', label: 'Boundaries' },
-          { key: 'classifiedType', label: 'Classified as' },
-          { key: 'match', label: 'Property match' },
-        ]}
-        empty="The EC has no entries for the searched period."
-      />
+      <div className="rule-check-table">
+        <DataTable
+          rows={entries}
+          columns={[
+            { key: 'documentNo', label: 'Doc no./year' },
+            { key: 'registrationDate', label: 'Registered' },
+            { key: 'nature', label: 'Nature' },
+            { key: 'executantText', label: 'Executant' },
+            { key: 'claimantText', label: 'Claimant' },
+            { key: 'previousDocumentReference', label: 'Previous doc' },
+            { key: 'remarks', label: 'Remarks' },
+            { key: 'parcel', label: 'Survey/sub-div' },
+            { key: 'extentText', label: 'Extent' },
+            { key: 'boundaries', label: 'Boundaries' },
+            { key: 'classifiedType', label: 'Classified as' },
+            { key: 'match', label: 'Property match' },
+          ]}
+          empty="The EC has no entries for the searched period."
+        />
+      </div>
     </div>
   )
 }

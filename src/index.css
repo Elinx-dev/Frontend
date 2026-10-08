@@ -5663,3 +5663,43 @@ a.vao-quick:hover {
 @media (max-width: 1100px) {
   .ro-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Rule check details: wide EC / Revenue grids scroll inside their card */
+.rule-check-details {
+  min-width: 0;
+  margin-top: 18px;
+}
+.rule-check-details h4 {
+  margin: 18px 0 8px;
+}
+.rule-check-details .kv {
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  margin-bottom: 4px;
+}
+.rule-check-table {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+}
+.rule-check-table > .muted {
+  margin: 0;
+  padding: 12px 14px;
+}
+.rule-check-table .grid,
+.ro-portal .rule-check-table .grid {
+  width: 100%;
+  min-width: max-content;
+  border: 0;
+  border-radius: 0;
+}
+.rule-check-table .grid td {
+  min-width: 90px;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ro-portal .rule-check-table .grid td:first-child {
+  white-space: nowrap;
+}
