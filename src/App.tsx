@@ -79,8 +79,9 @@ function Shell({ children }: { children: ReactNode }) {
   const isSurveyor = has('SURVEYOR') && !canAdminister && !isVao
   const isTahsildar = has('TAHSILDAR') && !canAdminister && !isVao && !isSurveyor
   const isPortal = isVao || isSurveyor || isTahsildar
+  const isRegistrar = has('REGISTRATION_OFFICER') && !canAdminister && !isPortal
   return (
-    <div className="app">
+    <div className={isRegistrar ? 'app ro-portal' : 'app'}>
       <aside className="sidebar">
         <Link className="brand" to={homeRouteFor(user)}>
           <span className="brand-mark">S</span>
@@ -122,7 +123,7 @@ function Shell({ children }: { children: ReactNode }) {
           </div>
         ) : null}
         {isPortal ? null : <div className="side-section">
-          <span>Registration</span>
+          {isRegistrar ? <div className="side-portal"><PropertyIcon />Registration Officer Portal</div> : <span>Registration</span>}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/ro" end><DashboardIcon />Dashboard</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties/new"><PropertyIcon />Mint Property</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/transactions/new"><TransferIcon />Initiate Transaction</NavLink> : null}
@@ -154,7 +155,7 @@ function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="workspace">
         <header className="topbar">
-          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : isTahsildar ? <PortalBreadcrumb root="/tahsildar" label="Tahsildar Portal" pages={TAHSILDAR_PAGES} detailPrefix="/tahsildar/verification/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
+          {isVao ? <PortalBreadcrumb root="/vao" label="VAO Officer Portal" pages={VAO_PAGES} detailPrefix="/vao/verification/" /> : isSurveyor ? <PortalBreadcrumb root="/surveyor" label="Surveyor Portal" pages={SURVEYOR_PAGES} detailPrefix="/surveyor/verification/" /> : isTahsildar ? <PortalBreadcrumb root="/tahsildar" label="Tahsildar Portal" pages={TAHSILDAR_PAGES} detailPrefix="/tahsildar/verification/" /> : isRegistrar ? <PortalBreadcrumb root="/ro" label="Registration Officer Portal" pages={REGISTRAR_PAGES} detailPrefix="/transactions/" /> : <strong>{user.roles.includes('REGISTRATION_OFFICER') ? 'Registration Officer Dashboard' : 'SLATE Workspace'}</strong>}
           <div className="topbar-user">
             <div className="user-meta">{user.fullName} · {user.designation ?? user.roles[0]}<br />{user.department ?? 'State Administration'} · {user.stateCode}</div>
             <span className="avatar">{initials(user.fullName)}</span>
@@ -188,10 +189,17 @@ const TAHSILDAR_PAGES: [string, string][] = [
   ['/audit', 'Audit Trail'],
 ]
 
+const REGISTRAR_PAGES: [string, string][] = [
+  ['/transactions/new', 'Initiate Transaction'],
+  ['/properties/new', 'Mint Property'],
+  ['/properties', 'Property List'],
+  ['/audit', 'Audit Trail'],
+]
+
 function PortalBreadcrumb({ root, label, pages, detailPrefix }: { root: string; label: string; pages: [string, string][]; detailPrefix: string }) {
   const { pathname } = useLocation()
   const page = pages.find(([prefix]) => pathname.startsWith(prefix))
-  const detail = pathname.startsWith(detailPrefix) ? decodeURIComponent(pathname.slice(detailPrefix.length)) : ''
+  const detail = pathname.startsWith(detailPrefix) && pathname !== page?.[0] ? decodeURIComponent(pathname.slice(detailPrefix.length)) : ''
   return (
     <nav className="topbar-crumbs" aria-label="Breadcrumb">
       <Link to={root}>{label}</Link>

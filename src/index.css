@@ -5461,3 +5461,205 @@ a.vao-quick:hover {
   .sv-body { grid-template-columns: 1fr; }
   .sv-left { border-right: 0; }
 }
+
+/* ======================================================
+   REGISTRATION OFFICER PORTAL
+   Restyles the shared Registrar pages to the VAO/Tahsildar portal look.
+   ====================================================== */
+.ro-welcome { flex-wrap: wrap; }
+.ro-welcome > div:nth-child(2) { flex: 1; min-width: 220px; }
+.ro-welcome-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ro-portal .ro-welcome-actions button {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.ro-portal .ro-welcome-actions button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.ro-portal .ro-welcome-actions button.primary {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--navy-900);
+}
+.ro-portal .ro-welcome-actions button.primary:hover:not(:disabled) {
+  background: var(--gold-light);
+  color: var(--navy-900);
+}
+.ro-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.vao-kpi.tone-danger { --tone: var(--danger); }
+.vao-kpi.tone-danger small { color: var(--danger); }
+.ro-portal .dashboard-page { display: flex; flex-direction: column; gap: 18px; }
+.ro-portal .dashboard-page > .panel,
+.ro-portal .dashboard-lower .panel { margin-bottom: 0; }
+
+/* Headings */
+.ro-portal .page-heading h1,
+.ro-portal .dashboard-titlebar h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.ro-portal .eyebrow { color: var(--gold); }
+.ro-portal .page-heading .muted { font-size: 13px; }
+.ro-portal .section-heading h3,
+.ro-portal .form-section h3,
+.ro-portal .rule-check-details h3,
+.ro-portal .property-search-section h3 {
+  padding-left: 9px;
+  border-left: 3px solid var(--gold);
+  color: var(--navy);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.ro-portal .rule-check-details h4 {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Cards */
+.ro-portal .panel {
+  border-color: var(--line);
+  box-shadow: none;
+}
+.ro-portal .panel:hover { box-shadow: none; }
+.ro-portal .panel-head {
+  padding: 14px 18px;
+  border-bottom-color: var(--line);
+}
+.ro-portal .panel-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ro-portal .kv dt {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ro-portal .kv dd { color: var(--navy); font-weight: 500; }
+
+/* Buttons */
+.ro-portal main button {
+  border-color: var(--line);
+  background: var(--surface-head);
+  color: var(--navy);
+  font-weight: 600;
+}
+.ro-portal main button:hover:not(:disabled) {
+  border-color: #c9d0d8;
+  background: var(--accent-soft);
+}
+.ro-portal main button.primary {
+  border-color: #1d4370;
+  background: #1d4370;
+  color: #fff;
+  box-shadow: none;
+}
+.ro-portal main button.primary:hover:not(:disabled) {
+  border-color: var(--navy);
+  background: var(--navy);
+  box-shadow: none;
+}
+.ro-portal main button.outline {
+  border-color: var(--gold-light);
+  background: var(--gold-soft);
+  color: #7a5c1c;
+}
+.ro-portal main button.outline:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: #f6e7c8;
+}
+.ro-portal main button.link,
+.ro-portal main button.link:hover:not(:disabled) {
+  border-color: transparent;
+  background: none;
+}
+
+/* Text boxes and dropdowns */
+.ro-portal .field > span {
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ro-portal .field input,
+.ro-portal .field select,
+.ro-portal .field textarea {
+  padding: 9px 11px;
+  border: 1px solid var(--line-field);
+  border-radius: var(--r-md);
+  background-color: #fff;
+  color: var(--ink);
+  font-size: 13px;
+}
+.ro-portal .field input:focus,
+.ro-portal .field select:focus,
+.ro-portal .field textarea:focus {
+  border-color: var(--gold);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+.ro-portal .field input[readonly],
+.ro-portal .field input:disabled,
+.ro-portal .field select:disabled {
+  background-color: var(--surface-head);
+  color: var(--muted);
+}
+
+/* Tabs */
+.ro-portal .property-stage-tabs button,
+.ro-portal .tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+.ro-portal .property-stage-tabs button:hover:not(:disabled),
+.ro-portal .property-stage-tabs button.active,
+.ro-portal .tab.active {
+  border-bottom-color: var(--gold);
+  background: transparent;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+/* Tables */
+.ro-portal .grid {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.ro-portal .grid th {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+}
+.ro-portal .grid td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+.ro-portal .grid tr:last-child td { border-bottom: 0; }
+.ro-portal .grid tr.clickable:hover td { background: var(--surface-sunken); }
+.ro-portal .grid td:first-child { color: var(--navy); font-family: var(--font-mono); font-size: 12px; }
+
+@media (max-width: 1100px) {
+  .ro-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

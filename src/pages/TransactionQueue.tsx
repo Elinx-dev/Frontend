@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError, get, qs } from '../api'
+import { useAuth } from '../auth'
+import { PropertyIcon } from '../icons'
 import type { Row } from '../types'
 import { Banner, Field, Panel, StatusPill, formatCell } from '../ui'
 
 export default function TransactionQueue() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [status, setStatus] = useState('')
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState('')
@@ -35,17 +38,22 @@ export default function TransactionQueue() {
 
   return (
     <div className="dashboard-page">
-      <div className="dashboard-titlebar">
-        <div><span className="eyebrow">Registration workspace</span><h1>Registration Officer Dashboard</h1></div>
-        <div className="dashboard-actions"><button onClick={() => void load()}>Refresh</button><button className="outline" onClick={() => navigate('/properties/new')}>Mint Property</button><button className="primary" onClick={() => navigate('/transactions/new')}>+ Initiate Transaction</button></div>
-      </div>
+      <section className="vao-welcome ro-welcome">
+        <span className="vao-welcome-icon"><PropertyIcon /></span>
+        <div>
+          <p>Registration Officer Portal</p>
+          <h1>Welcome back, {user?.fullName ?? 'Officer'}</h1>
+          <small>{user?.designation ?? 'Registration Officer'}{user?.department ? ` · ${user.department}` : ''}</small>
+        </div>
+        <div className="ro-welcome-actions"><button onClick={() => void load()}>Refresh</button><button className="outline" onClick={() => navigate('/properties/new')}>Mint Property</button><button className="primary" onClick={() => navigate('/transactions/new')}>+ Initiate Transaction</button></div>
+      </section>
       <Banner kind="error" message={error} />
-      <div className="metric-grid">
-        <div className="metric-card"><strong>{pendingReview}</strong><span>Pending Review</span></div>
-        <div className="metric-card"><strong>{inProgress}</strong><span>In Progress</span></div>
-        <div className="metric-card"><strong>{exceptions}</strong><span>Open Exceptions</span></div>
-        <div className="metric-card"><strong>{registered}</strong><span>Registered (MTD)</span></div>
-        <div className="metric-card metric-money"><strong>₹ {feeTotal.toLocaleString('en-IN')}</strong><span>Fee Collected (Session)</span></div>
+      <div className="vao-kpis ro-kpis">
+        <div className="vao-kpi tone-warning"><span>Pending Review</span><strong>{pendingReview}</strong><small>Draft to VAO stage</small></div>
+        <div className="vao-kpi"><span>In Progress</span><strong>{inProgress}</strong><small>Fees, objections, Tahsildar</small></div>
+        <div className="vao-kpi tone-danger"><span>Open Exceptions</span><strong>{exceptions}</strong><small>Need manual review</small></div>
+        <div className="vao-kpi tone-success"><span>Registered (MTD)</span><strong>{registered}</strong><small>Registered or approved</small></div>
+        <div className="vao-kpi tone-gold"><span>Fee Collected (Session)</span><strong>₹ {feeTotal.toLocaleString('en-IN')}</strong><small>Across listed transactions</small></div>
       </div>
       <Panel title="Queue Snapshot">
         <div className="queue-toolbar"><Field label="Status filter" value={status} onChange={setStatus} options={['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING', 'REGISTERED', 'SURVEY_PENDING', 'VAO_PENDING', 'OBJECTION_PENDING', 'TAHSILDAR_PENDING', 'REVENUE_APPROVED'].map((s) => ({ value: s, label: s }))} /></div>
