@@ -12,6 +12,7 @@ import {
 import RuleCheckDetails from './RuleCheckDetails'
 import RecordTimeline from './RecordTimeline'
 import { FeeSummary, ScheduleEditor } from './FeeFields'
+import { PartitionWorkspace } from './PartitionFields'
 import {
   emptySchedule,
   paidAtFrom,
@@ -239,7 +240,8 @@ export default function TransactionDetail({
       .map((party) => ({ party_id: party.id ?? party.party_id, status: 'NOT_REQUESTED' }))
 
   const transactionType = (bootstrap?.transactionTypes ?? []).find((type) => type.code === txn.deed_type_code)
-  const scheduleValuation = transactionType?.schedule_valuation === true
+  const isPartition = txn.deed_type_code === 'PARTITION'
+  const scheduleValuation = transactionType?.schedule_valuation === true && !isPartition
   const relationshipOptions = transactionType?.blood_relation_required === true
     ? []
     : relationshipCategoryOptions(bootstrap?.feeRelationshipCategories, txn.deed_type_code)
@@ -688,9 +690,9 @@ export default function TransactionDetail({
 
           <div id="txn-parties" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-parties" tabIndex={0} hidden={activeWorkflowTab !== 'txn-parties'}>
             <Panel
-              title="Buyer details"
+              title={isPartition ? 'Partition parties & schedules' : 'Buyer details'}
               actions={
-                partyFormVisible ? (
+                isPartition ? undefined : partyFormVisible ? (
                   <button type="button" className="primary" onClick={() => void saveParties()}>
                     Save parties
                   </button>
@@ -702,7 +704,14 @@ export default function TransactionDetail({
               }
             >
               {renderReadinessDetails('Buyer details')}
-              {partyFormVisible ? renderPartyGroup('SIDE_2', sideTwoTitle) : renderSavedBuyers(sideTwoTitle)}
+              {isPartition ? (
+                <PartitionWorkspace
+                  txnRef={txn.txn_ref}
+                  partiesReadOnly={txn.status !== 'DRAFT'}
+                  schedulesReadOnly={schedulesLocked}
+                  onSaved={() => void load()}
+                />
+              ) : partyFormVisible ? renderPartyGroup('SIDE_2', sideTwoTitle) : renderSavedBuyers(sideTwoTitle)}
             </Panel>
           </div>
 

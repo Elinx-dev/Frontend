@@ -10,6 +10,7 @@ import PropertySummaryPanel from './PropertySummaryPanel'
 import { emptyOwner, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
 import { FeeSummary, ScheduleEditor } from './FeeFields'
+import { PartitionWorkspace } from './PartitionFields'
 import {
   emptySchedule,
   paidAtFrom,
@@ -188,12 +189,13 @@ export default function TransactionStart() {
   )
   const selectedTypeCode = deedTypeCode || String(txn?.deed_type_code ?? '')
   const selectedType = transactionTypes.find((type) => type.code === selectedTypeCode)
+  const isPartition = selectedTypeCode === 'PARTITION'
   const subdivisionAllowed = selectedType?.subdivision_allowed === true
   const subdivisionYes = subdivisionAllowed && subdivisionRequired === 'YES'
-  const surveyNeeded = subdivisionYes || surveyRequiredByParty === 'YES'
+  const surveyNeeded = isPartition || subdivisionYes || surveyRequiredByParty === 'YES'
   const bloodRelationRequired = selectedType?.blood_relation_required === true
   const relationshipRequired = !bloodRelationRequired && selectedDeed?.requires_relationship_category === true
-  const scheduleValuation = selectedType?.schedule_valuation === true
+  const scheduleValuation = selectedType?.schedule_valuation === true && !isPartition
   const relationshipOptions = relationshipCategoryOptions(bootstrap?.feeRelationshipCategories, selectedTypeCode)
   const firstPartyLabel = String(selectedType?.first_party_label ?? txn?.deedType?.first_party_label ?? 'Seller')
   const secondPartyLabel = String(selectedType?.second_party_label ?? txn?.deedType?.second_party_label ?? 'Buyer')
@@ -209,12 +211,15 @@ export default function TransactionStart() {
     surveyFees.find((fee) => fee.land_type_code === valueOf(property, 'land_type_code', 'landTypeCode'))?.location_type ?? '',
   )
   const effectiveSurveyLocation = surveyLocationType || defaultSurveyLocation
-  const surveyDecision = subdivisionYes
+  const surveyDecision = isPartition
+    ? 'Mandatory (Partition is surveyed after Registration)'
+    : subdivisionYes
     ? 'Mandatory (subdivision required)'
     : surveyRequiredByParty === 'YES'
       ? 'Required (requested by party)'
       : 'No survey'
-  const stageLabels = stages.map((stage, index) => (index === 2 ? `${secondPartyLabel} details` : stage))
+  const stageLabels = stages.map((stage, index) =>
+    index === 2 ? (isPartition ? 'Partition parties & schedules' : `${secondPartyLabel} details`) : stage)
   const transactionDetailsComplete = Boolean(
     deedTypeCode
     && transferScope
@@ -1658,8 +1663,9 @@ export default function TransactionStart() {
                     onChange={(value) => {
                       const type = transactionTypes.find((item) => item.code === value)
                       setDeedTypeCode(value)
-                      setSubdivisionRequired(type?.subdivision_allowed === true ? '' : 'NO')
-                      if (transferScope === 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION') setTransferScope('FULL_PROPERTY')
+                      setSubdivisionRequired(value === 'PARTITION' ? 'YES' : type?.subdivision_allowed === true ? '' : 'NO')
+                      if (value === 'PARTITION') setTransferScope('PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')
+                      else if (transferScope === 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION') setTransferScope('FULL_PROPERTY')
                       setRelationshipCategory(String(type?.default_relationship_category ?? ''))
                       if (value === 'GIFT' || value === 'SETTLEMENT') {
                         setDeclaredConsideration('0')
@@ -1672,7 +1678,7 @@ export default function TransactionStart() {
                     }))}
                     required
                   />
-                  {subdivisionAllowed ? (
+                  {subdivisionAllowed && !isPartition ? (
                     <Field
                       label="Subdivision Required?"
                       value={subdivisionRequired}
@@ -1778,7 +1784,31 @@ export default function TransactionStart() {
                 ) : null}
               </Panel>
             ) : null}
-            {activeStage === 2 && createdTransactionRef.length > 0 ? (
+            {activeStage === 2 && createdTransactionRef.length > 0 && isPartition ? (
+              <div ref={detailRef}>
+                <section className="panel">
+                  <header className="panel-head">
+                    <h2>3. Partition parties &amp; schedules</h2>
+                  </header>
+                  <div className="panel-body">
+                    <PartitionWorkspace
+                      txnRef={createdTransactionRef}
+                      partiesReadOnly={txnStatus !== '' && txnStatus !== 'DRAFT'}
+                      schedulesReadOnly={(txn?.payments.length ?? 0) > 0}
+                      onSaved={() => {
+                        void loadTransaction(createdTransactionRef, true)
+                        setBuyerDetailsSaved(true)
+                      }}
+                    />
+                    <div className="form-submit-row">
+                      <button type="button" className="primary" onClick={() => setActiveStage(3)}>
+                        Continue with witness details
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            ) : activeStage === 2 && createdTransactionRef.length > 0 ? (
               <div ref={detailRef}>
                 <section className="panel">
                   <header className="panel-head">
@@ -1990,6 +2020,15 @@ export default function TransactionStart() {
                     <h2>7. Fees and payment</h2>
                   </header>
                   <div className="panel-body">
+                    {isPartition ? (
+                      <PartitionWorkspace
+                        txnRef={createdTransactionRef}
+                        partiesReadOnly
+                        schedulesReadOnly={txnStatus !== 'FEE_PAYMENT_PENDING' || txn.payments.length > 0}
+                        onSaved={() => void loadTransaction(createdTransactionRef, true)}
+                        schedulesOnly
+                      />
+                    ) : null}
                     {scheduleValuation ? (
                       <>
                         <ScheduleEditor
