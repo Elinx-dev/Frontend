@@ -6,13 +6,14 @@ import { useAuth } from '../auth'
 import { str, type Row } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
+import RecordTimeline from './RecordTimeline'
 import {
   boundaryPoints, classificationOptions, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions,
   natureOfTitleOptions, optionsFrom, ownerLayout, ownerTypes, propertyTypeFallback, usePropertyMap,
   displayValue, maskAadhaar, type SelectOption,
 } from './propertyShared'
 
-const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value', 'Transactions'] as const
+const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value', 'Transactions', 'Timeline'] as const
 const EMPTY_ROWS: Row[] = []
 const noop = () => undefined
 
@@ -75,7 +76,7 @@ export default function PropertyDetail() {
   const stageSummary = [
     display(property.status), count(owners.length, 'owner'), villageName || '—', count(surveyRecords.length, 'record'),
     count(measurements.length, 'measurement'), count(chainOfTitle.length, 'record'),
-    property.guideline_value ? 'Recorded' : 'Not recorded', count(transactions.length, 'transaction'),
+    property.guideline_value ? 'Recorded' : 'Not recorded', count(transactions.length, 'transaction'), 'Audit log',
   ]
 
   return (
@@ -237,6 +238,9 @@ export default function PropertyDetail() {
                 />
               </Panel>
             </> : null}
+            {activeStage === 8 ? <Panel title="Timeline">
+              <RecordTimeline path={`/api/audit/properties/${encodeURIComponent(propertyRef)}`} />
+            </Panel> : null}
           </div>
           <div className="property-stage-actions">
             <button type="button" onClick={() => setActiveStage((current) => Math.max(0, current - 1))} disabled={activeStage === 0}>Previous section</button>
