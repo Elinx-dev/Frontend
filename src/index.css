@@ -5703,3 +5703,27 @@ a.vao-quick:hover {
 .ro-portal .rule-check-table .grid td:first-child {
   white-space: nowrap;
 }
+
+/* Timeline tab on Transaction Detail / Property Detail */
+.record-timeline {
+  margin-top: 0;
+  padding: 6px 16px;
+}
+.record-timeline .vao-lifecycle-step {
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  line-height: 1.5;
+}
+.record-timeline .vao-lifecycle-step:last-child { border-bottom: 0; }
+.record-timeline .vao-lifecycle-step b {
+  margin-left: 0;
+  color: var(--navy);
+  text-transform: capitalize;
+}
+.record-timeline .vao-lifecycle-step .tick { flex: none; margin-top: 2px; }
+.record-timeline .vao-lifecycle-step.failed .tick {
+  background: var(--danger-bg, #fdecec);
+  color: var(--danger-text, #b42318);
+}

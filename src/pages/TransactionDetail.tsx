@@ -10,6 +10,7 @@ import {
   emptyOwner, labelFor, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm,
 } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
+import RecordTimeline from './RecordTimeline'
 import { FeeSummary, ScheduleEditor } from './FeeFields'
 import {
   emptySchedule,
@@ -492,6 +493,7 @@ export default function TransactionDetail({
   const workflowTabs = [
     { label: 'Property details', target: 'txn-property', issues: [] as string[] },
     ...readinessSteps,
+    { label: 'Timeline', target: 'txn-timeline', issues: [] as string[] },
   ]
   const currentStage = formatCell(txn.current_stage_code || txn.status).replaceAll('_', ' ')
   const renderReadinessDetails = (label: string) => {
@@ -627,7 +629,7 @@ export default function TransactionDetail({
                 }}
               >
                 <span className="property-tab-marker" aria-hidden="true">{step.issues.length > 0 ? '!' : workflowTabs.findIndex((item) => item.target === step.target) + 1}</span>
-                <span className="property-tab-copy"><strong>{step.label}</strong><small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : 'Ready'}</small></span>
+                <span className="property-tab-copy"><strong>{step.label}</strong><small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : step.target === 'txn-timeline' ? 'Audit log' : 'Ready'}</small></span>
               </button>
             ))}
           </div>
@@ -906,6 +908,12 @@ export default function TransactionDetail({
               <div className="form-submit-row">
                 <button type="button" className="primary" disabled={txn.status !== 'SUBMITTED'} onClick={() => void register()}>Register</button>
               </div>
+            </Panel>
+          </div>
+
+          <div id="txn-timeline" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-timeline" tabIndex={0} hidden={activeWorkflowTab !== 'txn-timeline'}>
+            <Panel title="Timeline">
+              {activeWorkflowTab === 'txn-timeline' ? <RecordTimeline path={`/api/audit/transactions/${encodeURIComponent(txnRef)}`} /> : null}
             </Panel>
           </div>
 
