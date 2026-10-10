@@ -208,11 +208,11 @@ function CertificateUpload({
   }
   return (
     <label className="field">
-      <span>Certificate upload (PDF / JPG / PNG, max 5 MB)</span>
+      <span>Certificate upload</span>
       {readOnly ? null : (
         <input type="file" accept="application/pdf,image/jpeg,image/png" disabled={busy} onChange={(e) => void upload(e.target.files?.[0])} />
       )}
-      <small className="helper">{busy ? 'Uploading…' : fileName ? `Uploaded: ${fileName}` : 'Not uploaded'}</small>
+      <small className="helper">{busy ? 'Uploading…' : fileName ? `Uploaded: ${fileName}` : 'PDF / JPG / PNG, max 5 MB'}</small>
       {error ? <span className="field-error">{error}</span> : null}
     </label>
   )
@@ -262,11 +262,26 @@ function HeirTable({
 }) {
   const update = (index: number, patch: Partial<HeirForm>) => onChange(heirs.map((h, i) => (i === index ? { ...h, ...patch } : h)))
   return (
-    <div className="partition-heirs" style={{ marginLeft: depth > 0 ? 18 : 0, borderLeft: depth > 0 ? '3px solid var(--gold, #c9a227)' : undefined, paddingLeft: depth > 0 ? 12 : 0 }}>
-      <h4>{title}</h4>
+    <div className={depth > 0 ? 'partition-heirs nested' : 'partition-heirs'}>
+      <div className="section-heading">
+        <h4>{title}</h4>
+        {readOnly ? null : (
+          <button type="button" className="outline" onClick={() => onChange([...heirs, emptyHeir()])}>
+            <span aria-hidden="true">+</span> Add {depth === 0 ? 'legal heir' : 'successor'}
+          </button>
+        )}
+      </div>
       {heirs.length === 0 ? <p className="helper">No {title.toLowerCase()} added yet.</p> : null}
       {heirs.map((heir, index) => (
-        <div className="party-group" key={index}>
+        <div className="partition-card" key={index}>
+          <div className="section-heading">
+            <h5>{depth === 0 ? 'Legal heir' : 'Successor'} {index + 1}{heir.name ? ` · ${heir.name}` : ''}</h5>
+            {readOnly ? null : (
+              <button type="button" className="outline" onClick={() => onChange(heirs.filter((_, i) => i !== index))}>
+                Remove
+              </button>
+            )}
+          </div>
           <div className="form-grid three">
             <Field label="Name" value={heir.name} onChange={(v) => update(index, { name: v })} readOnly={readOnly} required />
             <Field label="Relationship" value={heir.relationship} onChange={(v) => update(index, { relationship: v })} readOnly={readOnly} required />
@@ -315,18 +330,8 @@ function HeirTable({
               ) : null}
             </>
           ) : null}
-          {readOnly ? null : (
-            <button type="button" className="outline" onClick={() => onChange(heirs.filter((_, i) => i !== index))}>
-              Remove
-            </button>
-          )}
         </div>
       ))}
-      {readOnly ? null : (
-        <button type="button" className="outline" onClick={() => onChange([...heirs, emptyHeir()])}>
-          + Add {depth === 0 ? 'legal heir' : 'successor'}
-        </button>
-      )}
     </div>
   )
 }
@@ -476,7 +481,11 @@ export function PartitionWorkspace({
           {' '}Ownership shares are never calculated; allocation is captured only through the schedules.
         </p>
         {owners.map((owner, index) => (
-          <div className="party-group" key={owner.propertyOwnerId}>
+          <div className="partition-card" key={owner.propertyOwnerId}>
+            <div className="section-heading">
+              <h4>Owner {index + 1} · {owner.name}</h4>
+              {owner.status ? <span className={owner.status === 'DECEASED' ? 'partition-tag deceased' : 'partition-tag'}>{owner.status === 'DECEASED' ? 'Deceased' : 'Living'}</span> : null}
+            </div>
             <div className="form-grid three">
               <Field label="Owner name" value={owner.name} onChange={() => undefined} readOnly />
               <Field
@@ -490,7 +499,7 @@ export function PartitionWorkspace({
             </div>
             {owner.status === 'DECEASED' ? (
               <>
-                <h4>Deceased owner details</h4>
+                <h5>Deceased owner details</h5>
                 <DeathFields txnRef={txnRef} form={owner} onChange={(patch) => updateOwner(index, patch)} readOnly={partiesReadOnly} />
                 <div className="form-grid three">
                   <Field label="Legal heir certificate available?" value={owner.lhcAvailable} options={yesNo} onChange={(v) => updateOwner(index, { lhcAvailable: v })} readOnly={partiesReadOnly} required />
@@ -551,12 +560,27 @@ export function PartitionWorkspace({
       </>)}
 
       <section className="form-section">
-        <h3>Partition schedules</h3>
+        <div className="section-heading">
+          <h3>Partition schedules</h3>
+          {schedulesReadOnly ? null : (
+            <button type="button" className="outline" onClick={() => setSchedules([...schedules, emptySchedule(schedules.length)])}>
+              <span aria-hidden="true">+</span> Add schedule
+            </button>
+          )}
+        </div>
         <p className="helper">
           Allot each schedule to one or more participating parties. Values are entered from the registered partition details; SLATE totals them and does not calculate ownership percentages.
         </p>
         {schedules.map((schedule, index) => (
-          <div className="party-group" key={index}>
+          <div className="partition-card" key={index}>
+            <div className="section-heading">
+              <h4>{schedule.label || `Schedule ${index + 1}`}</h4>
+              {schedulesReadOnly ? null : (
+                <button type="button" className="outline" onClick={() => setSchedules(schedules.filter((_, i) => i !== index))}>
+                  Remove schedule
+                </button>
+              )}
+            </div>
             <div className="form-grid three">
               <Field label="Schedule name" value={schedule.label} onChange={(v) => updateSchedule(index, { label: v })} readOnly={schedulesReadOnly} required />
               <Field
@@ -569,11 +593,11 @@ export function PartitionWorkspace({
               />
               <label className="field">
                 <span>Allotted person(s)<b className="req"> *</b></span>
-                <div className="checkbox-list">
+                <div className="partition-allottees">
                   {participants.map((p) => {
                     const ref = text(p.memberRef)
                     return (
-                      <label key={ref} style={{ display: 'block' }}>
+                      <label key={ref} className={schedule.allottedRefs.includes(ref) ? 'selected' : undefined}>
                         <input
                           type="checkbox"
                           disabled={schedulesReadOnly}
@@ -581,8 +605,8 @@ export function PartitionWorkspace({
                           onChange={(e) => updateSchedule(index, {
                             allottedRefs: e.target.checked ? [...schedule.allottedRefs, ref] : schedule.allottedRefs.filter((r) => r !== ref),
                           })}
-                        />{' '}
-                        {text(p.name)} <small className="helper">({text(p.sourceBranch)})</small>
+                        />
+                        <span>{text(p.name)}<small>{text(p.sourceBranch)}</small></span>
                       </label>
                     )
                   })}
@@ -590,10 +614,19 @@ export function PartitionWorkspace({
                 </div>
               </label>
             </div>
+            <div className="section-heading">
+              <h5>Survey numbers</h5>
+              {schedulesReadOnly ? null : (
+                <button type="button" className="outline" onClick={() => updateSchedule(index, { surveys: [...schedule.surveys, { parcelKey: '', extent: '', extentUnit: '', value: '' }] })}>
+                  <span aria-hidden="true">+</span> Add survey number
+                </button>
+              )}
+            </div>
+            {schedule.surveys.length === 0 ? <p className="helper">No survey numbers added yet.</p> : null}
             {schedule.surveys.map((line, lineIndex) => {
               const parcel = parcels.find((p) => parcelKey(p) === line.parcelKey)
               return (
-                <div className="form-grid three" key={lineIndex}>
+                <div className="partition-survey-line" key={lineIndex}>
                   <Field
                     label="Survey no. / existing subdivision"
                     value={line.parcelKey}
@@ -608,44 +641,41 @@ export function PartitionWorkspace({
                   <Field label="Value (₹)" type="number" value={line.value} onChange={(v) => updateLine(index, lineIndex, { value: v })} readOnly={schedulesReadOnly} />
                   {schedulesReadOnly ? null : (
                     <button type="button" className="outline" onClick={() => updateSchedule(index, { surveys: schedule.surveys.filter((_, i) => i !== lineIndex) })}>
-                      Remove survey
+                      Remove
                     </button>
                   )}
                 </div>
               )
             })}
-            {schedulesReadOnly ? null : (
-              <button type="button" className="outline" onClick={() => updateSchedule(index, { surveys: [...schedule.surveys, { parcelKey: '', extent: '', extentUnit: '', value: '' }] })}>
-                + Add survey number
-              </button>
-            )}
-            <div className="form-grid three">
+            <h5>Boundaries</h5>
+            <div className="form-grid four">
               <Field label="North boundary" value={schedule.northBoundary} onChange={(v) => updateSchedule(index, { northBoundary: v })} readOnly={schedulesReadOnly} />
               <Field label="South boundary" value={schedule.southBoundary} onChange={(v) => updateSchedule(index, { southBoundary: v })} readOnly={schedulesReadOnly} />
               <Field label="East boundary" value={schedule.eastBoundary} onChange={(v) => updateSchedule(index, { eastBoundary: v })} readOnly={schedulesReadOnly} />
               <Field label="West boundary" value={schedule.westBoundary} onChange={(v) => updateSchedule(index, { westBoundary: v })} readOnly={schedulesReadOnly} />
+            </div>
+            <div className="form-grid two">
               <Field label="Remarks" value={schedule.remarks} onChange={(v) => updateSchedule(index, { remarks: v })} readOnly={schedulesReadOnly} />
             </div>
-            <p className="helper">
-              Total value of {schedule.label || 'this schedule'}: <b>₹{money(lineTotal(schedule))}</b>
-            </p>
-            {schedulesReadOnly ? null : (
-              <button type="button" className="outline" onClick={() => setSchedules(schedules.filter((_, i) => i !== index))}>
-                Remove schedule
-              </button>
-            )}
+            <div className="partition-total">
+              Total value of {schedule.label || 'this schedule'} <b>₹{money(lineTotal(schedule))}</b>
+            </div>
           </div>
         ))}
-        <div className="row">
-          {schedulesReadOnly ? null : (
-            <button type="button" className="outline" onClick={() => setSchedules([...schedules, emptySchedule(schedules.length)])}>
-              + Add schedule
-            </button>
-          )}
-          <span className="grow">
-            Total Partition Value (all schedules): <b>₹{money(grandTotal)}</b>
-          </span>
-        </div>
+        {schedules.length > 0 ? (
+          <div className="ad-table-scroll">
+            <DataTable
+              rows={[
+                ...schedules.map((s, i) => ({ schedule: s.label || `Schedule ${i + 1}`, value: `₹${money(lineTotal(s))}` })),
+                { schedule: 'Total Partition Value', value: `₹${money(grandTotal)}` },
+              ]}
+              columns={[
+                { key: 'schedule', label: 'Schedule' },
+                { key: 'value', label: 'Schedule value' },
+              ]}
+            />
+          </div>
+        ) : null}
         {schedulesReadOnly ? null : (
           <div className="form-submit-row">
             <button type="button" className="primary" disabled={busy || participants.length === 0} onClick={() => void saveSchedules()}>

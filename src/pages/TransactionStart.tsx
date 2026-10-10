@@ -1801,11 +1801,6 @@ export default function TransactionStart() {
                         setBuyerDetailsSaved(true)
                       }}
                     />
-                    <div className="form-submit-row">
-                      <button type="button" className="primary" onClick={() => setActiveStage(3)}>
-                        Continue with witness details
-                      </button>
-                    </div>
                   </div>
                 </section>
               </div>
@@ -2149,6 +2144,14 @@ export default function TransactionStart() {
               <button type="button" className="primary" onClick={() => setActiveStage(1)}>
                 Next section
               </button>
+            ) : activeStage === 2 && createdTransactionRef.length > 0 && isPartition ? (
+              buyerDetailsSaved ? (
+                <button type="button" className="primary" onClick={() => setActiveStage(3)}>
+                  Continue with witness details
+                </button>
+              ) : (
+                <span className="stage-label">Save partition parties above to continue</span>
+              )
             ) : activeStage === 2 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">Save buyer details above to continue</span>
             ) : activeStage === 3 && createdTransactionRef.length > 0 ? (
