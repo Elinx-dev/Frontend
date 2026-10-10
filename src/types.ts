@@ -70,6 +70,7 @@ export interface TransactionDetail extends Row {
   witnesses: Row[]
   consents: Row[]
   ruleCheckResults: Row[]
+  ruleCheckPolicy?: Row[]
   feeCalculation: Row | null
   schedules?: Row[]
   feeScheduleLines?: Row[]

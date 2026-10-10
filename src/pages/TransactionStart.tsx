@@ -20,7 +20,7 @@ import {
   validateSchedules,
   type ScheduleForm,
 } from './feeShared'
-import { ruleSummary, ruleWarningText } from './ruleCheckResults'
+import { ruleBlockedText, ruleBlocking, rulePolicyText, ruleSummary, ruleWarningText } from './ruleCheckResults'
 
 type PartyForm = OwnerForm & { side: string; relationshipCode: string }
 
@@ -1228,6 +1228,7 @@ export default function TransactionStart() {
         latest.set(engine, {
           ...result,
           summary: ruleSummary(result),
+          proceed: ruleBlocking(result) ? 'Stopped' : 'Allowed',
           executed_at: result.executed_at ?? result.checked_at ?? '',
         })
       }
@@ -1953,10 +1954,8 @@ export default function TransactionStart() {
                     <h2>6. Rule checks</h2>
                   </header>
                   <div className="panel-body">
-                    <p className="helper">
-                      A court attachment on the EC stops pre-registration. Other findings are warnings for manual
-                      review and the transaction can continue.
-                    </p>
+                    <p className="helper">{rulePolicyText(txn?.ruleCheckPolicy)}</p>
+                    {txnStatus === 'RULE_CHECK_PENDING' ? <Banner kind="error" message={ruleBlockedText(latestRuleResults)} /> : null}
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
                     <DataTable
                       rows={latestRuleResults}
@@ -1964,6 +1963,7 @@ export default function TransactionStart() {
                         { key: 'engine', label: 'Engine' },
                         { key: 'overall_outcome', label: 'Outcome' },
                         { key: 'reason_code', label: 'Reason' },
+                        { key: 'proceed', label: 'Next step' },
                         { key: 'summary', label: 'Summary' },
                         { key: 'executed_at', label: 'Executed' },
                       ]}
@@ -2117,7 +2117,7 @@ export default function TransactionStart() {
             ) : activeStage === 4 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">Complete Aadhaar consent above to continue</span>
             ) : activeStage === 5 && createdTransactionRef.length > 0 ? (
-              <span className="stage-label">Run rule checks above to continue</span>
+              <span className="stage-label">{txnStatus === 'RULE_CHECK_PENDING' && latestRuleResults.some(ruleBlocking) ? 'Stopped by rule check · next steps locked' : 'Run rule checks above to continue'}</span>
             ) : activeStage === 6 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">Complete fees and payment below to continue</span>
             ) : activeStage === 7 && createdTransactionRef.length > 0 ? (

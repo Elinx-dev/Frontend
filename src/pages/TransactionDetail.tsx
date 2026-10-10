@@ -22,7 +22,7 @@ import {
   validateSchedules,
   type ScheduleForm,
 } from './feeShared'
-import { ruleSummary, ruleWarningText } from './ruleCheckResults'
+import { ruleBlockedText, ruleBlocking, rulePolicyText, ruleSummary, ruleWarningText } from './ruleCheckResults'
 
 type PartyForm = OwnerForm & { side: string; relationshipCode: string }
 
@@ -521,11 +521,18 @@ export default function TransactionDetail({
       const currentDate = current === undefined ? '' : formatCell(current.checked_at)
       const resultDate = formatCell(result.checked_at)
       if (current === undefined || resultDate > currentDate) {
-        latest.set(engine, { ...result, summary: ruleSummary(result), executed_at: result.executed_at ?? result.checked_at })
+        latest.set(engine, {
+          ...result,
+          summary: ruleSummary(result),
+          proceed: ruleBlocking(result) ? 'Stopped' : 'Allowed',
+          executed_at: result.executed_at ?? result.checked_at,
+        })
       }
       return latest
     }, new Map<string, Row>()).values(),
   )
+  const ruleStopped = txn.status === 'RULE_CHECK_PENDING' && latestRuleResults.some(ruleBlocking)
+  const lockedAfterRules = new Set(['txn-fees', 'txn-registration'])
 
   const renderPartyGroup = (side: string, title: string) => {
     const group = parties
@@ -623,6 +630,8 @@ export default function TransactionDetail({
                 className={`${activeWorkflowTab === step.target ? 'active' : ''}${step.issues.length > 0 ? ' has-errors' : ''}`}
                 aria-selected={activeWorkflowTab === step.target}
                 aria-controls={step.target}
+                disabled={ruleStopped && lockedAfterRules.has(step.target)}
+                title={ruleStopped && lockedAfterRules.has(step.target) ? 'Locked: stopped at rule checks' : undefined}
                 onClick={() => {
                   setSelectedReadinessStep(step.label)
                   setActiveWorkflowTab(step.target)
@@ -800,16 +809,15 @@ export default function TransactionDetail({
           <div id="txn-rules" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-rules" tabIndex={0} hidden={activeWorkflowTab !== 'txn-rules'}>
             <Panel title="">
               {renderReadinessDetails('Rule checks')}
-              <p className="muted">
-                A court attachment on the EC stops pre-registration. Other findings are warnings for manual review and
-                the transaction can continue.
-              </p>
+              <p className="muted">{rulePolicyText(txn.ruleCheckPolicy)}</p>
+              {ruleStopped ? <Banner kind="error" message={ruleBlockedText(latestRuleResults)} /> : null}
               <DataTable
                 rows={latestRuleResults}
                 columns={[
                   { key: 'engine', label: 'Engine' },
                   { key: 'overall_outcome', label: 'Outcome' },
                   { key: 'reason_code', label: 'Reason' },
+                  { key: 'proceed', label: 'Next step' },
                   { key: 'summary', label: 'Summary' },
                   { key: 'executed_at', label: 'Executed' },
                 ]}

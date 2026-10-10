@@ -34,12 +34,20 @@ export interface WorkflowDefinition {
   published_at?: string | null
 }
 
+export interface RuleEnginePolicy {
+  engine: string
+  allowedOutcomes: string[]
+  blockingReasonCodes: string[]
+}
+
 export interface AdminSnapshot {
   state: { state_code: string; state_name: string } | null
   states: { code: string; name: string }[]
   modules: ModuleConfig[]
   featureFlags: FeatureFlag[]
   workflows: WorkflowDefinition[]
+  ruleEngines?: RuleEnginePolicy[]
+  ruleCheckCatalog?: { outcomes: string[]; reasonCodes: Record<string, string[]> }
 }
 
 export const DEPARTMENTS = ['REGISTRATION', 'SURVEY', 'REVENUE', 'ADMIN', 'PUBLIC'] as const

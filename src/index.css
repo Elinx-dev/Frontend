@@ -5727,3 +5727,40 @@ a.vao-quick:hover {
   background: var(--danger-bg, #fdecec);
   color: var(--danger-text, #b42318);
 }
+
+.adm-rule-heading {
+  margin: 4px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy, #0b2545);
+}
+
+.adm-rule-heading .muted {
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.adm-rule-heading + .adm-flag-list {
+  margin-bottom: 20px;
+}
+
+.adm-rule-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.adm-rule-tag.proceed {
+  background: #e6f4ea;
+  color: #1e6b3a;
+}
+
+.adm-rule-tag.stop {
+  background: #fdecea;
+  color: #a12a1f;
+}
