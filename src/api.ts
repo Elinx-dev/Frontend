@@ -74,7 +74,8 @@ export async function api<T>(
   if (token !== null && !isPublicAuthRequest) {
     headers.Authorization = `Bearer ${token}`
   }
-  if (body !== undefined) {
+  const formData = body instanceof FormData
+  if (body !== undefined && !formData) {
     headers['Content-Type'] = 'application/json'
   }
   if (options?.idempotent === true) {
@@ -97,7 +98,7 @@ export async function api<T>(
   const response = await fetch(requestPath, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : formData ? body : JSON.stringify(body),
   })
   const text = await response.text()
   let payload: unknown = null
