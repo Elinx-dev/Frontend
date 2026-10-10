@@ -5764,3 +5764,119 @@ a.vao-quick:hover {
   background: #fdecea;
   color: #a12a1f;
 }
+
+.partition-workspace .section-heading h3,
+.partition-workspace .section-heading h4,
+.partition-workspace .section-heading h5 {
+  margin: 0;
+}
+
+.partition-workspace h4 {
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.partition-workspace h5 {
+  margin: 14px 0 8px;
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.partition-card {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.partition-heirs {
+  margin-top: 14px;
+}
+
+.partition-heirs.nested {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 3px solid var(--gold, #c9a227);
+}
+
+.partition-heirs .partition-card {
+  background: #fbfcfe;
+}
+
+.partition-tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #e6f4ea;
+  color: #1e6b3a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.partition-tag.deceased {
+  background: #f1f1f4;
+  color: #5b6170;
+}
+
+.partition-allottees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.partition-allottees label {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.partition-allottees label.selected {
+  border-color: var(--navy);
+  background: #f3f6fb;
+}
+
+.partition-allottees span {
+  display: flex;
+  flex-direction: column;
+}
+
+.partition-allottees small {
+  color: var(--muted, #6b7280);
+  font-size: 11px;
+}
+
+.partition-survey-line {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 1fr 0.9fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.partition-survey-line > button {
+  margin-bottom: 2px;
+}
+
+.partition-total {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--navy);
+  font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .partition-survey-line {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
