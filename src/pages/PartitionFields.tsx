@@ -255,18 +255,19 @@ function HeirTable({
 }: {
   txnRef: string
   heirs: HeirForm[]
-  onChange: (heirs: HeirForm[]) => void
+  onChange: (change: (heirs: HeirForm[]) => HeirForm[]) => void
   readOnly: boolean
   title: string
   depth: number
 }) {
-  const update = (index: number, patch: Partial<HeirForm>) => onChange(heirs.map((h, i) => (i === index ? { ...h, ...patch } : h)))
+  const update = (index: number, patch: Partial<HeirForm>) =>
+    onChange((current) => current.map((h, i) => (i === index ? { ...h, ...patch } : h)))
   return (
     <div className={depth > 0 ? 'partition-heirs nested' : 'partition-heirs'}>
       <div className="section-heading">
         <h4>{title}</h4>
         {readOnly ? null : (
-          <button type="button" className="outline" onClick={() => onChange([...heirs, emptyHeir()])}>
+          <button type="button" className="outline" onClick={() => onChange((current) => [...current, emptyHeir()])}>
             <span aria-hidden="true">+</span> Add {depth === 0 ? 'legal heir' : 'successor'}
           </button>
         )}
@@ -277,7 +278,7 @@ function HeirTable({
           <div className="section-heading">
             <h5>{depth === 0 ? 'Legal heir' : 'Successor'} {index + 1}{heir.name ? ` · ${heir.name}` : ''}</h5>
             {readOnly ? null : (
-              <button type="button" className="outline" onClick={() => onChange(heirs.filter((_, i) => i !== index))}>
+              <button type="button" className="outline" onClick={() => onChange((current) => current.filter((_, i) => i !== index))}>
                 Remove
               </button>
             )}
@@ -313,7 +314,7 @@ function HeirTable({
                   label="Successor / legal heirs available?"
                   value={heir.successorsAvailable}
                   options={yesNo}
-                  onChange={(v) => update(index, { successorsAvailable: v })}
+                  onChange={(v) => update(index, v === 'YES' && heir.successors.length === 0 ? { successorsAvailable: v, successors: [emptyHeir()] } : { successorsAvailable: v })}
                   readOnly={readOnly}
                   required
                 />
@@ -322,7 +323,7 @@ function HeirTable({
                 <HeirTable
                   txnRef={txnRef}
                   heirs={heir.successors}
-                  onChange={(successors) => update(index, { successors })}
+                  onChange={(change) => onChange((current) => current.map((h, i) => (i === index ? { ...h, successors: change(h.successors) } : h)))}
                   readOnly={readOnly}
                   title={`Successor heirs of ${heir.name || 'this heir'}`}
                   depth={depth + 1}
@@ -375,9 +376,23 @@ export function PartitionWorkspace({
   const participants = (data.participants as Row[] | undefined) ?? []
   const singleLivingOwner = owners.length === 1 && owners[0].status === 'LIVING'
   const blockedByCertificate = owners.some((o) => o.status === 'DECEASED' && o.lhcAvailable === 'NO')
-  const updateOwner = (index: number, patch: Partial<OwnerForm>) => setOwners(owners.map((o, i) => (i === index ? { ...o, ...patch } : o)))
+  const updateOwner = (index: number, patch: Partial<OwnerForm>) =>
+    setOwners((current) => current.map((o, i) => (i === index ? { ...o, ...patch } : o)))
+  const missingHeirs = (heirs: HeirForm[]): string[] => heirs.flatMap((h) => {
+    if (h.status !== 'DECEASED' || h.successorsAvailable !== 'YES') return []
+    return h.successors.length === 0 ? [`successors of ${h.name || 'a deceased heir'}`] : missingHeirs(h.successors)
+  })
+  const heirsMissing = owners.flatMap((o) => {
+    if (o.status !== 'DECEASED' || o.lhcAvailable !== 'YES') return []
+    return o.heirs.length === 0 ? [`legal heirs of ${o.name}`] : missingHeirs(o.heirs)
+  })
 
   const saveMembers = async () => {
+    if (heirsMissing.length > 0) {
+      setInfo('')
+      setError(`Add the ${heirsMissing.join(', ')} before saving.`)
+      return
+    }
     setBusy(true)
     setError('')
     setInfo('')
@@ -502,7 +517,7 @@ export function PartitionWorkspace({
                 <h5>Deceased owner details</h5>
                 <DeathFields txnRef={txnRef} form={owner} onChange={(patch) => updateOwner(index, patch)} readOnly={partiesReadOnly} />
                 <div className="form-grid three">
-                  <Field label="Legal heir certificate available?" value={owner.lhcAvailable} options={yesNo} onChange={(v) => updateOwner(index, { lhcAvailable: v })} readOnly={partiesReadOnly} required />
+                  <Field label="Legal heir certificate available?" value={owner.lhcAvailable} options={yesNo} onChange={(v) => updateOwner(index, v === 'YES' && owner.heirs.length === 0 ? { lhcAvailable: v, heirs: [emptyHeir()] } : { lhcAvailable: v })} readOnly={partiesReadOnly} required />
                   {owner.lhcAvailable === 'YES' ? (
                     <>
                       <Field label="Legal heir certificate no." value={owner.lhcNo} onChange={(v) => updateOwner(index, { lhcNo: v })} readOnly={partiesReadOnly} required />
@@ -522,7 +537,7 @@ export function PartitionWorkspace({
                   <HeirTable
                     txnRef={txnRef}
                     heirs={owner.heirs}
-                    onChange={(heirs) => updateOwner(index, { heirs })}
+                    onChange={(change) => setOwners((current) => current.map((o, i) => (i === index ? { ...o, heirs: change(o.heirs) } : o)))}
                     readOnly={partiesReadOnly}
                     title={`Legal heirs of ${owner.name}`}
                     depth={0}
