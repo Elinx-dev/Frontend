@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, get } from '../api'
 import { useAuth } from '../auth'
+import { RevealPii } from './RevealPii'
 import { str, type Row } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
@@ -32,10 +33,12 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState<Row | null>(null)
   const [error, setError] = useState('')
   const [activeStage, setActiveStage] = useState(0)
+  const [lineage, setLineage] = useState<Row | null>(null)
 
   const load = useCallback(async () => {
     try {
       setProperty(await get<Row>(`/api/properties/${propertyRef}`))
+      setLineage(await get<Row>(`/api/lineage?propertyRef=${encodeURIComponent(propertyRef)}`).catch(() => null))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     }
@@ -68,6 +71,8 @@ export default function PropertyDetail() {
   const chainOfTitle = rows(property.chainOfTitle)
   const transactions = rows(property.transactions)
   const relations = rows(property.propertyRelations)
+  const lineageNodes = rows(lineage?.nodes).filter((node) => node.relation !== 'SELF')
+  const lineageChain = (lineage?.chain ?? {}) as Row
   const ownerTypeCode = str(property, 'owner_type_code') || str(owners[0], 'owner_type_code')
   const ownerTypeLabel = ownerTypes.find((type) => type.value === ownerTypeCode)?.label ?? ownerTypeCode
   const layout = ownerLayout(ownerTypeCode)
@@ -117,7 +122,31 @@ export default function PropertyDetail() {
                 <ViewField label="Token" value={property.token_ref} />
                 <ViewField label="Created at" value={property.created_at} />
               </div>
-              {relations.length > 0 ? (
+              {lineageNodes.length > 0 ? <>
+                <h3 className="lineage-title">Property lineage (all levels, active and inactive)</h3>
+                <p className="muted">{String(lineageChain.note ?? '')}</p>
+                <div className="table-scroll">
+                  <DataTable
+                    rows={lineageNodes}
+                    columns={[
+                      { key: 'relation', label: 'Relation' },
+                      { key: 'depth', label: 'Level' },
+                      { key: 'property_ref', label: 'Property' },
+                      { key: 'property_status', label: 'Status' },
+                      { key: 'parent_property_ref', label: 'Parent property' },
+                      { key: 'current_owners', label: 'Owners' },
+                      { key: 'token_ref', label: 'Token' },
+                      { key: 'token_status', label: 'Token status' },
+                      { key: 'approval_status', label: 'Approval status' },
+                      { key: 'parent_token_ref', label: 'Parent token' },
+                      { key: 'block_count', label: 'Blocks' },
+                      { key: 'anchor_status', label: 'Chain anchor' },
+                    ]}
+                    empty=""
+                  />
+                </div>
+              </> : null}
+              {lineageNodes.length === 0 && relations.length > 0 ? (
                 <DataTable
                   rows={relations}
                   columns={[
@@ -154,6 +183,7 @@ export default function PropertyDetail() {
                     <ViewField label="Source" value={owner.source} />
                     <ViewField label="Effective from" value={owner.effective_from} />
                   </div>
+                  <RevealPii source="PROPERTY_OWNER" id={owner.id} />
                   {representative ? <div className="owner-representative">
                     <h4>{representative.title}</h4>
                     <div className="owner-fields">

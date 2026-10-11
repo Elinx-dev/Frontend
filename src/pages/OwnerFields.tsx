@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Row } from '../types'
 import { Field } from '../ui'
+import { RevealPii } from './RevealPii'
 import {
   digits, displayValue, maskAadhaarLast4, panValue,
   type OwnerField, type OwnerFieldErrors, type OwnerForm, type OwnerLayout,
@@ -69,6 +70,7 @@ export function PartyDetailsView({ layout, party, relationship }: { layout: Owne
         {representative.mobile ? view('Mobile', party.representative_mobile) : null}
       </div>
     </div> : null}
+    <RevealPii source="TRANSACTION_PARTY" id={party.id} />
   </>
 }
 

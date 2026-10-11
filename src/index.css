@@ -5905,3 +5905,11 @@ a.vao-quick:hover {
 .table-scroll {
   overflow-x: auto;
 }
+
+.pii-reveal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.pii-reveal-note { font-size: 12px; color: var(--muted, #6b7280); }
+.pii-reveal-values { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 16px; margin: 4px 0 0; }
+.pii-reveal-values dt { font-size: 12px; color: var(--muted, #6b7280); }
+.pii-reveal-values dd { margin: 0; font-weight: 600; }
+.pii-party { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eef0f4; }
+.lineage-title { margin: 16px 0 4px; }

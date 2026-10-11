@@ -9,6 +9,7 @@ import { errorText, useVaoResource } from '../vao/useVao'
 import { VaoModal } from '../vao/VaoUi'
 import { deedLabel, formatTimestamp, purposeLabel, rupees, when } from '../vao/vaoShared'
 import { TahsildarStagePill } from './TahsildarUi'
+import { RevealPii } from '../RevealPii'
 import type { TahsildarDetail } from './tahsildarShared'
 
 type Tab = 'transaction' | 'parties' | 'fees' | 'survey' | 'verification' | 'timeline'
@@ -184,6 +185,10 @@ export default function TahsildarRecordDetail() {
                 empty="No parties recorded."
                 columns={[['side', 'Side', (v) => (v === 'SIDE_1' ? 'Transferor' : 'Transferee')], ['role', 'Role'], ['name', 'Name'], ['owner_type_code', 'Owner type'], ['aadhaar_last4', 'Aadhaar', (v) => (v == null ? '—' : `XXXX-${String(v)}`)], ['extent_transferred', 'Extent transferred']]}
               />
+              {(record.parties ?? []).map((party: Row, i: number) => <div className="pii-party" key={String(party.id ?? i)}>
+                <strong>{formatCell(party.name)}</strong>
+                <RevealPii source="TRANSACTION_PARTY" id={party.id} />
+              </div>)}
               <p className="vao-card-eyebrow">Witnesses</p>
               <Rows rows={record.witnesses} empty="No witnesses recorded." columns={[['name', 'Name'], ['address', 'Address']]} />
               <p className="vao-card-eyebrow">Current registered owners</p>
