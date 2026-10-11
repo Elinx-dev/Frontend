@@ -130,10 +130,8 @@ export default function PropertyDetail() {
                     rows={lineageNodes}
                     columns={[
                       { key: 'relation', label: 'Relation' },
-                      { key: 'depth', label: 'Level' },
                       { key: 'property_ref', label: 'Property' },
                       { key: 'property_status', label: 'Status' },
-                      { key: 'parent_property_ref', label: 'Parent property' },
                       { key: 'current_owners', label: 'Owners' },
                       { key: 'token_ref', label: 'Token' },
                       { key: 'token_status', label: 'Token status' },

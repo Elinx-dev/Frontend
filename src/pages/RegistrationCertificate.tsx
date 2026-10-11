@@ -6,6 +6,16 @@ import { get } from '../api'
 import type { Row } from '../types'
 import { Banner, Panel, formatCell } from '../ui'
 
+function hexHash(value: unknown): string {
+  const text = String(value ?? '')
+  if (!text || text.startsWith('0x')) return text
+  try {
+    return '0x' + Array.from(atob(text), (c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+  } catch {
+    return text
+  }
+}
+
 export default function RegistrationCertificate() {
   const { txnRef = '' } = useParams()
   const [txn, setTxn] = useState<Row | null>(null)
@@ -41,9 +51,9 @@ export default function RegistrationCertificate() {
             <dt>Registration date</dt><dd>{formatCell(result.registration_date)}</dd>
             <dt>Registering SRO</dt><dd>{formatCell(result.registering_sro)}</dd>
             <dt>Transaction</dt><dd>{txnRef}</dd>
-            <dt>Property</dt><dd>{formatCell(txn.property_ref)}</dd>
+            <dt>Property</dt><dd>{formatCell((txn.property as Row | undefined)?.property_ref)}</dd>
             <dt>Deed type</dt><dd>{formatCell(txn.deed_type_code)}</dd>
-            <dt>Deed SHA-256</dt><dd className="mono">{formatCell(result.deed_sha256)}</dd>
+            <dt>Deed SHA-256</dt><dd className="mono">{hexHash(result.deed_sha256)}</dd>
           </dl>
           <figure className="certificate-qr">
             {qr ? <img src={qr} alt={`QR code to verify ${documentNo}`} /> : null}
