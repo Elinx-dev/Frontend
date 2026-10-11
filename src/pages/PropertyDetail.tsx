@@ -9,8 +9,8 @@ import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
 import RecordTimeline from './RecordTimeline'
 import {
-  boundaryPoints, classificationOptions, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions,
-  natureOfTitleOptions, optionsFrom, ownerLayout, ownerTypes, propertyTypeFallback, usePropertyMap,
+  jurisdictionOptions, labelFor, 
+  optionsFrom, ownerLayout, ownerTypes, usePropertyMap,
   displayValue, maskAadhaar, type SelectOption,
 } from './propertyShared'
 
@@ -76,7 +76,7 @@ export default function PropertyDetail() {
   const ownerTypeCode = str(property, 'owner_type_code') || str(owners[0], 'owner_type_code')
   const ownerTypeLabel = ownerTypes.find((type) => type.value === ownerTypeCode)?.label ?? ownerTypeCode
   const layout = ownerLayout(ownerTypeCode)
-  const extentUnits = optionsFrom(bootstrap, 'EXTENT_UNIT', extentUnitFallback)
+  const extentUnits = optionsFrom(bootstrap, 'EXTENT_UNIT')
   const street = [str(property, 'street'), str(property, 'door_no')].filter(Boolean).join(' / ')
   const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`
   const stageSummary = [
@@ -113,10 +113,10 @@ export default function PropertyDetail() {
             {activeStage === 0 ? <Panel title="">
               <div className="form-grid three">
                 <ViewField label="Property reference" value={property.property_ref} />
-                <ViewField label="Property type" value={property.property_type_code} options={optionsFrom(bootstrap, 'PROPERTY_TYPE', propertyTypeFallback)} />
-                <ViewField label="Nature of title" value={property.nature_of_title_code} options={natureOfTitleOptions} />
-                <ViewField label="Land type" value={property.land_type_code} options={landTypeOptions} />
-                <ViewField label="Classification" value={property.classification_code} options={classificationOptions} />
+                <ViewField label="Property type" value={property.property_type_code} options={optionsFrom(bootstrap, 'PROPERTY_TYPE')} />
+                <ViewField label="Nature of title" value={property.nature_of_title_code} options={optionsFrom(bootstrap, 'NATURE_OF_TITLE')} />
+                <ViewField label="Land type" value={property.land_type_code} options={optionsFrom(bootstrap, 'LAND_TYPE')} />
+                <ViewField label="Classification" value={property.classification_code} options={optionsFrom(bootstrap, 'CLASSIFICATION')} />
                 <ViewField label="Status" value={property.status === 'ACTIVE' ? 'Active' : property.status === 'INACTIVE' || property.status === 'SUPERSEDED' ? 'Inactive' : property.status} />
                 {property.parent_property_ref ? <ViewField label="Parent property" value={property.parent_property_ref} /> : null}
                 <ViewField label="Token" value={property.token_ref} />
@@ -233,8 +233,8 @@ export default function PropertyDetail() {
               <div className="boundary-measurements">
                 <div className="boundary-measurements-heading"><div><h3>Boundary measurements</h3><small className="muted">{count(measurements.length, 'measurement')}</small></div></div>
                 {measurements.map((measurement, index) => <div className="form-grid four" key={index}>
-                  <ViewField label="From" value={measurement.from_point} options={boundaryPoints} />
-                  <ViewField label="To" value={measurement.to_point} options={boundaryPoints} />
+                  <ViewField label="From" value={measurement.from_point} options={optionsFrom(bootstrap, 'BOUNDARY_POINT')} />
+                  <ViewField label="To" value={measurement.to_point} options={optionsFrom(bootstrap, 'BOUNDARY_POINT')} />
                   <ViewField label="Extent" value={measurement.value} />
                   <ViewField label="Extent unit" value={measurement.unit} options={extentUnits} />
                 </div>)}

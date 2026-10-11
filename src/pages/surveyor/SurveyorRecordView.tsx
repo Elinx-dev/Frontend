@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useOptionSet } from '../propertyShared'
 
 import { Banner, formatCell } from '../../ui'
 import type { Row } from '../../types'
@@ -27,6 +28,7 @@ function Fact({ label, value, mono = false }: { label: string; value: unknown; m
 }
 
 export default function SurveyorRecordView() {
+  const areaUnits = useOptionSet('EXTENT_UNIT')
   const { txnRef = '' } = useParams()
   const { data, error, reload } = useVaoResource<SurveyorDetail>(`/api/surveyor/records/${encodeURIComponent(txnRef)}`)
   const [tab, setTab] = useState<Tab>('gps')
@@ -70,7 +72,7 @@ export default function SurveyorRecordView() {
           <span>Type: <b>{deedLabel(record.deed_type_code)}</b></span>
           <span>Survey no.: <b>{record.survey_no ?? '—'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</b></span>
           <span>Village: <b>{record.village_name ?? record.village_code ?? '—'}</b></span>
-          <span>Token extent: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)}</b></span>
+          <span>Token extent: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></span>
           <span>VAO: <b>{record.assigned_vao_name ?? '—'}</b></span>
         </div>
         {survey == null ? null : (
@@ -79,7 +81,7 @@ export default function SurveyorRecordView() {
             <span><UsersIcon /> <b>{formatCell(survey.submitted_by_name)}</b></span>
             <span><ClockIcon /> {formatTimestamp(survey.submitted_at)}</span>
             {survey.centroid_lat == null ? null : <span><PinIcon /> {formatCell(survey.centroid_lat)}, {formatCell(survey.centroid_lon)}</span>}
-            <span><b>Measured:</b> {formatCell(survey.measured_extent)} {areaUnitLabel(String(survey.extent_unit ?? ''))}</span>
+            <span><b>Measured:</b> {formatCell(survey.measured_extent)} {areaUnitLabel(String(survey.extent_unit ?? ''), areaUnits)}</span>
             <span className={survey.within_tolerance === false ? 'sv-variance bad' : 'sv-variance'}><b>Variance:</b> {Number(survey.variance_pct).toFixed(2)}%</span>
           </div>
         )}
@@ -97,8 +99,8 @@ export default function SurveyorRecordView() {
             <div className="vao-facts">
               <Fact label="Latitude" value={survey.centroid_lat} mono />
               <Fact label="Longitude" value={survey.centroid_lon} mono />
-              <Fact label="Measured extent" value={`${formatCell(survey.measured_extent)} ${areaUnitLabel(String(survey.extent_unit ?? ''))}`} />
-              <Fact label={`In token unit (${areaUnitLabel(record.extent_unit)})`} value={survey.measured_extent_in_record_unit} />
+              <Fact label="Measured extent" value={`${formatCell(survey.measured_extent)} ${areaUnitLabel(String(survey.extent_unit ?? ''), areaUnits)}`} />
+              <Fact label={`In token unit (${areaUnitLabel(record.extent_unit, areaUnits)})`} value={survey.measured_extent_in_record_unit} />
               <Fact label="Token record extent" value={survey.authoritative_recorded_extent} />
               <Fact label="Variance / tolerance" value={`${Number(survey.variance_pct).toFixed(2)}% / ${formatCell(survey.tolerance_pct)}%`} />
               <Fact label="Routing" value={survey.routed_to === 'VAO_VERIFICATION' ? 'Forwarded to VAO' : 'Conflict — survey correction review'} />
@@ -155,7 +157,7 @@ export default function SurveyorRecordView() {
                 {record.submissions.map((s) => (
                   <tr key={String(s.id)}>
                     <td>{formatTimestamp(s.submitted_at)}</td>
-                    <td>{formatCell(s.measured_extent)} {areaUnitLabel(String(s.extent_unit ?? ''))}</td>
+                    <td>{formatCell(s.measured_extent)} {areaUnitLabel(String(s.extent_unit ?? ''), areaUnits)}</td>
                     <td>{Number(s.variance_pct).toFixed(2)}%</td>
                     <td>{s.routed_to === 'VAO_VERIFICATION' ? 'Forwarded to VAO' : 'Conflict flagged'}</td>
                   </tr>

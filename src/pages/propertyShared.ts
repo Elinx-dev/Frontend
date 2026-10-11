@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { useAuth } from '../auth'
 import { str, type Bootstrap, type Row } from '../types'
 
 export type SelectOption = { value: string; label: string }
@@ -82,16 +83,6 @@ export const ownerLayout = (ownerTypeCode: string) => ownerLayouts[ownerTypes.fi
 
 export const CITY_CENTER = { latitude: 13.0827, longitude: 80.2707 }
 
-export const boundaryPoints = [
-  { value: 'NORTH', label: 'North' },
-  { value: 'SOUTH', label: 'South' },
-  { value: 'EAST', label: 'East' },
-  { value: 'WEST', label: 'West' },
-  { value: 'NORTH_EAST', label: 'North-east' },
-  { value: 'NORTH_WEST', label: 'North-west' },
-  { value: 'SOUTH_EAST', label: 'South-east' },
-  { value: 'SOUTH_WEST', label: 'South-west' },
-]
 
 export type MapLocation = typeof CITY_CENTER
 export type MapStatus = 'fallback' | 'loading' | 'located'
@@ -104,20 +95,17 @@ export const mapEmbedUrl = ({ latitude, longitude }: MapLocation) => {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${west}%2C${south}%2C${east}%2C${north}&layer=mapnik&marker=${latitude}%2C${longitude}`
 }
 
-export const propertyTypeFallback: SelectOption[] = [{ value: 'LAND', label: 'Land Parcel' }, { value: 'HOUSE_SITE', label: 'House Site' }, { value: 'BUILDING', label: 'Building' }, { value: 'APARTMENT_UNIT', label: 'Apartment / Flat' }, { value: 'AGRICULTURAL', label: 'Agricultural Land' }, { value: 'COMMERCIAL', label: 'Commercial' }, { value: 'INDUSTRIAL', label: 'Industrial' }, { value: 'PLOT_SITE', label: 'Plot / Site' }]
-export const natureOfTitleOptions: SelectOption[] = [{ value: 'FREEHOLD', label: 'Freehold' }, { value: 'LEASEHOLD', label: 'Leasehold' }]
-export const landTypeOptions: SelectOption[] = [
-  { value: 'RURAL', label: 'Rural' },
-  { value: 'NATHAM', label: 'Natham' },
-  { value: 'URBAN', label: 'Urban' },
-]
-export const classificationOptions: SelectOption[] = [{ value: 'Dry', label: 'Dry' }, { value: 'Wet', label: 'Wet' }]
-export const extentUnitFallback: SelectOption[] = [{ value: 'SQ_FT', label: 'Square Feet' }, { value: 'SQ_M', label: 'Square Metres' }, { value: 'CENT', label: 'Cent' }, { value: 'ACRE', label: 'Acre' }, { value: 'HECTARE', label: 'Hectare' }]
 
-export function optionsFrom(bootstrap: Bootstrap | null | undefined, key: string, fallback: SelectOption[]): SelectOption[] {
+/** Dropdown values configured in cfg.option_value for one option set (bootstrap optionSets). */
+export function optionsFrom(bootstrap: Bootstrap | null | undefined, key: string): SelectOption[] {
   const rows = bootstrap?.optionSets[key] ?? []
   const mapped = rows.map((row) => ({ value: String(row.code ?? row.value ?? ''), label: String(row.name ?? row.label ?? row.code ?? row.value ?? '') })).filter((row) => row.value)
-  return mapped.length > 0 ? mapped : fallback
+  return mapped
+}
+
+export function useOptionSet(key: string): SelectOption[] {
+  const { bootstrap } = useAuth()
+  return optionsFrom(bootstrap, key)
 }
 
 export function usePropertyMap({ doorNo, street, village, taluk, district }: { doorNo: string; street: string; village: string; taluk: string; district: string }) {

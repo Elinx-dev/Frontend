@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, get, put } from '../api'
 import type { Row } from '../types'
 import { Banner, DataTable, Field } from '../ui'
+import { useOptionSet } from './propertyShared'
 
 /** Partition-only: owner status, deceased owners' legal-heir branches, participating parties and schedules. */
 
@@ -61,16 +62,14 @@ interface PartitionScheduleForm {
 
 const text = (value: unknown) => (value === null || value === undefined ? '' : String(value))
 const money = (value: number) => value.toLocaleString('en-IN', { maximumFractionDigits: 2 })
-const statusOptions = [
-  { value: 'LIVING', label: 'Living' },
-  { value: 'DECEASED', label: 'Deceased' },
-]
-const yesNo = [
-  { value: 'YES', label: 'Yes' },
-  { value: 'NO', label: 'No' },
-]
-const maritalOptions = ['Married', 'Unmarried', 'Widowed', 'Divorced'].map((v) => ({ value: v.toUpperCase(), label: v }))
-const unitOptions = ['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'HECTARE'].map((v) => ({ value: v, label: v.replace('_', '.') }))
+function usePartitionOptions() {
+  return {
+    statusOptions: useOptionSet('LIFE_STATUS'),
+    yesNo: useOptionSet('YES_NO'),
+    maritalOptions: useOptionSet('MARITAL_STATUS'),
+    unitOptions: useOptionSet('EXTENT_UNIT'),
+  }
+}
 
 const emptyHeir = (): HeirForm => ({
   name: '', relationship: '', status: '', maritalStatus: '', dateOfDeath: '', certificateNo: '', certificateDate: '',
@@ -260,6 +259,7 @@ function HeirTable({
   title: string
   depth: number
 }) {
+  const { statusOptions, yesNo, maritalOptions } = usePartitionOptions()
   const update = (index: number, patch: Partial<HeirForm>) =>
     onChange((current) => current.map((h, i) => (i === index ? { ...h, ...patch } : h)))
   return (
@@ -350,6 +350,7 @@ export function PartitionWorkspace({
   onSaved?: () => void
   schedulesOnly?: boolean
 }) {
+  const { statusOptions, yesNo, unitOptions } = usePartitionOptions()
   const [data, setData] = useState<Row | null>(null)
   const [owners, setOwners] = useState<OwnerForm[]>([])
   const [schedules, setSchedules] = useState<PartitionScheduleForm[]>([])

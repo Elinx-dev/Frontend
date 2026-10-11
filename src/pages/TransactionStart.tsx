@@ -7,7 +7,7 @@ import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import { MissingAadhaarCapture, OwnerFields } from './OwnerFields'
 import PropertySummaryPanel from './PropertySummaryPanel'
-import { emptyOwner, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
+import { emptyOwner, optionsFrom, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
 import { FeeSummary, ScheduleEditor } from './FeeFields'
 import { PartitionWorkspace } from './PartitionFields'
@@ -1691,10 +1691,7 @@ export default function TransactionStart() {
                         if (value === 'YES') setTransferScope('PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')
                         else if (transferScope === 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION') setTransferScope('FULL_PROPERTY')
                       }}
-                      options={[
-                        { value: 'YES', label: 'Yes' },
-                        { value: 'NO', label: 'No' },
-                      ]}
+                      options={optionsFrom(bootstrap, 'YES_NO')}
                       required
                     />
                   ) : null}
@@ -1703,23 +1700,14 @@ export default function TransactionStart() {
                       label="Survey Required by Party?"
                       value={surveyRequiredByParty}
                       onChange={setSurveyRequiredByParty}
-                      options={[
-                        { value: 'YES', label: 'Yes' },
-                        { value: 'NO', label: 'No' },
-                      ]}
+                      options={optionsFrom(bootstrap, 'YES_NO')}
                     />
                   )}
                   <Field
                     label="Transfer scope"
                     value={transferScope}
                     onChange={setTransferScope}
-                    options={[
-                      { value: 'FULL_PROPERTY', label: 'Full property' },
-                      { value: 'UNDIVIDED_SHARE', label: 'Undivided share' },
-                      ...(subdivisionYes
-                        ? [{ value: 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION', label: 'Partial extent / subdivision' }]
-                        : []),
-                    ]}
+                    options={optionsFrom(bootstrap, 'TRANSFER_SCOPE').filter((o) => subdivisionYes || o.value !== 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')}
                     readOnly={subdivisionYes}
                     required
                   />
@@ -1752,11 +1740,7 @@ export default function TransactionStart() {
                     label="Mode of consideration"
                     value={modeOfConsideration}
                     onChange={setModeOfConsideration}
-                    options={[
-                      { value: 'BANK_TRANSFER', label: 'Bank transfer' },
-                      { value: 'CASH', label: 'Cash' },
-                      { value: 'MIXED', label: 'Mixed' },
-                    ]}
+                    options={optionsFrom(bootstrap, 'MODE_OF_CONSIDERATION')}
                   />
                   {bloodRelationRequired || relationshipOptions.length === 0 ? null : (
                     <Field
@@ -1769,7 +1753,7 @@ export default function TransactionStart() {
                   )}
                   <Field label="Basis of settlement" value={basisOfSettlement} onChange={setBasisOfSettlement} placeholder="Gift, family settlement, etc." />
                   <Field label="Extent / share transferred" value={extentOrShareTransferred} onChange={setExtentOrShareTransferred} type="number" />
-                  <Field label="Extent unit" value={extentUnit} onChange={setExtentUnit} options={['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'PERCENT'].map((u) => ({ value: u, label: u }))} />
+                  <Field label="Extent unit" value={extentUnit} onChange={setExtentUnit} options={optionsFrom(bootstrap, 'TRANSACTION_EXTENT_UNIT')} />
                   <Field label="Guideline value" value={guidelineValue} onChange={setGuidelineValue} type="number" />
                   <Field label="Guideline reference" value={guidelineValueReference} onChange={setGuidelineValueReference} />
                   <Field label="Share being released" value={shareBeingReleased} onChange={setShareBeingReleased} type="number" />
@@ -2056,12 +2040,7 @@ export default function TransactionStart() {
                         label="Payment mode"
                         value={paymentMode}
                         onChange={setPaymentMode}
-                        options={[
-                          { value: 'E_CHALLAN', label: 'E-Challan' },
-                          { value: 'UPI', label: 'UPI' },
-                          { value: 'CARD', label: 'Card' },
-                          { value: 'DD', label: 'Demand draft' },
-                        ]}
+                        options={optionsFrom(bootstrap, 'PAYMENT_MODE')}
                       />
                       <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
                       <Field label="Payment date" value={paymentDate} onChange={setPaymentDate} type="date" required />

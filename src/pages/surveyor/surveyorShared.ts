@@ -59,20 +59,9 @@ export interface PolygonRow {
   lonDir: 'E' | 'W'
 }
 
-export const AREA_UNITS = [
-  { code: 'SQ_FT', label: 'Sq.ft', m2: 0.09290304 },
-  { code: 'SQ_M', label: 'Sq.m', m2: 1 },
-  { code: 'CENT', label: 'Cents', m2: 40.468564224 },
-  { code: 'ACRE', label: 'Acres', m2: 4046.8564224 },
-  { code: 'HECTARE', label: 'Hectares', m2: 10000 },
-]
-
-export const LENGTH_UNITS = [
-  { code: 'FT', label: 'ft', m: 0.3048 },
-  { code: 'M', label: 'm', m: 1 },
-]
-
-export const DIRECTIONS = ['North', 'East', 'South', 'West', 'North-East', 'South-East', 'South-West', 'North-West']
+/** Square metres per area unit code, for conversions only; dropdown values come from cfg.option_value (EXTENT_UNIT). */
+const AREA_M2: Record<string, number> = { SQ_FT: 0.09290304, SQ_M: 1, CENT: 40.468564224, ACRE: 4046.8564224, HECTARE: 10000 }
+const LENGTH_M: Record<string, number> = { FT: 0.3048, M: 1 }
 
 const AREA_ALIASES: Record<string, string> = {
   SQFT: 'SQ_FT', 'SQ.FT': 'SQ_FT', SQ_FT: 'SQ_FT', SFT: 'SQ_FT', SQUARE_FEET: 'SQ_FT',
@@ -89,13 +78,13 @@ export function areaUnitCode(unit: string | null | undefined): string | null {
   return AREA_ALIASES[key] ?? key
 }
 
-export function areaUnitLabel(unit: string | null | undefined): string {
+export function areaUnitLabel(unit: string | null | undefined, units: { value: string; label: string }[] = []): string {
   const code = areaUnitCode(unit)
-  return AREA_UNITS.find((u) => u.code === code)?.label ?? unit ?? ''
+  return units.find((u) => u.value === code)?.label ?? unit ?? ''
 }
 
 export function toSquareMetres(value: number, unit: string | null | undefined): number | null {
-  const factor = AREA_UNITS.find((u) => u.code === areaUnitCode(unit))?.m2
+  const factor = AREA_M2[areaUnitCode(unit) ?? '']
   return factor == null || !Number.isFinite(value) ? null : value * factor
 }
 
@@ -104,12 +93,12 @@ export function convertArea(value: number, from: string | null | undefined, to: 
   const b = areaUnitCode(to)
   if (a == null || b == null || a === b) return value
   const m2 = toSquareMetres(value, a)
-  const factor = AREA_UNITS.find((u) => u.code === b)?.m2
+  const factor = AREA_M2[b]
   return m2 == null || factor == null ? null : m2 / factor
 }
 
 export function lengthInMetres(value: number, unit: string): number {
-  return value * (LENGTH_UNITS.find((u) => u.code === unit)?.m ?? 1)
+  return value * (LENGTH_M[unit] ?? 1)
 }
 
 export function num(value: unknown): number | null {

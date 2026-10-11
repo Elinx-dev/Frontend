@@ -8,14 +8,14 @@ import { Banner, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
 import { OwnerFields } from './OwnerFields'
 import {
-  boundaryPoints, classificationOptions, emptyOwner, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions,
-  natureOfTitleOptions, optionsFrom, ownerLayout, ownerPayload, ownerTypeOptionsFrom, propertyTypeFallback, usePropertyMap,
+  emptyOwner, jurisdictionOptions, labelFor, 
+  optionsFrom, ownerLayout, ownerPayload, ownerTypeOptionsFrom, usePropertyMap,
   validateOwner, type OwnerErrors, type OwnerField, type OwnerForm,
 } from './propertyShared'
 
 const initialProperty = {
   stateCode: 'TN', propertyRef: '', propertyTypeCode: 'LAND',
-  natureOfTitleCode: 'ABSOLUTE', landTypeCode: 'RURAL', classificationCode: 'PUNJAI_DRY',
+  natureOfTitleCode: '', landTypeCode: '', classificationCode: '',
   oldSurveyReference: '',
   fmbReferenceNo: '', districtCode: '', talukCode: '', villageCode: '', sroCode: '',
   panchayat: '', wardNo: '', street: '', doorNo: '', boundaryNorth: '', boundarySouth: '',
@@ -83,18 +83,6 @@ const emptyChainHistoryEntry = (surveyNo = ''): ChainHistoryEntry => ({
   referenceNo: '',
   surveyNo,
 })
-const natureOfTransactionOptions = [
-  { value: 'Sale', label: 'Sale' },
-  { value: 'Purchase', label: 'Purchase' },
-  { value: 'Gift', label: 'Gift' },
-  { value: 'Settlement', label: 'Settlement' },
-  { value: 'Partition', label: 'Partition' },
-  { value: 'Inheritance', label: 'Inheritance' },
-  { value: 'Exchange', label: 'Exchange' },
-  { value: 'Government Grant', label: 'Government Grant' },
-  { value: 'Release', label: 'Release' },
-  { value: 'Other', label: 'Other' },
-]
 const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value'] as const
 const MAX_BOUNDARY_MEASUREMENTS = 8
 
@@ -145,9 +133,7 @@ export default function PropertyCreate() {
     })
     return next
   })
-  const options = (key: string, fallback: { value: string; label: string }[]) => {
-    return optionsFrom(bootstrap, key, fallback)
-  }
+  const options = (key: string) => optionsFrom(bootstrap, key)
 
   const ownerTypeOptions = ownerTypeOptionsFrom(bootstrap)
   const selectedOwnerType = ownerTypeOptions.find((type) => type.value === ownerTypeCode)
@@ -174,7 +160,7 @@ export default function PropertyCreate() {
     return errors
   }
 
-  const extentUnitOptions = options('EXTENT_UNIT', extentUnitFallback)
+  const extentUnitOptions = options('EXTENT_UNIT')
 
   const validateBoundaryMeasurements = () => {
     const nextErrors: BoundaryMeasurementErrors = {}
@@ -417,10 +403,10 @@ export default function PropertyCreate() {
           <div role="tabpanel" id={`property-stage-panel-${activeStage}`} aria-labelledby={`property-stage-tab-${activeStage}`}>
       {activeStage === 0 ? <Panel title="">
         <div className="form-grid three">
-          <Field label="Property type" value={property.propertyTypeCode} onChange={(v) => update('propertyTypeCode', v)} options={options('PROPERTY_TYPE', propertyTypeFallback)} required />
-          <Field label="Nature of title" value={property.natureOfTitleCode} onChange={(v) => update('natureOfTitleCode', v)} options={natureOfTitleOptions} />
-          <Field label="Land type" value={property.landTypeCode} onChange={(v) => update('landTypeCode', v)} options={landTypeOptions} />
-          <Field label="Classification" value={property.classificationCode} onChange={(v) => update('classificationCode', v)} options={classificationOptions} required />
+          <Field label="Property type" value={property.propertyTypeCode} onChange={(v) => update('propertyTypeCode', v)} options={options('PROPERTY_TYPE')} required />
+          <Field label="Nature of title" value={property.natureOfTitleCode} onChange={(v) => update('natureOfTitleCode', v)} options={options('NATURE_OF_TITLE')} />
+          <Field label="Land type" value={property.landTypeCode} onChange={(v) => update('landTypeCode', v)} options={options('LAND_TYPE')} />
+          <Field label="Classification" value={property.classificationCode} onChange={(v) => update('classificationCode', v)} options={options('CLASSIFICATION')} required />
         </div>
       </Panel> : null}
       {activeStage === 1 ? <Panel title="" actions={allowMultipleOwners ? <button className="party-add-button" onClick={() => setOwners((current) => [...current, emptyOwner()])}><span aria-hidden="true">+</span> Add owner</button> : undefined}>
@@ -488,10 +474,10 @@ export default function PropertyCreate() {
           </div>
           {boundaryMeasurements.map((measurement, index) => (
             <div className="boundary-measurement-row" key={index}>
-              <div><Field label="From" value={measurement.fromPoint} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, fromPoint: value } : row))} options={boundaryPoints} required />{boundaryMeasurementErrors[index]?.fromPoint ? <span className="field-error">{boundaryMeasurementErrors[index].fromPoint}</span> : null}</div>
-              <div><Field label="To" value={measurement.toPoint} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, toPoint: value } : row))} options={boundaryPoints} required />{boundaryMeasurementErrors[index]?.toPoint ? <span className="field-error">{boundaryMeasurementErrors[index].toPoint}</span> : null}</div>
+              <div><Field label="From" value={measurement.fromPoint} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, fromPoint: value } : row))} options={options('BOUNDARY_POINT')} required />{boundaryMeasurementErrors[index]?.fromPoint ? <span className="field-error">{boundaryMeasurementErrors[index].fromPoint}</span> : null}</div>
+              <div><Field label="To" value={measurement.toPoint} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, toPoint: value } : row))} options={options('BOUNDARY_POINT')} required />{boundaryMeasurementErrors[index]?.toPoint ? <span className="field-error">{boundaryMeasurementErrors[index].toPoint}</span> : null}</div>
               <div><Field label="Extent" type="number" value={measurement.value} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, value } : row))} required />{boundaryMeasurementErrors[index]?.value ? <span className="field-error">{boundaryMeasurementErrors[index].value}</span> : null}</div>
-              <div><Field label="Extent unit" value={measurement.unit} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, unit: value } : row))} options={options('EXTENT_UNIT', extentUnitFallback)} required />{boundaryMeasurementErrors[index]?.unit ? <span className="field-error">{boundaryMeasurementErrors[index].unit}</span> : null}</div>
+              <div><Field label="Extent unit" value={measurement.unit} onChange={(value) => setBoundaryMeasurements((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, unit: value } : row))} options={options('EXTENT_UNIT')} required />{boundaryMeasurementErrors[index]?.unit ? <span className="field-error">{boundaryMeasurementErrors[index].unit}</span> : null}</div>
               {boundaryMeasurements.length > 1 ? <button type="button" className="boundary-measurement-remove" aria-label={`Remove measurement ${index + 1}`} onClick={() => {
                 setBoundaryMeasurements((current) => current.filter((_, rowIndex) => rowIndex !== index))
                 setBoundaryMeasurementErrors({})
@@ -517,7 +503,7 @@ export default function PropertyCreate() {
               <div><Field label="Executor / Seller" value={entry.executorName} onChange={(value) => updateChainHistory(entryIndex, 'executorName', value)} required />{entryErrors?.executorName ? <span className="field-error">{entryErrors.executorName}</span> : null}</div>
               <div><Field label="Claimant / Purchaser" value={entry.claimantName} onChange={(value) => updateChainHistory(entryIndex, 'claimantName', value)} required />{entryErrors?.claimantName ? <span className="field-error">{entryErrors.claimantName}</span> : null}</div>
               <div><Field label="Transaction date" type="date" value={entry.transactionDate} onChange={(value) => updateChainHistory(entryIndex, 'transactionDate', value)} required />{entryErrors?.transactionDate ? <span className="field-error">{entryErrors.transactionDate}</span> : null}</div>
-              <div><Field label="Nature of transaction" value={entry.natureOfTransaction} onChange={(value) => updateChainHistory(entryIndex, 'natureOfTransaction', value)} options={natureOfTransactionOptions} required />{entryErrors?.natureOfTransaction ? <span className="field-error">{entryErrors.natureOfTransaction}</span> : null}</div>
+              <div><Field label="Nature of transaction" value={entry.natureOfTransaction} onChange={(value) => updateChainHistory(entryIndex, 'natureOfTransaction', value)} options={options('NATURE_OF_TRANSACTION')} required />{entryErrors?.natureOfTransaction ? <span className="field-error">{entryErrors.natureOfTransaction}</span> : null}</div>
               <div><Field label="Registration / Reference No." value={entry.referenceNo} onChange={(value) => updateChainHistory(entryIndex, 'referenceNo', value)} /></div>
               <div><Field label="Survey No." value={entry.surveyNo} onChange={(value) => updateChainHistory(entryIndex, 'surveyNo', value)} required />{entryErrors?.surveyNo ? <span className="field-error">{entryErrors.surveyNo}</span> : null}</div>
             </div>
