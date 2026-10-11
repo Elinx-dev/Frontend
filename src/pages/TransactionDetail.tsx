@@ -952,6 +952,7 @@ export default function TransactionDetail({
                 />
             </Panel>
             <Panel title="Blockchain blocks (parent inactive, actions recorded on each child token)">
+              <div className="table-scroll">
                 <DataTable
                   rows={txn.tokenBlocks ?? []}
                   columns={[
@@ -969,6 +970,7 @@ export default function TransactionDetail({
                   ]}
                   empty="No blocks recorded yet."
                 />
+              </div>
             </Panel>
           </div>
           ) : null}

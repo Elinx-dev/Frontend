@@ -5901,3 +5901,7 @@ a.vao-quick:hover {
 .sv-side.seller { background: #e8eef8; color: var(--navy); }
 .sv-parcel-total { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 10px 12px; border-radius: var(--r-md); background: var(--bg, #f5f7fb); font-size: 12px; }
 .sv-parcel-total p, .sv-parcel-total span { margin: 0; }
+
+.table-scroll {
+  overflow-x: auto;
+}
