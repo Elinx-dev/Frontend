@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 import { get } from '../api'
 import type { Row } from '../types'
@@ -19,12 +19,13 @@ function Status({ value }: { value: unknown }) {
 }
 
 export default function VerifyCertificate() {
-  const { documentNo = '' } = useParams()
+  const [search] = useSearchParams()
+  const documentNo = search.get('doc') ?? ''
   const [data, setData] = useState<Row | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    get<Row>(`/api/public/verify/${encodeURIComponent(documentNo)}`).then(setData, (e: unknown) => setError(String(e)))
+    get<Row>(`/api/public/verify?documentNo=${encodeURIComponent(documentNo)}`).then(setData, (e: unknown) => setError(String(e)))
   }, [documentNo])
 
   return (

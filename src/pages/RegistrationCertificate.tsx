@@ -18,7 +18,7 @@ export default function RegistrationCertificate() {
 
   const result = ((txn?.registrationResult as Row[] | undefined) ?? [])[0]
   const documentNo = result ? String(result.registered_document_no) : ''
-  const verifyUrl = documentNo ? `${window.location.origin}/verify/${encodeURIComponent(documentNo)}` : ''
+  const verifyUrl = documentNo ? `${window.location.origin}/verify?doc=${encodeURIComponent(documentNo)}` : ''
 
   useEffect(() => {
     if (verifyUrl) void QRCode.toDataURL(verifyUrl, { width: 180, margin: 1 }).then(setQr)

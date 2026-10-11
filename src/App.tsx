@@ -238,7 +238,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/public" element={<PublicView />} />
-          <Route path="/verify/:documentNo" element={<VerifyCertificate />} />
+          <Route path="/verify" element={<VerifyCertificate />} />
           <Route path="/certificate/:txnRef" element={<Protected><RegistrationCertificate /></Protected>} />
           <Route path="/ro" element={<Protected><TransactionQueue /></Protected>} />
           <Route path="/audit" element={<Protected><AuditTrail /></Protected>} />
