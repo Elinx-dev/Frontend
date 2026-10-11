@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useOptionSet } from '../propertyShared'
 
 import { Banner } from '../../ui'
 import { CheckCircleIcon, ClockIcon, ShieldCheckIcon } from '../../icons'
@@ -13,6 +14,7 @@ import type { SurveyorRecord } from './surveyorShared'
 type Tab = 'pending' | 'conflict' | 'verified'
 
 export default function SurveyorVerification() {
+  const areaUnits = useOptionSet('EXTENT_UNIT')
   const navigate = useNavigate()
   const { data, error, reload } = useVaoResource<SurveyorRecord[]>('/api/surveyor/records')
   const [tab, setTab] = useState<Tab>('pending')
@@ -72,7 +74,7 @@ export default function SurveyorVerification() {
                   <td className="mono strong">{r.txn_ref}</td>
                   <td className="mono faint">{r.ulpin ?? r.property_ref}</td>
                   <td>{r.village_name ?? r.village_code ?? '—'}</td>
-                  <td>{r.measured_extent ?? '—'} {areaUnitLabel(r.measured_unit)} / {r.extent_value ?? '—'} {areaUnitLabel(r.extent_unit)}</td>
+                  <td>{r.measured_extent ?? '—'} {areaUnitLabel(r.measured_unit, areaUnits)} / {r.extent_value ?? '—'} {areaUnitLabel(r.extent_unit, areaUnits)}</td>
                   <td className={r.within_tolerance === false ? 'sv-variance bad' : 'sv-variance'}>{r.variance_pct == null ? '—' : `${Number(r.variance_pct).toFixed(2)}%`}</td>
                   <td>{formatTimestamp(r.submitted_at)}</td>
                   <td>{r.assigned_vao_name ?? '—'}</td>

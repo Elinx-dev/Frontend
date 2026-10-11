@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { ApiError, get, post, put } from '../api'
 import { useAuth } from '../auth'
+import { optionsFrom } from './propertyShared'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel, StatusPill, formatCell } from '../ui'
 import { MissingAadhaarCapture, OwnerFields, PartyDetailsView } from './OwnerFields'
@@ -671,7 +672,7 @@ export default function TransactionDetail({
                   label="Extent unit"
                   value={extentUnit}
                   onChange={setExtentUnit}
-                  options={['SQ_FT', 'SQ_M', 'CENT', 'ACRE', 'PERCENT'].map((u) => ({ value: u, label: u }))}
+                  options={optionsFrom(bootstrap, 'TRANSACTION_EXTENT_UNIT')}
                 />
                 {relationshipOptions.length === 0 ? null : (
                   <Field
@@ -859,12 +860,7 @@ export default function TransactionDetail({
                   label="Payment mode"
                   value={paymentMode}
                   onChange={setPaymentMode}
-                  options={[
-                    { value: 'E_CHALLAN', label: 'E-Challan' },
-                    { value: 'UPI', label: 'UPI' },
-                    { value: 'CARD', label: 'Card' },
-                    { value: 'DD', label: 'Demand draft' },
-                  ]}
+                  options={optionsFrom(bootstrap, 'PAYMENT_MODE')}
                 />
                 <Field label="Payment reference" value={paymentRef} onChange={setPaymentRef} required />
                 <Field label="Payment date" value={paymentDate} onChange={setPaymentDate} type="date" required />

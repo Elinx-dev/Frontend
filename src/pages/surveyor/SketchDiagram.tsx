@@ -1,4 +1,5 @@
-import { lengthInMetres, LENGTH_UNITS } from './surveyorShared'
+import { useOptionSet } from '../propertyShared'
+import { lengthInMetres } from './surveyorShared'
 import type { MeasurementRow } from './surveyorShared'
 
 const W = 520
@@ -10,6 +11,7 @@ const PAD = 56
  * turning by 360°/n, so four sides give the top, right, bottom and left edges.
  */
 export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
+  const lengthUnits = useOptionSet('LENGTH_UNIT')
   const sides = rows
     .map((r) => ({ ...r, length: Number(r.value) }))
     .filter((r) => Number.isFinite(r.length) && r.length > 0)
@@ -67,7 +69,7 @@ export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
           const mx = (x1 + x2) / 2
           const my = (y1 + y2) / 2
           const d = Math.hypot(mx - cx, my - cy) || 1
-          const unit = LENGTH_UNITS.find((u) => u.code === s.unit)?.label ?? s.unit
+          const unit = lengthUnits.find((u) => u.value === s.unit)?.label ?? s.unit
           return (
             <text key={`side-${i}`} x={mx + ((mx - cx) / d) * 18} y={my + ((my - cy) / d) * 18 + 4} textAnchor="middle" className="sv-sketch-len">
               {s.length} {unit}
@@ -98,7 +100,7 @@ export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
       <ul className="sv-sketch-sides">
         {sides.map((s, i) => (
           <li key={`l-${i}`}>
-            <b>{String.fromCharCode(65 + i)}–{String.fromCharCode(65 + ((i + 1) % n))}</b> {s.from} → {s.to}: {s.length} {LENGTH_UNITS.find((u) => u.code === s.unit)?.label ?? s.unit}
+            <b>{String.fromCharCode(65 + i)}–{String.fromCharCode(65 + ((i + 1) % n))}</b> {s.from} → {s.to}: {s.length} {lengthUnits.find((u) => u.value === s.unit)?.label ?? s.unit}
           </li>
         ))}
       </ul>

@@ -7,14 +7,12 @@ import { errorText } from '../vao/useVao'
 import { todayIso } from '../vao/vaoShared'
 import { SketchDiagram } from './SketchDiagram'
 import { SurveyMap } from './SurveyMap'
+import { useOptionSet } from '../propertyShared'
 import {
-  AREA_UNITS,
   areaUnitCode,
   areaUnitLabel,
   convertArea,
-  DIRECTIONS,
   isPartition,
-  LENGTH_UNITS,
   num,
   toSquareMetres,
   vertex,
@@ -61,9 +59,9 @@ interface SubmitResult {
   variancePct: number
 }
 
-function nextDirection(from: string): string {
-  const i = DIRECTIONS.indexOf(from)
-  return DIRECTIONS[(i + 1) % 4] ?? 'North'
+function nextDirection(from: string, directions: string[]): string {
+  const i = directions.indexOf(from)
+  return directions[(i + 1) % 4] ?? from
 }
 
 function text(value: unknown): string {
@@ -72,6 +70,10 @@ function text(value: unknown): string {
 
 /** The Survey Verification Form: GPS, area, measurements, boundaries, polygon and notes, with live map and sketch. */
 export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorRecord; onClose: () => void; onSubmitted: (message: string) => void }) {
+  const areaUnits = useOptionSet('EXTENT_UNIT')
+  const lengthUnits = useOptionSet('LENGTH_UNIT')
+  const directionOptions = useOptionSet('DIRECTION')
+  const directions = directionOptions.map((d) => d.value)
   const [leftTab, setLeftTab] = useState<LeftTab>('gps')
   const [rightTab, setRightTab] = useState<RightTab>('map')
   const [lat, setLat] = useState('')
@@ -177,7 +179,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
       if (SIDES.some((side) => pc[side].trim() === '')) return [`Enter the north, south, east and west boundaries of ${label}.`, i]
     }
     if (parcelGap == null) return ['The new property extents cannot be compared with the measured extent; use compatible units.', 0]
-    if (parcelGap > tolerance) return [`The new properties add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit)} but the measured extent is ${extentNum} ${areaUnitLabel(unit)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`, 0]
+    if (parcelGap > tolerance) return [`The new properties add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit, areaUnits)} but the measured extent is ${extentNum} ${areaUnitLabel(unit, areaUnits)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`, 0]
     return ['', 0]
   }
 
@@ -289,12 +291,12 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                   </section>
                   <section className="sv-section">
                     <h3><ListIcon /> Extent Area</h3>
-                    <p className="sv-hint">Token record: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)}</b></p>
+                    <p className="sv-hint">Token record: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></p>
                     <div className="sv-grid-extent">
                       <label><span>Measured extent</span><input type="number" step="any" min="0" value={extent} onChange={(e) => setExtent(e.target.value)} /></label>
                       <label><span>Unit</span>
                         <select value={unit} onChange={(e) => setUnit(e.target.value)}>
-                          {AREA_UNITS.map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}
+                          {areaUnits.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                         </select>
                       </label>
                     </div>
@@ -316,7 +318,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                     <button className="sv-add" onClick={() => setSegments((rows) => {
                       const last = rows[rows.length - 1]
                       const from = last?.to ?? 'North'
-                      return [...rows, { from, to: nextDirection(from), value: '', unit: last?.unit ?? 'FT' }]
+                      return [...rows, { from, to: nextDirection(from, directions), value: '', unit: last?.unit ?? 'FT' }]
                     })}>+ Add Row</button>
                   </div>
                   <p className="sv-hint">Enter each side in order around the parcel. The sketch is drawn from these lengths.</p>
@@ -324,10 +326,10 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                     <div className="sv-row head measure"><span>From</span><span>To</span><span>Length</span><span>Unit</span><span /></div>
                     {segments.map((s, i) => (
                       <div key={i} className="sv-row measure">
-                        <select aria-label={`Row ${i + 1} from`} value={s.from} onChange={(e) => updateSegment(i, { from: e.target.value })}>{DIRECTIONS.map((d) => <option key={d}>{d}</option>)}</select>
-                        <select aria-label={`Row ${i + 1} to`} value={s.to} onChange={(e) => updateSegment(i, { to: e.target.value })}>{DIRECTIONS.map((d) => <option key={d}>{d}</option>)}</select>
+                        <select aria-label={`Row ${i + 1} from`} value={s.from} onChange={(e) => updateSegment(i, { from: e.target.value })}>{directionOptions.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</select>
+                        <select aria-label={`Row ${i + 1} to`} value={s.to} onChange={(e) => updateSegment(i, { to: e.target.value })}>{directionOptions.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</select>
                         <input aria-label={`Row ${i + 1} length`} type="number" step="any" min="0" value={s.value} onChange={(e) => updateSegment(i, { value: e.target.value })} />
-                        <select aria-label={`Row ${i + 1} unit`} value={s.unit} onChange={(e) => updateSegment(i, { unit: e.target.value })}>{LENGTH_UNITS.map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}</select>
+                        <select aria-label={`Row ${i + 1} unit`} value={s.unit} onChange={(e) => updateSegment(i, { unit: e.target.value })}>{lengthUnits.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}</select>
                         <button className="sv-del" aria-label={`Delete row ${i + 1}`} disabled={segments.length === 1} onClick={() => setSegments((rows) => rows.filter((_, j) => j !== i))}>🗑</button>
                       </div>
                     ))}
@@ -386,7 +388,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 <>
                   <section className="sv-section">
                     <h3><PinIcon /> New property {activeParcel + 1} of {parcels.length} created at registration</h3>
-                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of this property.</p>
+                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of this property.</p>
                     {parcels.map((pc, i) => i !== activeParcel ? null : (
                       <div key={pc.propertyRef} className="sv-parcel">
                         <div className="sv-section-head">
@@ -400,7 +402,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                           <label><span>Extent</span><input type="number" step="any" min="0" value={pc.extent} onChange={(e) => updateParcel(i, { extent: e.target.value })} /></label>
                           <label><span>Unit</span>
                             <select value={pc.unit} onChange={(e) => updateParcel(i, { unit: e.target.value })}>
-                              {AREA_UNITS.map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}
+                              {areaUnits.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                             </select>
                           </label>
                         </div>
@@ -412,7 +414,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                       </div>
                     ))}
                     <div className="sv-parcel-total">
-                      <span>New properties total: <b>{parcelTotal == null ? '—' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit)}`}</b> · measured {extentNum ?? '—'} {areaUnitLabel(unit)}</span>
+                      <span>New properties total: <b>{parcelTotal == null ? '—' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit, areaUnits)}`}</b> · measured {extentNum ?? '—'} {areaUnitLabel(unit, areaUnits)}</span>
                       {parcelGap == null ? null : parcelGap > tolerance
                         ? <span className="sv-err">Differs by {parcelGap.toFixed(2)}% (allowed {tolerance}%)</span>
                         : <span className="sv-ok">Within {tolerance}% ({parcelGap.toFixed(2)}%)</span>}
@@ -432,7 +434,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
               <Banner kind="error" message={error} />
               {conflict ? (
                 <div className="sv-conflict">
-                  <b>Area conflict:</b> measured {extent} {areaUnitLabel(unit)} vs token record {record.extent_value} {areaUnitLabel(record.extent_unit)} ({variance?.toFixed(2)}% &gt; {tolerance}%). Submitting will flag this record for survey correction review.
+                  <b>Area conflict:</b> measured {extent} {areaUnitLabel(unit, areaUnits)} vs token record {record.extent_value} {areaUnitLabel(record.extent_unit, areaUnits)} ({variance?.toFixed(2)}% &gt; {tolerance}%). Submitting will flag this record for survey correction review.
                 </div>
               ) : null}
               <button className={conflict ? 'sv-submit conflict' : 'sv-submit'} disabled={busy} onClick={() => void submit()}>

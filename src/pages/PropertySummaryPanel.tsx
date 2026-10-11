@@ -5,8 +5,8 @@ import { useAuth } from '../auth'
 import { str, type Row } from '../types'
 import PropertyMap from './PropertyMap'
 import {
-  classificationOptions, displayValue, extentUnitFallback, jurisdictionOptions, labelFor, landTypeOptions, maskAadhaar,
-  natureOfTitleOptions, optionsFrom, ownerLayout, ownerTypes, propertyTypeFallback, usePropertyMap, type SelectOption,
+  displayValue, jurisdictionOptions, labelFor,  maskAadhaar,
+  optionsFrom, ownerLayout, ownerTypes, usePropertyMap, type SelectOption,
 } from './propertyShared'
 
 const EMPTY_ROWS: Row[] = []
@@ -51,7 +51,7 @@ export default function PropertySummaryPanel({ propertyRef, ownerLabel }: { prop
   const surveyRecords = rows(property.surveyRecords)
   const ownerTypeCode = str(property, 'owner_type_code') || str(owners[0], 'owner_type_code')
   const layout = ownerLayout(ownerTypeCode)
-  const extentUnits = optionsFrom(bootstrap, 'EXTENT_UNIT', extentUnitFallback)
+  const extentUnits = optionsFrom(bootstrap, 'EXTENT_UNIT')
   const street = [str(property, 'street'), str(property, 'door_no')].filter(Boolean).join(' / ')
 
   return (
@@ -64,10 +64,10 @@ export default function PropertySummaryPanel({ propertyRef, ownerLabel }: { prop
       <section className="property-summary-section">
         <h3>Identification</h3>
         <dl className="property-summary-list">
-          <Item label="Property type" value={property.property_type_code} options={optionsFrom(bootstrap, 'PROPERTY_TYPE', propertyTypeFallback)} />
-          <Item label="Nature of title" value={property.nature_of_title_code} options={natureOfTitleOptions} />
-          <Item label="Land type" value={property.land_type_code} options={landTypeOptions} />
-          <Item label="Classification" value={property.classification_code} options={classificationOptions} />
+          <Item label="Property type" value={property.property_type_code} options={optionsFrom(bootstrap, 'PROPERTY_TYPE')} />
+          <Item label="Nature of title" value={property.nature_of_title_code} options={optionsFrom(bootstrap, 'NATURE_OF_TITLE')} />
+          <Item label="Land type" value={property.land_type_code} options={optionsFrom(bootstrap, 'LAND_TYPE')} />
+          <Item label="Classification" value={property.classification_code} options={optionsFrom(bootstrap, 'CLASSIFICATION')} />
           <Item label="Status" value={property.status} />
         </dl>
       </section>

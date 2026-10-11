@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useOptionSet } from '../propertyShared'
 
 import { Banner } from '../../ui'
 import { ListIcon } from '../../icons'
@@ -12,6 +13,7 @@ import { areaUnitLabel } from './surveyorShared'
 import type { SurveyorRecord } from './surveyorShared'
 
 export default function FieldSurvey() {
+  const areaUnits = useOptionSet('EXTENT_UNIT')
   const [params, setParams] = useSearchParams()
   const { data, error, reload } = useVaoResource<SurveyorRecord[]>('/api/surveyor/records')
   const [message, setMessage] = useState('')
@@ -53,7 +55,7 @@ export default function FieldSurvey() {
                   <td><UlpinCell record={r} /></td>
                   <td>{r.survey_no ?? '—'}{r.subdivision_no ? ` / ${r.subdivision_no}` : ''}</td>
                   <td>{r.village_name ?? r.village_code ?? '—'}</td>
-                  <td>{r.extent_value ?? '—'} {areaUnitLabel(r.extent_unit)}</td>
+                  <td>{r.extent_value ?? '—'} {areaUnitLabel(r.extent_unit, areaUnits)}</td>
                   <td>{r.slot_booked ? when(r.agreed_date, r.agreed_time) : <span className="vao-not-booked">Not booked</span>}</td>
                   <td><StagePill record={r} portal={SURVEYOR_PORTAL} /></td>
                   <td className="vao-row-action">
