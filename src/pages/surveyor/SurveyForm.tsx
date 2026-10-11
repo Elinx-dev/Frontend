@@ -20,8 +20,9 @@ import {
   vertex,
 } from './surveyorShared'
 import type { MeasurementRow, PolygonRow, SurveyorDetail, SurveyorRecord } from './surveyorShared'
+import type { Row } from '../../types'
 
-type LeftTab = 'gps' | 'measurements' | 'boundaries' | 'polygon' | 'notes'
+type LeftTab = 'gps' | 'measurements' | 'boundaries' | 'polygon' | 'subdivision' | 'notes'
 type RightTab = 'map' | 'sketch'
 
 const LEFT_TABS: [LeftTab, string][] = [
@@ -31,6 +32,28 @@ const LEFT_TABS: [LeftTab, string][] = [
   ['polygon', 'Polygon'],
   ['notes', 'Notes'],
 ]
+
+interface ParcelDraft {
+  surveyNo: string
+  subdivisionNo: string
+  extent: string
+  unit: string
+  north: string
+  south: string
+  east: string
+  west: string
+  owners: number[]
+}
+
+const SIDES = ['north', 'south', 'east', 'west'] as const
+
+function emptyParcel(surveyNo: string, unit: string): ParcelDraft {
+  return { surveyNo, subdivisionNo: '', extent: '', unit, north: '', south: '', east: '', west: '', owners: [] }
+}
+
+function partySideLabel(side: unknown): string {
+  return side === 'SIDE_2' ? 'Buyer' : 'Seller'
+}
 
 const EMPTY_POINT: PolygonRow = { lat: '', latDir: 'N', lon: '', lonDir: 'E' }
 
@@ -61,15 +84,35 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const [boundaries, setBoundaries] = useState({ north: '', south: '', east: '', west: '' })
   const [points, setPoints] = useState<PolygonRow[]>([{ ...EMPTY_POINT }])
   const [notes, setNotes] = useState('')
+  const subdivision = record.subdivision_required === true
+  const [parties, setParties] = useState<Row[]>([])
+  const [parcels, setParcels] = useState<ParcelDraft[]>(() => {
+    const first = emptyParcel(text(record.survey_no), areaUnitCode(record.extent_unit) ?? 'SQ_FT')
+    return [first, { ...first }]
+  })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (record.submission_id == null) return
     let cancelled = false
     void get<SurveyorDetail>(`/api/surveyor/records/${encodeURIComponent(record.txn_ref)}`).then((detail) => {
+      if (cancelled) return
+      setParties(detail.parties ?? [])
       const last = detail.submissions[0]
-      if (cancelled || last == null) return
+      if (record.submission_id == null || last == null) return
+      if ((detail.parcels ?? []).length > 0) {
+        setParcels((detail.parcels ?? []).map((pc) => ({
+          surveyNo: text(pc.survey_no),
+          subdivisionNo: text(pc.official_subdivision_no),
+          extent: text(pc.extent_value),
+          unit: areaUnitCode(text(pc.extent_unit)) ?? 'SQ_FT',
+          north: text(pc.boundary_north),
+          south: text(pc.boundary_south),
+          east: text(pc.boundary_east),
+          west: text(pc.boundary_west),
+          owners: (JSON.parse(text(pc.owners) || '[]') as { partyId?: number }[]).map((o) => o.partyId).filter((id): id is number => id != null),
+        })))
+      }
       setLat(text(last.centroid_lat))
       setLon(text(last.centroid_lon))
       setExtent(text(last.measured_extent))
@@ -108,6 +151,45 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const polygon = useMemo(() => points.map(vertex).filter((p): p is [number, number] => p != null), [points])
   const filledSegments = segments.filter((s) => (num(s.value) ?? 0) > 0)
   const partition = isPartition(record)
+  const leftTabs = subdivision ? LEFT_TABS.flatMap((t) => (t[0] === 'notes' ? [['subdivision', `Subdivision (${parcels.length})`] as [LeftTab, string], t] : [t])) : LEFT_TABS
+  const buyers = parties.filter((p) => p.side === 'SIDE_2')
+  const mappedIds = new Set(parcels.flatMap((pc) => pc.owners))
+  const unmappedBuyers = buyers.filter((b) => !mappedIds.has(Number(b.id)))
+  const parcelTotal = parcels.reduce<number | null>((sum, pc) => {
+    const value = num(pc.extent)
+    if (sum == null || value == null) return sum
+    const converted = convertArea(value, pc.unit, unit)
+    return converted == null ? null : sum + converted
+  }, 0)
+  const parcelGap = parcelTotal == null || extentNum == null || extentNum === 0 ? null : (Math.abs(parcelTotal - extentNum) / extentNum) * 100
+
+  function updateParcel(i: number, patch: Partial<ParcelDraft>) {
+    setParcels((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  }
+
+  function toggleOwner(i: number, partyId: number) {
+    setParcels((rows) => rows.map((r, j) => (j !== i ? r : { ...r, owners: r.owners.includes(partyId) ? r.owners.filter((id) => id !== partyId) : [...r.owners, partyId] })))
+  }
+
+  function parcelError(): string {
+    if (!subdivision) return ''
+    if (parcels.length < 2) return 'Subdivision is required: enter at least two new parcels.'
+    const seen = new Set<string>()
+    for (const [i, pc] of parcels.entries()) {
+      const label = `Parcel ${i + 1}`
+      if (pc.surveyNo.trim() === '') return `Enter the new survey number of ${label}.`
+      const key = `${pc.surveyNo.trim()}/${pc.subdivisionNo.trim()}`.toUpperCase()
+      if (seen.has(key)) return `${label} repeats survey number ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}.`
+      seen.add(key)
+      if ((num(pc.extent) ?? 0) <= 0) return `Enter the extent of ${label}.`
+      if (SIDES.some((side) => pc[side].trim() === '')) return `Enter the north, south, east and west boundaries of ${label}.`
+      if (pc.owners.length === 0) return `Map at least one buyer or seller to ${label}.`
+    }
+    if (unmappedBuyers.length > 0) return `Map ${unmappedBuyers.map((b) => text(b.name)).join(', ')} to one of the new parcels.`
+    if (parcelGap == null) return 'The parcel extents cannot be compared with the measured extent; use compatible units.'
+    if (parcelGap > tolerance) return `The new parcels add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit)} but the measured extent is ${extentNum} ${areaUnitLabel(unit)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`
+    return ''
+  }
 
   function updateSegment(i: number, patch: Partial<MeasurementRow>) {
     setSegments((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
@@ -122,6 +204,12 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
     if (!gpsValid) {
       setLeftTab('gps')
       setError('Enter valid GPS latitude and longitude for the site.')
+      return
+    }
+    const subdivisionError = extentNum == null || extentNum <= 0 ? '' : parcelError()
+    if (subdivisionError) {
+      setLeftTab('subdivision')
+      setError(subdivisionError)
       return
     }
     if (extentNum == null || extentNum <= 0) {
@@ -152,6 +240,19 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
           siteNotes: notes.trim() || null,
           segments: filledSegments.map((s) => ({ fromPoint: s.from, toPoint: s.to, lengthValue: Number(s.value), lengthUnit: s.unit })),
           boundaryPoints: polygon.map(([pLat, pLon], i) => ({ pointLabel: `P${i + 1}`, latitude: pLat, longitude: pLon })),
+          parcels: subdivision
+            ? parcels.map((pc) => ({
+                surveyNo: pc.surveyNo.trim(),
+                officialSubdivisionNo: pc.subdivisionNo.trim() || null,
+                extentValue: Number(pc.extent),
+                extentUnit: pc.unit,
+                boundaryNorth: pc.north.trim(),
+                boundarySouth: pc.south.trim(),
+                boundaryEast: pc.east.trim(),
+                boundaryWest: pc.west.trim(),
+                ownerPartyIds: pc.owners,
+              }))
+            : [],
         },
         true,
       )
@@ -179,7 +280,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
         <div className="sv-body">
           <div className="sv-left">
             <nav className="sv-tabs">
-              {LEFT_TABS.map(([key, label]) => (
+              {leftTabs.map(([key, label]) => (
                 <button key={key} className={leftTab === key ? 'active' : ''} onClick={() => setLeftTab(key)}>{label}</button>
               ))}
             </nav>
@@ -289,6 +390,86 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                     <p className="sv-hint">{polygon.length} of 3 vertices entered.</p>
                   )}
                 </section>
+              ) : null}
+
+              {leftTab === 'subdivision' && subdivision ? (
+                <>
+                  <section className="sv-section">
+                    <h3><ListIcon /> Transaction parties (read-only)</h3>
+                    <p className="sv-hint">Buyers and sellers come from the transaction. Map each of them to the new parcel they will own.</p>
+                    <table className="sv-party-table">
+                      <thead><tr><th>Name</th><th>Party</th><th>Role</th><th>Aadhaar</th><th>Mobile</th><th>Mapped to</th></tr></thead>
+                      <tbody>
+                        {parties.map((p) => {
+                          const id = Number(p.id)
+                          const parcelsFor = parcels.flatMap((pc, i) => (pc.owners.includes(id) ? [pc.subdivisionNo ? `${pc.surveyNo}/${pc.subdivisionNo}` : pc.surveyNo || `Parcel ${i + 1}`] : []))
+                          return (
+                            <tr key={id}>
+                              <td><b>{text(p.name)}</b></td>
+                              <td><span className={`sv-side ${p.side === 'SIDE_2' ? 'buyer' : 'seller'}`}>{partySideLabel(p.side)}</span></td>
+                              <td>{text(p.role).replaceAll('_', ' ').toLowerCase()}</td>
+                              <td>{p.aadhaar_last4 ? `XXXX XXXX ${text(p.aadhaar_last4)}` : '—'}</td>
+                              <td>{text(p.mobile) || '—'}</td>
+                              <td>{parcelsFor.length > 0 ? parcelsFor.join(', ') : p.side === 'SIDE_2' ? <span className="sv-err">Not mapped</span> : '—'}</td>
+                            </tr>
+                          )
+                        })}
+                        {parties.length === 0 ? <tr><td colSpan={6} className="sv-hint">No parties found on this transaction.</td></tr> : null}
+                      </tbody>
+                    </table>
+                  </section>
+                  <section className="sv-section">
+                    <div className="sv-section-head">
+                      <h3><PinIcon /> New parcels</h3>
+                      <button className="sv-add" onClick={() => setParcels((rows) => [...rows, emptyParcel(text(record.survey_no), rows[rows.length - 1]?.unit ?? unit)])}>+ Add parcel</button>
+                    </div>
+                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)}. On submit the parent becomes inactive and each parcel is created as a new property linked to it.</p>
+                    {parcels.map((pc, i) => (
+                      <div key={i} className="sv-parcel">
+                        <div className="sv-section-head">
+                          <h4>Parcel {i + 1}{pc.surveyNo ? ` · ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}` : ''}</h4>
+                          <button className="sv-remove" disabled={parcels.length <= 2} onClick={() => setParcels((rows) => rows.filter((_, j) => j !== i))}>Remove</button>
+                        </div>
+                        <div className="sv-grid4">
+                          <label><span>Survey no</span><input value={pc.surveyNo} onChange={(e) => updateParcel(i, { surveyNo: e.target.value })} /></label>
+                          <label><span>Subdivision no</span><input value={pc.subdivisionNo} placeholder="e.g. 2A" onChange={(e) => updateParcel(i, { subdivisionNo: e.target.value })} /></label>
+                          <label><span>Extent</span><input type="number" step="any" min="0" value={pc.extent} onChange={(e) => updateParcel(i, { extent: e.target.value })} /></label>
+                          <label><span>Unit</span>
+                            <select value={pc.unit} onChange={(e) => updateParcel(i, { unit: e.target.value })}>
+                              {AREA_UNITS.map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}
+                            </select>
+                          </label>
+                        </div>
+                        <div className="sv-grid4">
+                          {SIDES.map((side) => (
+                            <label key={side}><span>{side[0].toUpperCase() + side.slice(1)}</span><input value={pc[side]} onChange={(e) => updateParcel(i, { [side]: e.target.value })} /></label>
+                          ))}
+                        </div>
+                        <div className="sv-owners">
+                          <span>Owners of this parcel</span>
+                          <div>
+                            {parties.map((p) => {
+                              const id = Number(p.id)
+                              return (
+                                <label key={id} className={pc.owners.includes(id) ? 'sv-owner on' : 'sv-owner'}>
+                                  <input type="checkbox" checked={pc.owners.includes(id)} onChange={() => toggleOwner(i, id)} />
+                                  {text(p.name)} <em>{partySideLabel(p.side)}</em>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="sv-parcel-total">
+                      <span>Parcels total: <b>{parcelTotal == null ? '—' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit)}`}</b> · measured {extentNum ?? '—'} {areaUnitLabel(unit)}</span>
+                      {parcelGap == null ? null : parcelGap > tolerance
+                        ? <span className="sv-err">Differs by {parcelGap.toFixed(2)}% (allowed {tolerance}%)</span>
+                        : <span className="sv-ok">Within {tolerance}% ({parcelGap.toFixed(2)}%)</span>}
+                      {unmappedBuyers.length > 0 ? <span className="sv-err">Buyers not mapped: {unmappedBuyers.map((b) => text(b.name)).join(', ')}</span> : null}
+                    </div>
+                  </section>
+                </>
               ) : null}
 
               {leftTab === 'notes' ? (

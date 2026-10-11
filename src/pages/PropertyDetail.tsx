@@ -111,7 +111,8 @@ export default function PropertyDetail() {
                 <ViewField label="Nature of title" value={property.nature_of_title_code} options={natureOfTitleOptions} />
                 <ViewField label="Land type" value={property.land_type_code} options={landTypeOptions} />
                 <ViewField label="Classification" value={property.classification_code} options={classificationOptions} />
-                <ViewField label="Status" value={property.status} />
+                <ViewField label="Status" value={property.status === 'ACTIVE' ? 'Active' : property.status === 'INACTIVE' || property.status === 'SUPERSEDED' ? 'Inactive' : property.status} />
+                {property.parent_property_ref ? <ViewField label="Parent property" value={property.parent_property_ref} /> : null}
                 <ViewField label="Token" value={property.token_ref} />
                 <ViewField label="Created at" value={property.created_at} />
               </div>

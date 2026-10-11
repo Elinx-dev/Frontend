@@ -22,6 +22,7 @@ export interface SurveyorDetail extends SurveyorRecord {
   submissions: Row[]
   segments?: Row[]
   boundary_points?: Row[]
+  parcels?: Row[]
   mutation?: Row
   objections?: Row[]
 }
