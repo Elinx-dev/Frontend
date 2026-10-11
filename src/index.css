@@ -5925,4 +5925,4 @@ a.vao-quick:hover {
 .verify-bad { background: #fde8e8; color: #b42318; }
 .verify-warn { background: #fff4e5; color: #9a5b00; }
 .mono { font-family: ui-monospace, monospace; font-size: 12px; }
-@media print { .no-print, nav, aside, header { display: none !important; } }
+@media print { .no-print, .sidebar, .topbar { display: none !important; } body, .app-main, .content { background: #fff !important; } }
