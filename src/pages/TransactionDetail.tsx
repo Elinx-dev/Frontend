@@ -87,7 +87,6 @@ export default function TransactionDetail({
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
   const [paymentDate, setPaymentDate] = useState(today())
-  const [pageCount, setPageCount] = useState('')
   const [schedules, setSchedules] = useState<ScheduleForm[]>([emptySchedule(0)])
   const [registrationComment, setRegistrationComment] = useState('')
   const [activeWorkflowTab, setActiveWorkflowTab] = useState(initialWorkflowTab ?? 'txn-property')
@@ -127,7 +126,6 @@ export default function TransactionDetail({
         setExtentUnit(String(result.extent_unit ?? result.extentUnit ?? 'SQ_FT'))
         setRelationshipCategory(String(result.relationship_category ?? result.relationshipCategory ?? ''))
         if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
-        if (result.feeCalculation?.page_count != null) setPageCount(String(result.feeCalculation.page_count))
 
         const savedWitnesses = Array.isArray(result.witnesses) ? result.witnesses : []
         setWitnessFormVisible(savedWitnesses.length === 0)
@@ -425,9 +423,7 @@ export default function TransactionDetail({
   const calculateFees = () =>
     guard(
       () =>
-        post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {
-          pageCount: pageCount.trim().length > 0 ? Number(pageCount) : undefined,
-        }),
+        post(`/api/transactions/${encodeURIComponent(txnRef)}/fees`, {}),
       'Fees calculated.',
     )
 
@@ -844,9 +840,6 @@ export default function TransactionDetail({
           <div id="txn-fees" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-fees" tabIndex={0} hidden={activeWorkflowTab !== 'txn-fees'}>
             <Panel title="">
               {renderReadinessDetails('Fees & payment')}
-              <div className="row">
-                <Field label="Number of pages" value={pageCount} onChange={(value) => setPageCount(value.replace(/\D/g, ''))} type="number" />
-              </div>
               <div className="form-submit-row">
                 <button type="button" disabled={txn.status !== 'FEE_PAYMENT_PENDING'} onClick={() => void calculateFees()}>Calculate fee</button>
               </div>

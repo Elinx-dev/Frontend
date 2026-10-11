@@ -176,7 +176,7 @@ export default function TransactionStart() {
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
   const [paymentDate, setPaymentDate] = useState(today())
-  const [pageCount, setPageCount] = useState('')
+  const [detailsBusy, setDetailsBusy] = useState(false)
   const [schedules, setSchedules] = useState<ScheduleForm[]>([emptySchedule(0)])
   const [registrationComment, setRegistrationComment] = useState('')
   const detailRef = useRef<HTMLDivElement | null>(null)
@@ -236,6 +236,7 @@ export default function TransactionStart() {
     || (Array.isArray(txn.mutation) && txn.mutation.length > 0)
   )
 
+  const hydratedTxnRef = useRef('')
   const loadTransaction = useCallback(async (reference: string, silent = false): Promise<Txn | null> => {
     if (reference.length === 0) {
       setTxn(null)
@@ -273,8 +274,28 @@ export default function TransactionStart() {
         validation: Array.isArray(result.validation) ? result.validation : [],
       }
       setTxn(normalized)
+      if (hydratedTxnRef.current !== normalized.txn_ref) {
+        hydratedTxnRef.current = normalized.txn_ref
+        const saved = result as Row
+        const text = (value: unknown) => (value == null ? '' : String(value))
+        setDeedTypeCode(normalized.deed_type_code)
+        setTransferScope(text(saved.transfer_scope) || 'FULL_PROPERTY')
+        setSubdivisionRequired(saved.subdivision_required === true ? 'YES' : saved.subdivision_required === false ? 'NO' : '')
+        setSurveyRequiredByParty(saved.survey_required_by_party === true ? 'YES' : 'NO')
+        setSurveyorUserId(text(saved.assigned_surveyor_id))
+        setSurveyLocationType(text(saved.survey_location_type))
+        setDeclaredConsideration(text(saved.declared_consideration))
+        setModeOfConsideration(text(saved.mode_of_consideration))
+        setExtentOrShareTransferred(text(saved.extent_or_share_transferred))
+        setExtentUnit(text(saved.extent_unit) || 'SQ_FT')
+        setRelationshipCategory(text(saved.relationship_category))
+        setGuidelineValue(text(saved.guideline_value))
+        setGuidelineValueReference(text(saved.guideline_value_reference))
+        setBasisOfSettlement(text(saved.basis_of_settlement))
+        setShareBeingReleased(text(saved.share_being_released))
+        setResultingSubparcelCount(text(saved.resulting_subparcel_count))
+      }
       if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
-      if (result.feeCalculation?.page_count != null) setPageCount(String(result.feeCalculation.page_count))
       return normalized
     } catch (e) {
       if (!silent) {
@@ -422,6 +443,9 @@ export default function TransactionStart() {
     if (createdTransactionRef.length === 0) {
       initialTransactionStageLocked.current = false
       return
+    }
+    if (activeStage >= 2) {
+      initialTransactionStageLocked.current = true
     }
     if (!initialTransactionStageLocked.current && activeStage < 2) {
       setActiveStage(2)
@@ -690,7 +714,6 @@ export default function TransactionStart() {
       setPaymentMode('E_CHALLAN')
       setPaymentRef('')
       setPaymentDate(today())
-      setPageCount('')
       setRegistrationComment('')
       setParties([emptyParty('SIDE_2')])
       setBuyerTypeCode('')
@@ -1039,9 +1062,7 @@ export default function TransactionStart() {
     setError('')
     setInfo('')
     try {
-      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/fees`, {
-        pageCount: pageCount.trim().length > 0 ? Number(pageCount) : undefined,
-      })
+      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/fees`, {})
       await loadTransaction(createdTransactionRef, true)
       setActiveStage(6)
       setInfo('Fees calculated.')
@@ -1064,6 +1085,40 @@ export default function TransactionStart() {
       setInfo('Schedules saved. Calculate the fee again to apply them.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
+    }
+  }
+
+  const saveTransactionDetails = async () => {
+    const scheduleError = scheduleValuation ? validateSchedules(schedules) : null
+    if (scheduleError !== null) {
+      setInfo('')
+      setError(scheduleError)
+      return
+    }
+    setError('')
+    setInfo('')
+    setDetailsBusy(true)
+    try {
+      const reference = encodeURIComponent(createdTransactionRef)
+      await put(`/api/transactions/${reference}/details`, {
+        declaredConsideration: declaredConsideration ? Number(declaredConsideration) : undefined,
+        modeOfConsideration: Number(declaredConsideration) > 0 ? modeOfConsideration : undefined,
+        extentOrShareTransferred: extentOrShareTransferred ? Number(extentOrShareTransferred) : undefined,
+        extentUnit: extentOrShareTransferred ? extentUnit : undefined,
+        relationshipCategory: relationshipCategory || undefined,
+        guidelineValue: guidelineValue ? Number(guidelineValue) : undefined,
+        guidelineValueReference: guidelineValueReference || undefined,
+        basisOfSettlement: basisOfSettlement || undefined,
+        shareBeingReleased: shareBeingReleased ? Number(shareBeingReleased) : undefined,
+        resultingSubparcelCount: resultingSubparcelCount ? Number(resultingSubparcelCount) : undefined,
+      })
+      if (scheduleValuation) await put(`/api/transactions/${reference}/schedules`, schedulePayload(schedules))
+      const updated = await loadTransaction(createdTransactionRef, true)
+      setInfo(updated?.feeCalculation != null ? 'Transaction details saved. Calculate the fee again to apply them.' : 'Transaction details saved.')
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    } finally {
+      setDetailsBusy(false)
     }
   }
 
@@ -1252,6 +1307,8 @@ export default function TransactionStart() {
   const maxAvailableStage = transactionCreated
     ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted ? 5 : witnessesSaved ? 4 : buyerDetailsSaved ? 3 : 2)
     : 1
+  const detailsEditable = !transactionCreated
+    || (['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING'].includes(txnStatus) && (txn?.payments.length ?? 0) === 0)
   const registeredOwners = Array.isArray(property?.registeredOwners)
     ? property.registeredOwners
     : Array.isArray(property?.registered_owners)
@@ -1663,6 +1720,7 @@ export default function TransactionStart() {
                 <div className="form-grid three">
                   <Field
                     label="Transaction Type"
+                      readOnly={transactionCreated}
                     value={deedTypeCode}
                     onChange={(value) => {
                       const type = transactionTypes.find((item) => item.code === value)
@@ -1685,6 +1743,7 @@ export default function TransactionStart() {
                   {subdivisionAllowed && !isPartition ? (
                     <Field
                       label="Subdivision Required?"
+                      readOnly={transactionCreated}
                       value={subdivisionRequired}
                       onChange={(value) => {
                         setSubdivisionRequired(value)
@@ -1698,6 +1757,7 @@ export default function TransactionStart() {
                   {subdivisionYes ? null : (
                     <Field
                       label="Survey Required by Party?"
+                      readOnly={transactionCreated}
                       value={surveyRequiredByParty}
                       onChange={setSurveyRequiredByParty}
                       options={optionsFrom(bootstrap, 'YES_NO')}
@@ -1708,13 +1768,14 @@ export default function TransactionStart() {
                     value={transferScope}
                     onChange={setTransferScope}
                     options={optionsFrom(bootstrap, 'TRANSFER_SCOPE').filter((o) => subdivisionYes || o.value !== 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')}
-                    readOnly={subdivisionYes}
+                    readOnly={subdivisionYes || transactionCreated}
                     required
                   />
                   {surveyNeeded ? (
                     <>
                       <Field
                         label="Surveyor"
+                      readOnly={transactionCreated}
                         value={surveyorUserId}
                         onChange={setSurveyorUserId}
                         options={surveyors.map((surveyor) => ({
@@ -1725,6 +1786,7 @@ export default function TransactionStart() {
                       />
                       <Field
                         label="Survey location type"
+                      readOnly={transactionCreated}
                         value={effectiveSurveyLocation}
                         onChange={setSurveyLocationType}
                         options={surveyFees.map((fee) => ({
@@ -1735,32 +1797,32 @@ export default function TransactionStart() {
                       />
                     </>
                   ) : null}
-                  <Field label="Declared consideration" value={declaredConsideration} onChange={setDeclaredConsideration} type="number" />
+                  <Field label="Declared consideration" readOnly={!detailsEditable} value={declaredConsideration} onChange={setDeclaredConsideration} type="number" />
                   <Field
-                    label="Mode of consideration"
+                    label="Mode of consideration" readOnly={!detailsEditable}
                     value={modeOfConsideration}
                     onChange={setModeOfConsideration}
                     options={optionsFrom(bootstrap, 'MODE_OF_CONSIDERATION')}
                   />
                   {bloodRelationRequired || relationshipOptions.length === 0 ? null : (
                     <Field
-                      label="Relationship category"
+                      label="Relationship category" readOnly={!detailsEditable}
                       value={relationshipCategory}
                       onChange={setRelationshipCategory}
                       options={relationshipOptions}
                       required={relationshipRequired}
                     />
                   )}
-                  <Field label="Basis of settlement" value={basisOfSettlement} onChange={setBasisOfSettlement} placeholder="Gift, family settlement, etc." />
-                  <Field label="Extent / share transferred" value={extentOrShareTransferred} onChange={setExtentOrShareTransferred} type="number" />
-                  <Field label="Extent unit" value={extentUnit} onChange={setExtentUnit} options={optionsFrom(bootstrap, 'TRANSACTION_EXTENT_UNIT')} />
-                  <Field label="Guideline value" value={guidelineValue} onChange={setGuidelineValue} type="number" />
-                  <Field label="Guideline reference" value={guidelineValueReference} onChange={setGuidelineValueReference} />
-                  <Field label="Share being released" value={shareBeingReleased} onChange={setShareBeingReleased} type="number" />
-                  <Field label="Resulting subparcel count" value={resultingSubparcelCount} onChange={setResultingSubparcelCount} type="number" />
+                  <Field label="Basis of settlement" readOnly={!detailsEditable} value={basisOfSettlement} onChange={setBasisOfSettlement} placeholder="Gift, family settlement, etc." />
+                  <Field label="Extent / share transferred" readOnly={!detailsEditable} value={extentOrShareTransferred} onChange={setExtentOrShareTransferred} type="number" />
+                  <Field label="Extent unit" readOnly={!detailsEditable} value={extentUnit} onChange={setExtentUnit} options={optionsFrom(bootstrap, 'TRANSACTION_EXTENT_UNIT')} />
+                  <Field label="Guideline value" readOnly={!detailsEditable} value={guidelineValue} onChange={setGuidelineValue} type="number" />
+                  <Field label="Guideline reference" readOnly={!detailsEditable} value={guidelineValueReference} onChange={setGuidelineValueReference} />
+                  <Field label="Share being released" readOnly={!detailsEditable} value={shareBeingReleased} onChange={setShareBeingReleased} type="number" />
+                  <Field label="Resulting subparcel count" readOnly={!detailsEditable} value={resultingSubparcelCount} onChange={setResultingSubparcelCount} type="number" />
                 </div>
                 {scheduleValuation ? (
-                  <ScheduleEditor schedules={schedules} onChange={setSchedules} readOnly={transactionCreated} />
+                  <ScheduleEditor schedules={schedules} onChange={setSchedules} readOnly={!detailsEditable} />
                 ) : null}
                 {selectedType ? (
                   <p className="helper">
@@ -2027,9 +2089,6 @@ export default function TransactionStart() {
                         ) : null}
                       </>
                     ) : null}
-                    <div className="row">
-                      <Field label="Number of pages" value={pageCount} onChange={(value) => setPageCount(value.replace(/\D/g, ''))} type="number" />
-                    </div>
                     {txn.feeCalculation === null ? (
                       <p className="muted">No fee calculation yet.</p>
                     ) : (
@@ -2146,6 +2205,19 @@ export default function TransactionStart() {
               <span className="stage-label">Complete fees and payment below to continue</span>
             ) : activeStage === 7 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">Registration</span>
+            ) : activeStage === 1 && transactionCreated ? (
+              <>
+                {detailsEditable ? (
+                  <button type="button" className="outline" disabled={detailsBusy || txn === null} onClick={() => void saveTransactionDetails()}>
+                    {detailsBusy ? 'Saving…' : 'Save transaction details'}
+                  </button>
+                ) : (
+                  <span className="stage-label">Transaction details are locked after payment</span>
+                )}
+                <button type="button" className="primary" onClick={() => setActiveStage(2)}>
+                  Next section
+                </button>
+              </>
             ) : transactionCreated ? (
               <span className="stage-label">Transaction created · continue below</span>
             ) : (
