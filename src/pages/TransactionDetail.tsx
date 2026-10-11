@@ -908,6 +908,22 @@ export default function TransactionDetail({
                 ]}
                 empty="Not registered yet."
               />
+              {(txn.childProperties ?? []).length > 0 ? (
+                <DataTable
+                  rows={txn.childProperties ?? []}
+                  columns={[
+                    { key: 'property_ref', label: 'New property' },
+                    { key: 'owners', label: 'Owner' },
+                    { key: 'survey_no', label: 'Survey no' },
+                    { key: 'subdivision_no', label: 'Subdivision' },
+                    { key: 'extent_value', label: 'Extent' },
+                    { key: 'extent_unit', label: 'Unit' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'token_ref', label: 'Token' },
+                  ]}
+                  empty=""
+                />
+              ) : null}
               {txn.survey_required === true ? (
                 <p>
                   Survey is required for this transfer scope: <Link to={`/survey/${txn.txn_ref}`}>open the survey screen</Link>.
