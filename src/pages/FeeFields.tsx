@@ -89,29 +89,7 @@ export function ScheduleEditor({
   )
 }
 
-interface ChargeLine {
-  label?: string
-  basis?: string
-  rate?: number
-  pages?: number | null
-  amount?: number
-}
-
-const parseInput = (fee: Row): Row => {
-  const raw = fee.calculation_input_json
-  if (typeof raw === 'string') {
-    try {
-      return JSON.parse(raw) as Row
-    } catch {
-      return {}
-    }
-  }
-  return raw !== null && typeof raw === 'object' ? (raw as Row) : {}
-}
-
 export function FeeSummary({ fee, scheduleLines }: { fee: Row; scheduleLines: Row[] }) {
-  const input = parseInput(fee)
-  const chargeLines = Array.isArray(input.otherChargeLines) ? (input.otherChargeLines as ChargeLine[]) : []
   const scheduleBased = fee.valuation_basis_used === 'SCHEDULE_VALUE'
   return (
     <>
@@ -135,24 +113,6 @@ export function FeeSummary({ fee, scheduleLines }: { fee: Row; scheduleLines: Ro
         <dd>{formatCell(fee.registration_fee)}</dd>
         <dt>TDS</dt>
         <dd>{formatCell(fee.tds_amount)}</dd>
-        <dt>Other charges</dt>
-        <dd>
-          {formatCell(fee.other_charges)}
-          {chargeLines.length > 0 ? (
-            <small className="muted">
-              {' '}
-              (
-              {chargeLines
-                .map((line) =>
-                  line.basis === 'PER_PAGE'
-                    ? `${line.label ?? ''} ${formatCell(line.rate)} × ${formatCell(line.pages)} pages = ${formatCell(line.amount)}`
-                    : `${line.label ?? ''} ${formatCell(line.amount)}`,
-                )
-                .join('; ')}
-              )
-            </small>
-          ) : null}
-        </dd>
         <dt>Survey fee</dt>
         <dd>{formatCell(fee.survey_fee ?? 0)}</dd>
         <dt>Total fee payable</dt>
