@@ -21,7 +21,7 @@ import {
 } from './surveyorShared'
 import type { MeasurementRow, PolygonRow, SurveyorDetail, SurveyorRecord } from './surveyorShared'
 
-type LeftTab = 'gps' | 'measurements' | 'boundaries' | 'polygon' | 'subdivision' | 'notes'
+type LeftTab = 'gps' | 'measurements' | 'boundaries' | 'polygon' | `property-${number}` | 'notes'
 type RightTab = 'map' | 'sketch'
 
 const LEFT_TABS: [LeftTab, string][] = [
@@ -149,7 +149,9 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const polygon = useMemo(() => points.map(vertex).filter((p): p is [number, number] => p != null), [points])
   const filledSegments = segments.filter((s) => (num(s.value) ?? 0) > 0)
   const partition = isPartition(record)
-  const leftTabs = subdivision ? LEFT_TABS.flatMap((t) => (t[0] === 'notes' ? [['subdivision', `Subdivision (${parcels.length} properties)`] as [LeftTab, string], t] : [t])) : LEFT_TABS
+  const propertyTabs = parcels.map((_pc, i): [LeftTab, string] => [`property-${i}`, `Property ${i + 1}`])
+  const leftTabs = subdivision ? LEFT_TABS.flatMap((t) => (t[0] === 'notes' ? [...propertyTabs, t] : [t])) : LEFT_TABS
+  const activeParcel = leftTab.startsWith('property-') ? Number(leftTab.slice('property-'.length)) : -1
   const parcelTotal = parcels.reduce<number | null>((sum, pc) => {
     const value = num(pc.extent)
     if (sum == null || value == null) return sum
@@ -162,21 +164,21 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
     setParcels((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   }
 
-  function parcelError(): string {
-    if (!subdivision) return ''
+  function parcelError(): [string, number] {
+    if (!subdivision) return ['', 0]
     const seen = new Set<string>()
     for (const [i, pc] of parcels.entries()) {
       const label = pc.propertyRef || `Property ${i + 1}`
-      if (pc.surveyNo.trim() === '') return `Enter the new survey number of ${label}.`
+      if (pc.surveyNo.trim() === '') return [`Enter the new survey number of ${label}.`, i]
       const key = `${pc.surveyNo.trim()}/${pc.subdivisionNo.trim()}`.toUpperCase()
-      if (seen.has(key)) return `${label} repeats survey number ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}.`
+      if (seen.has(key)) return [`${label} repeats survey number ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}.`, i]
       seen.add(key)
-      if ((num(pc.extent) ?? 0) <= 0) return `Enter the extent of ${label}.`
-      if (SIDES.some((side) => pc[side].trim() === '')) return `Enter the north, south, east and west boundaries of ${label}.`
+      if ((num(pc.extent) ?? 0) <= 0) return [`Enter the extent of ${label}.`, i]
+      if (SIDES.some((side) => pc[side].trim() === '')) return [`Enter the north, south, east and west boundaries of ${label}.`, i]
     }
-    if (parcelGap == null) return 'The new property extents cannot be compared with the measured extent; use compatible units.'
-    if (parcelGap > tolerance) return `The new properties add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit)} but the measured extent is ${extentNum} ${areaUnitLabel(unit)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`
-    return ''
+    if (parcelGap == null) return ['The new property extents cannot be compared with the measured extent; use compatible units.', 0]
+    if (parcelGap > tolerance) return [`The new properties add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit)} but the measured extent is ${extentNum} ${areaUnitLabel(unit)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`, 0]
+    return ['', 0]
   }
 
   function updateSegment(i: number, patch: Partial<MeasurementRow>) {
@@ -194,9 +196,9 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
       setError('Enter valid GPS latitude and longitude for the site.')
       return
     }
-    const subdivisionError = extentNum == null || extentNum <= 0 ? '' : parcelError()
+    const [subdivisionError, errorParcel] = extentNum == null || extentNum <= 0 ? ['', 0] : parcelError()
     if (subdivisionError) {
-      setLeftTab('subdivision')
+      setLeftTab(`property-${errorParcel}`)
       setError(subdivisionError)
       return
     }
@@ -380,12 +382,12 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 </section>
               ) : null}
 
-              {leftTab === 'subdivision' && subdivision ? (
+              {activeParcel >= 0 && subdivision ? (
                 <>
                   <section className="sv-section">
-                    <h3><PinIcon /> New properties created at registration</h3>
-                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of each property.</p>
-                    {parcels.map((pc, i) => (
+                    <h3><PinIcon /> New property {activeParcel + 1} of {parcels.length} created at registration</h3>
+                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of this property.</p>
+                    {parcels.map((pc, i) => i !== activeParcel ? null : (
                       <div key={pc.propertyRef} className="sv-parcel">
                         <div className="sv-section-head">
                           <h4>Property {i + 1} · {pc.propertyRef}{pc.surveyNo ? ` · S.No. ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}` : ''}</h4>
