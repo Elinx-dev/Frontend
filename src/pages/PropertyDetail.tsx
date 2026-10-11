@@ -141,6 +141,7 @@ export default function PropertyDetail() {
                       { key: 'parent_token_ref', label: 'Parent token' },
                       { key: 'block_count', label: 'Blocks' },
                       { key: 'anchor_status', label: 'Chain anchor' },
+                      { key: 'onchain_status', label: 'On chain' },
                     ]}
                     empty=""
                   />
