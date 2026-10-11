@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError, get, qs } from '../api'
 import type { Row } from '../types'
@@ -7,6 +7,7 @@ import { Banner, DataTable, Field, Panel } from '../ui'
 
 export default function PropertySearch() {
   const navigate = useNavigate()
+  const createdRef = (useLocation().state as { createdRef?: string } | null)?.createdRef ?? ''
   const [query, setQuery] = useState('')
   const [villageCode, setVillageCode] = useState('')
   const [surveyNo, setSurveyNo] = useState('')
@@ -22,6 +23,11 @@ export default function PropertySearch() {
     }
   }, [query, villageCode, surveyNo])
 
+  const orderedRows = useMemo(() => {
+    const created = rows.filter((row) => String(row.property_ref) === createdRef)
+    return created.length === 0 ? rows : [...created, ...rows.filter((row) => String(row.property_ref) !== createdRef)]
+  }, [rows, createdRef])
+
   useEffect(() => {
     void search()
     // initial load only
@@ -30,6 +36,7 @@ export default function PropertySearch() {
 
   return (
     <Panel title="Property register" actions={<button onClick={() => void search()}>Search</button>}>
+      <Banner kind="success" message={createdRef ? `Property ${createdRef} is created successfully.` : ''} />
       <Banner kind="error" message={error} />
       <div className="row">
         <Field label="Reference / ULPIN / survey / door no" value={query} onChange={setQuery} />
@@ -37,7 +44,7 @@ export default function PropertySearch() {
         <Field label="Survey no" value={surveyNo} onChange={setSurveyNo} />
       </div>
       <DataTable
-        rows={rows}
+        rows={orderedRows}
         onRowClick={(row) => navigate(`/properties/${String(row.property_ref)}`)}
         columns={[
           { key: 'property_ref', label: 'Property reference' },

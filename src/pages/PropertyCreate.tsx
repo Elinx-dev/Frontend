@@ -303,7 +303,7 @@ export default function PropertyCreate() {
     }
     setBusy(true)
     try {
-      await post<Row>('/api/properties', {
+      const created = await post<Row>('/api/properties', {
         ...property,
         propertyRef: property.propertyRef || `PR-${property.stateCode}-${Date.now()}`,
         surveyRecords: surveyRecords.map((record) => ({
@@ -331,7 +331,7 @@ export default function PropertyCreate() {
           surveyNo: entry.surveyNo.trim(),
         })),
       }, true)
-      navigate('/properties')
+      navigate('/properties', { state: { createdRef: String(created.property_ref ?? created.propertyRef ?? '') } })
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     } finally {
