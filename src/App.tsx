@@ -27,6 +27,8 @@ import StateModules from './pages/admin/StateModules'
 import WorkflowDefinitions from './pages/admin/WorkflowDefinitions'
 import AdminDashboard from './pages/AdminDashboard'
 import AuditTrail from './pages/AuditTrail'
+import RegistrationCertificate from './pages/RegistrationCertificate'
+import VerifyCertificate from './pages/VerifyCertificate'
 import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
@@ -236,6 +238,8 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/public" element={<PublicView />} />
+          <Route path="/verify/:documentNo" element={<VerifyCertificate />} />
+          <Route path="/certificate/:txnRef" element={<Protected><RegistrationCertificate /></Protected>} />
           <Route path="/ro" element={<Protected><TransactionQueue /></Protected>} />
           <Route path="/audit" element={<Protected><AuditTrail /></Protected>} />
           <Route path="/properties" element={<Protected><PropertySearch /></Protected>} />

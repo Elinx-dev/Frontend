@@ -909,6 +909,9 @@ export default function TransactionDetail({
                 ]}
                 empty="Not registered yet."
               />
+              {txn.registrationResult?.length ? (
+                <p><Link className="button" to={`/certificate/${encodeURIComponent(txnRef)}`}>Registration certificate (QR)</Link></p>
+              ) : null}
               {txn.survey_required === true ? (
                 <p>
                   Survey is required for this transfer scope: <Link to={`/survey/${txn.txn_ref}`}>open the survey screen</Link>.
