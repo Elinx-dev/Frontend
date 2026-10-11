@@ -551,7 +551,7 @@ const DATASETS: Record<Dataset, { label: string; placeholder: string; statusLabe
     label: 'Properties',
     placeholder: 'Property ref, survey no, ULPIN, district, village or SRO',
     statusLabel: 'Status',
-    statuses: ['ACTIVE', 'SUPERSEDED'],
+    statuses: ['ACTIVE', 'INACTIVE'],
     link: (row) => (typeof row.propertyRef === 'string' ? `/properties/${encodeURIComponent(row.propertyRef)}` : null),
     columns: [
       { label: 'Property', value: text('propertyRef'), render: strong('propertyRef') },

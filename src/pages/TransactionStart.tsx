@@ -1123,14 +1123,17 @@ export default function TransactionStart() {
     setError('')
     setInfo('')
     try {
-      await post(
+      const result = await post<{ newProperties?: Row[] }>(
         `/api/transactions/${encodeURIComponent(createdTransactionRef)}/registration`,
         { comment: registrationComment.trim() || undefined },
         true,
       )
       await loadTransaction(createdTransactionRef, true)
       setActiveStage(7)
-      setInfo('Transaction registered.')
+      const created = (result.newProperties ?? []).map((p) => String(p.property_ref))
+      setInfo(created.length > 0
+        ? `Transaction registered. The property is now inactive and new properties ${created.join(' and ')} were created; next it goes to the VAO.`
+        : 'Transaction registered.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     }

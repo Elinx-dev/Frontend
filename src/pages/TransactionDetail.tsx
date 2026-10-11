@@ -495,6 +495,7 @@ export default function TransactionDetail({
   const workflowTabs = [
     { label: 'Property details', target: 'txn-property', issues: [] as string[] },
     ...readinessSteps,
+    ...((txn.childProperties ?? []).length > 0 ? [{ label: 'New properties', target: 'txn-new-properties', issues: [] as string[] }] : []),
     { label: 'Timeline', target: 'txn-timeline', issues: [] as string[] },
   ]
   const currentStage = formatCell(txn.current_stage_code || txn.status).replaceAll('_', ' ')
@@ -640,7 +641,7 @@ export default function TransactionDetail({
                 }}
               >
                 <span className="property-tab-marker" aria-hidden="true">{step.issues.length > 0 ? '!' : workflowTabs.findIndex((item) => item.target === step.target) + 1}</span>
-                <span className="property-tab-copy"><strong>{step.label}</strong><small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : step.target === 'txn-timeline' ? 'Audit log' : 'Ready'}</small></span>
+                <span className="property-tab-copy"><strong>{step.label}</strong><small>{step.issues.length > 0 ? `${step.issues.length} to resolve` : step.target === 'txn-timeline' ? 'Audit log' : step.target === 'txn-new-properties' ? `${txn.childProperties?.length ?? 0} properties` : 'Ready'}</small></span>
               </button>
             ))}
           </div>
@@ -908,6 +909,9 @@ export default function TransactionDetail({
                 ]}
                 empty="Not registered yet."
               />
+              {txn.registrationResult?.length ? (
+                <p><Link className="button" to={`/certificate/${encodeURIComponent(txnRef)}`}>Registration certificate (QR)</Link></p>
+              ) : null}
               {txn.survey_required === true ? (
                 <p>
                   Survey is required for this transfer scope: <Link to={`/survey/${txn.txn_ref}`}>open the survey screen</Link>.
@@ -927,6 +931,52 @@ export default function TransactionDetail({
               </div>
             </Panel>
           </div>
+
+          {(txn.childProperties ?? []).length > 0 ? (
+          <div id="txn-new-properties" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-new-properties" tabIndex={0} hidden={activeWorkflowTab !== 'txn-new-properties'}>
+            <Panel title="New properties (subdivision)">
+              <p>Created at registration from {formatCell(txn.property.property_ref ?? txn.property.propertyRef)}, which is now inactive. Both belong to transaction {String(txn.txn_ref)}.</p>
+                <DataTable
+                  rows={txn.childProperties ?? []}
+                  columns={[
+                    { key: 'property_ref', label: 'New property' },
+                    { key: 'owners', label: 'Owner' },
+                    { key: 'survey_no', label: 'Survey no' },
+                    { key: 'subdivision_no', label: 'Subdivision' },
+                    { key: 'extent_value', label: 'Extent' },
+                    { key: 'extent_unit', label: 'Unit' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'token_ref', label: 'Token' },
+                    { key: 'parent_token_ref', label: 'Parent token' },
+                    { key: 'approval_status', label: 'Approval status' },
+                    { key: 'token_blocks', label: 'Blocks' },
+                  ]}
+                  empty="No new properties."
+                />
+            </Panel>
+            <Panel title="Blockchain blocks (parent inactive, actions recorded on each child token)">
+              <div className="table-scroll">
+                <DataTable
+                  rows={txn.tokenBlocks ?? []}
+                  columns={[
+                    { key: 'relation', label: 'Parent / child' },
+                    { key: 'property_ref', label: 'Property' },
+                    { key: 'token_ref', label: 'Token' },
+                    { key: 'block', label: 'Block' },
+                    { key: 'operation', label: 'Operation' },
+                    { key: 'action_code', label: 'Action' },
+                    { key: 'actor_role', label: 'By' },
+                    { key: 'decision', label: 'Decision' },
+                    { key: 'approval_status', label: 'Status after' },
+                    { key: 'anchor_status', label: 'Anchor' },
+                    { key: 'recorded_at', label: 'Recorded at' },
+                  ]}
+                  empty="No blocks recorded yet."
+                />
+              </div>
+            </Panel>
+          </div>
+          ) : null}
 
           <div id="txn-timeline" className="transaction-task-anchor" role="tabpanel" aria-labelledby="workflow-tab-txn-timeline" tabIndex={0} hidden={activeWorkflowTab !== 'txn-timeline'}>
             <Panel title="Timeline">

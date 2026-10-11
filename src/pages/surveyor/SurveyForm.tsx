@@ -21,7 +21,7 @@ import {
 } from './surveyorShared'
 import type { MeasurementRow, PolygonRow, SurveyorDetail, SurveyorRecord } from './surveyorShared'
 
-type LeftTab = 'gps' | 'measurements' | 'boundaries' | 'polygon' | 'notes'
+type LeftTab = 'gps' | 'measurements' | 'boundaries' | 'polygon' | `property-${number}` | 'notes'
 type RightTab = 'map' | 'sketch'
 
 const LEFT_TABS: [LeftTab, string][] = [
@@ -31,6 +31,27 @@ const LEFT_TABS: [LeftTab, string][] = [
   ['polygon', 'Polygon'],
   ['notes', 'Notes'],
 ]
+
+interface ParcelDraft {
+  surveyNo: string
+  subdivisionNo: string
+  extent: string
+  unit: string
+  north: string
+  south: string
+  east: string
+  west: string
+  propertyRef: string
+  side: string
+  owners: string
+  tokenRef: string
+}
+
+const SIDES = ['north', 'south', 'east', 'west'] as const
+
+function partySideLabel(side: unknown): string {
+  return side === 'SIDE_2' ? 'Buyer' : 'Seller'
+}
 
 const EMPTY_POINT: PolygonRow = { lat: '', latDir: 'N', lon: '', lonDir: 'E' }
 
@@ -61,15 +82,35 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const [boundaries, setBoundaries] = useState({ north: '', south: '', east: '', west: '' })
   const [points, setPoints] = useState<PolygonRow[]>([{ ...EMPTY_POINT }])
   const [notes, setNotes] = useState('')
+  const [parcels, setParcels] = useState<ParcelDraft[]>([])
+  const subdivision = parcels.length > 0
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (record.submission_id == null) return
     let cancelled = false
     void get<SurveyorDetail>(`/api/surveyor/records/${encodeURIComponent(record.txn_ref)}`).then((detail) => {
+      if (cancelled) return
+      const lastParcels = detail.parcels ?? []
+      setParcels((detail.childProperties ?? []).map((cp) => {
+        const pc = lastParcels.find((row) => row.child_property_ref === cp.property_ref) ?? cp
+        return {
+          surveyNo: text(pc.survey_no),
+          subdivisionNo: text(pc.official_subdivision_no ?? pc.subdivision_no),
+          extent: text(pc.extent_value),
+          unit: areaUnitCode(text(pc.extent_unit)) ?? 'SQ_FT',
+          north: text(pc.boundary_north),
+          south: text(pc.boundary_south),
+          east: text(pc.boundary_east),
+          west: text(pc.boundary_west),
+          propertyRef: text(cp.property_ref),
+          side: text(cp.allotted_side),
+          owners: text(cp.owners),
+          tokenRef: text(cp.token_ref),
+        }
+      }))
       const last = detail.submissions[0]
-      if (cancelled || last == null) return
+      if (record.submission_id == null || last == null) return
       setLat(text(last.centroid_lat))
       setLon(text(last.centroid_lon))
       setExtent(text(last.measured_extent))
@@ -108,6 +149,37 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const polygon = useMemo(() => points.map(vertex).filter((p): p is [number, number] => p != null), [points])
   const filledSegments = segments.filter((s) => (num(s.value) ?? 0) > 0)
   const partition = isPartition(record)
+  const propertyTabs = parcels.map((_pc, i): [LeftTab, string] => [`property-${i}`, `Property ${i + 1}`])
+  const leftTabs = subdivision ? LEFT_TABS.flatMap((t) => (t[0] === 'notes' ? [...propertyTabs, t] : [t])) : LEFT_TABS
+  const activeParcel = leftTab.startsWith('property-') ? Number(leftTab.slice('property-'.length)) : -1
+  const parcelTotal = parcels.reduce<number | null>((sum, pc) => {
+    const value = num(pc.extent)
+    if (sum == null || value == null) return sum
+    const converted = convertArea(value, pc.unit, unit)
+    return converted == null ? null : sum + converted
+  }, 0)
+  const parcelGap = parcelTotal == null || extentNum == null || extentNum === 0 ? null : (Math.abs(parcelTotal - extentNum) / extentNum) * 100
+
+  function updateParcel(i: number, patch: Partial<ParcelDraft>) {
+    setParcels((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  }
+
+  function parcelError(): [string, number] {
+    if (!subdivision) return ['', 0]
+    const seen = new Set<string>()
+    for (const [i, pc] of parcels.entries()) {
+      const label = pc.propertyRef || `Property ${i + 1}`
+      if (pc.surveyNo.trim() === '') return [`Enter the new survey number of ${label}.`, i]
+      const key = `${pc.surveyNo.trim()}/${pc.subdivisionNo.trim()}`.toUpperCase()
+      if (seen.has(key)) return [`${label} repeats survey number ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}.`, i]
+      seen.add(key)
+      if ((num(pc.extent) ?? 0) <= 0) return [`Enter the extent of ${label}.`, i]
+      if (SIDES.some((side) => pc[side].trim() === '')) return [`Enter the north, south, east and west boundaries of ${label}.`, i]
+    }
+    if (parcelGap == null) return ['The new property extents cannot be compared with the measured extent; use compatible units.', 0]
+    if (parcelGap > tolerance) return [`The new properties add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit)} but the measured extent is ${extentNum} ${areaUnitLabel(unit)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`, 0]
+    return ['', 0]
+  }
 
   function updateSegment(i: number, patch: Partial<MeasurementRow>) {
     setSegments((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
@@ -122,6 +194,12 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
     if (!gpsValid) {
       setLeftTab('gps')
       setError('Enter valid GPS latitude and longitude for the site.')
+      return
+    }
+    const [subdivisionError, errorParcel] = extentNum == null || extentNum <= 0 ? ['', 0] : parcelError()
+    if (subdivisionError) {
+      setLeftTab(`property-${errorParcel}`)
+      setError(subdivisionError)
       return
     }
     if (extentNum == null || extentNum <= 0) {
@@ -152,11 +230,24 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
           siteNotes: notes.trim() || null,
           segments: filledSegments.map((s) => ({ fromPoint: s.from, toPoint: s.to, lengthValue: Number(s.value), lengthUnit: s.unit })),
           boundaryPoints: polygon.map(([pLat, pLon], i) => ({ pointLabel: `P${i + 1}`, latitude: pLat, longitude: pLon })),
+          parcels: subdivision
+            ? parcels.map((pc) => ({
+                surveyNo: pc.surveyNo.trim(),
+                officialSubdivisionNo: pc.subdivisionNo.trim() || null,
+                extentValue: Number(pc.extent),
+                extentUnit: pc.unit,
+                boundaryNorth: pc.north.trim(),
+                boundarySouth: pc.south.trim(),
+                boundaryEast: pc.east.trim(),
+                boundaryWest: pc.west.trim(),
+                propertyRef: pc.propertyRef,
+              }))
+            : [],
         },
         true,
       )
       onSubmitted(result.withinTolerance
-        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the VAO for verification (variance ${Number(result.variancePct).toFixed(2)}%).`
+        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the ${subdivision ? 'Tahsildar for approval' : 'VAO for verification'} (variance ${Number(result.variancePct).toFixed(2)}%).`
         : `Survey for ${record.ulpin ?? record.txn_ref} saved with a conflict flag (variance ${Number(result.variancePct).toFixed(2)}%). It is routed for survey correction review.`)
       onClose()
     } catch (e) {
@@ -179,7 +270,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
         <div className="sv-body">
           <div className="sv-left">
             <nav className="sv-tabs">
-              {LEFT_TABS.map(([key, label]) => (
+              {leftTabs.map(([key, label]) => (
                 <button key={key} className={leftTab === key ? 'active' : ''} onClick={() => setLeftTab(key)}>{label}</button>
               ))}
             </nav>
@@ -291,6 +382,45 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 </section>
               ) : null}
 
+              {activeParcel >= 0 && subdivision ? (
+                <>
+                  <section className="sv-section">
+                    <h3><PinIcon /> New property {activeParcel + 1} of {parcels.length} created at registration</h3>
+                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of this property.</p>
+                    {parcels.map((pc, i) => i !== activeParcel ? null : (
+                      <div key={pc.propertyRef} className="sv-parcel">
+                        <div className="sv-section-head">
+                          <h4>Property {i + 1} · {pc.propertyRef}{pc.surveyNo ? ` · S.No. ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}` : ''}</h4>
+                          <span className={`sv-side ${pc.side === 'SIDE_2' ? 'buyer' : 'seller'}`}>{partySideLabel(pc.side)}</span>
+                        </div>
+                        <p className="sv-hint">Owner: <b>{pc.owners || '—'}</b>{pc.tokenRef ? ` · Token ${pc.tokenRef}` : ''}</p>
+                        <div className="sv-grid4">
+                          <label><span>Survey no</span><input value={pc.surveyNo} onChange={(e) => updateParcel(i, { surveyNo: e.target.value })} /></label>
+                          <label><span>Subdivision no</span><input value={pc.subdivisionNo} placeholder="e.g. 2A" onChange={(e) => updateParcel(i, { subdivisionNo: e.target.value })} /></label>
+                          <label><span>Extent</span><input type="number" step="any" min="0" value={pc.extent} onChange={(e) => updateParcel(i, { extent: e.target.value })} /></label>
+                          <label><span>Unit</span>
+                            <select value={pc.unit} onChange={(e) => updateParcel(i, { unit: e.target.value })}>
+                              {AREA_UNITS.map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}
+                            </select>
+                          </label>
+                        </div>
+                        <div className="sv-grid4">
+                          {SIDES.map((side) => (
+                            <label key={side}><span>{side[0].toUpperCase() + side.slice(1)}</span><input value={pc[side]} onChange={(e) => updateParcel(i, { [side]: e.target.value })} /></label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="sv-parcel-total">
+                      <span>New properties total: <b>{parcelTotal == null ? '—' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit)}`}</b> · measured {extentNum ?? '—'} {areaUnitLabel(unit)}</span>
+                      {parcelGap == null ? null : parcelGap > tolerance
+                        ? <span className="sv-err">Differs by {parcelGap.toFixed(2)}% (allowed {tolerance}%)</span>
+                        : <span className="sv-ok">Within {tolerance}% ({parcelGap.toFixed(2)}%)</span>}
+                    </div>
+                  </section>
+                </>
+              ) : null}
+
               {leftTab === 'notes' ? (
                 <section className="sv-section">
                   <h3><ListIcon /> Site Notes</h3>
@@ -306,7 +436,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 </div>
               ) : null}
               <button className={conflict ? 'sv-submit conflict' : 'sv-submit'} disabled={busy} onClick={() => void submit()}>
-                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : 'Submit Survey & Forward to VAO'}
+                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : subdivision ? 'Submit Survey & Forward to Tahsildar' : 'Submit Survey & Forward to VAO'}
               </button>
             </footer>
           </div>

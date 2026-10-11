@@ -216,6 +216,9 @@ export const emptyOwner = (): OwnerForm => ({
 const OWNER_AADHAAR_PATTERN = /^\d{12}$/
 const OWNER_PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const OWNER_MOBILE_PATTERN = /^[6-9]\d{9}$/
+/** Masked values sent back by the server; saving one unchanged keeps the stored number. */
+const MASKED_PAN_PATTERN = /^\*{5}\d{4}\*$/
+const MASKED_MOBILE_PATTERN = /^\*{6}\d{4}$/
 const OWNER_CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
 const OWNER_LLPIN_PATTERN = /^[A-Z]{3}-\d{4}$/
 
@@ -227,8 +230,8 @@ export function validateOwner(owner: OwnerForm, layout: OwnerLayout): OwnerField
   if (owner.ownerName.trim().length === 0) errors.ownerName = `${layout.nameLabel} is required.`
   if (layout.aadhaar && !OWNER_AADHAAR_PATTERN.test(owner.aadhaarNumber)) errors.aadhaarNumber = 'Aadhaar must contain exactly 12 digits.'
   if (owner.pan.trim().length === 0) errors.pan = `${layout.panLabel} is required.`
-  else if (!OWNER_PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
-  if (layout.mobile && !OWNER_MOBILE_PATTERN.test(owner.mobile)) errors.mobile = 'Enter a 10-digit mobile number.'
+  else if (!OWNER_PAN_PATTERN.test(owner.pan) && !MASKED_PAN_PATTERN.test(owner.pan)) errors.pan = 'PAN must match AAAAA9999A.'
+  if (layout.mobile && !OWNER_MOBILE_PATTERN.test(owner.mobile) && !MASKED_MOBILE_PATTERN.test(owner.mobile)) errors.mobile = 'Enter a 10-digit mobile number.'
   if (owner.address.trim().length === 0) errors.address = `${layout.addressLabel} is required.`
   if (layout.registration) {
     const { kind, label } = layout.registration
@@ -242,8 +245,8 @@ export function validateOwner(owner: OwnerForm, layout: OwnerLayout): OwnerField
     if (designation && owner.repDesignation.trim().length === 0) errors.repDesignation = 'Designation is required.'
     if (!OWNER_AADHAAR_PATTERN.test(owner.repAadhaar)) errors.repAadhaar = 'Aadhaar must contain exactly 12 digits.'
     if (owner.repPan.trim().length === 0) errors.repPan = 'PAN is required.'
-    else if (!OWNER_PAN_PATTERN.test(owner.repPan)) errors.repPan = 'PAN must match AAAAA9999A.'
-    if (mobile && !OWNER_MOBILE_PATTERN.test(owner.repMobile)) errors.repMobile = 'Enter a 10-digit mobile number.'
+    else if (!OWNER_PAN_PATTERN.test(owner.repPan) && !MASKED_PAN_PATTERN.test(owner.repPan)) errors.repPan = 'PAN must match AAAAA9999A.'
+    if (mobile && !OWNER_MOBILE_PATTERN.test(owner.repMobile) && !MASKED_MOBILE_PATTERN.test(owner.repMobile)) errors.repMobile = 'Enter a 10-digit mobile number.'
   }
   return errors
 }

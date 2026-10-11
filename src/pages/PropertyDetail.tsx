@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, get } from '../api'
 import { useAuth } from '../auth'
+import { RevealPii } from './RevealPii'
 import { str, type Row } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
@@ -32,10 +33,12 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState<Row | null>(null)
   const [error, setError] = useState('')
   const [activeStage, setActiveStage] = useState(0)
+  const [lineage, setLineage] = useState<Row | null>(null)
 
   const load = useCallback(async () => {
     try {
       setProperty(await get<Row>(`/api/properties/${propertyRef}`))
+      setLineage(await get<Row>(`/api/lineage?propertyRef=${encodeURIComponent(propertyRef)}`).catch(() => null))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     }
@@ -67,6 +70,9 @@ export default function PropertyDetail() {
   const measurements = rows(property.boundaryMeasurements)
   const chainOfTitle = rows(property.chainOfTitle)
   const transactions = rows(property.transactions)
+  const relations = rows(property.propertyRelations)
+  const lineageNodes = rows(lineage?.nodes).filter((node) => node.relation !== 'SELF')
+  const lineageChain = (lineage?.chain ?? {}) as Row
   const ownerTypeCode = str(property, 'owner_type_code') || str(owners[0], 'owner_type_code')
   const ownerTypeLabel = ownerTypes.find((type) => type.value === ownerTypeCode)?.label ?? ownerTypeCode
   const layout = ownerLayout(ownerTypeCode)
@@ -111,10 +117,53 @@ export default function PropertyDetail() {
                 <ViewField label="Nature of title" value={property.nature_of_title_code} options={natureOfTitleOptions} />
                 <ViewField label="Land type" value={property.land_type_code} options={landTypeOptions} />
                 <ViewField label="Classification" value={property.classification_code} options={classificationOptions} />
-                <ViewField label="Status" value={property.status} />
+                <ViewField label="Status" value={property.status === 'ACTIVE' ? 'Active' : property.status === 'INACTIVE' || property.status === 'SUPERSEDED' ? 'Inactive' : property.status} />
+                {property.parent_property_ref ? <ViewField label="Parent property" value={property.parent_property_ref} /> : null}
                 <ViewField label="Token" value={property.token_ref} />
                 <ViewField label="Created at" value={property.created_at} />
               </div>
+              {lineageNodes.length > 0 ? <>
+                <h3 className="lineage-title">Property lineage (all levels, active and inactive)</h3>
+                <p className="muted">{String(lineageChain.note ?? '')}</p>
+                <div className="table-scroll">
+                  <DataTable
+                    rows={lineageNodes}
+                    columns={[
+                      { key: 'relation', label: 'Relation' },
+                      { key: 'property_ref', label: 'Property' },
+                      { key: 'property_status', label: 'Status' },
+                      { key: 'current_owners', label: 'Owners' },
+                      { key: 'token_ref', label: 'Token' },
+                      { key: 'token_status', label: 'Token status' },
+                      { key: 'approval_status', label: 'Approval status' },
+                      { key: 'parent_token_ref', label: 'Parent token' },
+                      { key: 'block_count', label: 'Blocks' },
+                      { key: 'anchor_status', label: 'Chain anchor' },
+                      { key: 'onchain_status', label: 'On chain' },
+                    ]}
+                    empty=""
+                  />
+                </div>
+              </> : null}
+              {lineageNodes.length === 0 && relations.length > 0 ? (
+                <DataTable
+                  rows={relations}
+                  columns={[
+                    { key: 'relation_type', label: 'Parent / child' },
+                    { key: 'property_ref', label: 'Property' },
+                    { key: 'property_status', label: 'Status' },
+                    { key: 'survey_no', label: 'Survey no' },
+                    { key: 'subdivision_no', label: 'Subdivision' },
+                    { key: 'extent_value', label: 'Extent' },
+                    { key: 'token_ref', label: 'Token' },
+                    { key: 'token_status', label: 'Token status' },
+                    { key: 'token_approval_status', label: 'Approval status' },
+                    { key: 'token_state_version', label: 'Blocks' },
+                    { key: 'parent_token_ref', label: 'Parent token' },
+                  ]}
+                  empty=""
+                />
+              ) : null}
             </Panel> : null}
             {activeStage === 1 ? <Panel title="">
               <div className="owner-type-select"><ViewField label="Owner type" value={ownerTypeLabel} /></div>
@@ -133,6 +182,7 @@ export default function PropertyDetail() {
                     <ViewField label="Source" value={owner.source} />
                     <ViewField label="Effective from" value={owner.effective_from} />
                   </div>
+                  <RevealPii source="PROPERTY_OWNER" id={owner.id} />
                   {representative ? <div className="owner-representative">
                     <h4>{representative.title}</h4>
                     <div className="owner-fields">
