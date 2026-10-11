@@ -245,7 +245,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
         true,
       )
       onSubmitted(result.withinTolerance
-        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the VAO for verification (variance ${Number(result.variancePct).toFixed(2)}%).`
+        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the ${subdivision ? 'Tahsildar for approval' : 'VAO for verification'} (variance ${Number(result.variancePct).toFixed(2)}%).`
         : `Survey for ${record.ulpin ?? record.txn_ref} saved with a conflict flag (variance ${Number(result.variancePct).toFixed(2)}%). It is routed for survey correction review.`)
       onClose()
     } catch (e) {
@@ -434,7 +434,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 </div>
               ) : null}
               <button className={conflict ? 'sv-submit conflict' : 'sv-submit'} disabled={busy} onClick={() => void submit()}>
-                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : 'Submit Survey & Forward to VAO'}
+                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : subdivision ? 'Submit Survey & Forward to Tahsildar' : 'Submit Survey & Forward to VAO'}
               </button>
             </footer>
           </div>
