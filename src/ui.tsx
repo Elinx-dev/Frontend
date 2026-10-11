@@ -2,13 +2,33 @@ import type { ChangeEvent, ReactNode } from 'react'
 
 import type { Row } from './types'
 
+export function AuthShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="login-page">
+      <aside className="login-brand">
+        <div className="login-brand-inner">
+          <div className="login-mark">S</div>
+          <div className="login-brand-text">
+            <div className="login-wordmark">SLATE</div>
+            <div className="login-tagline">Secured Land Asset Token Exchange</div>
+          </div>
+          <div className="login-rule" />
+        </div>
+      </aside>
+      <div className="login-form-side">{children}</div>
+    </div>
+  )
+}
+
 export function Panel({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <section className="panel">
-      <header className="panel-head">
-        <h2>{title}</h2>
-        <div className="panel-actions">{actions}</div>
-      </header>
+      {title.length > 0 || actions !== undefined ? (
+        <header className="panel-head">
+          {title.length > 0 ? <h2>{title}</h2> : null}
+          {actions !== undefined ? <div className="panel-actions">{actions}</div> : null}
+        </header>
+      ) : null}
       <div className="panel-body">{children}</div>
     </section>
   )
@@ -22,6 +42,7 @@ export function Field({
   options,
   required = false,
   placeholder,
+  readOnly = false,
 }: {
   label: string
   value: string
@@ -30,6 +51,7 @@ export function Field({
   options?: { value: string; label: string }[]
   required?: boolean
   placeholder?: string
+  readOnly?: boolean
 }) {
   const handle = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => onChange(e.target.value)
   return (
@@ -39,9 +61,9 @@ export function Field({
         {required ? <b className="req"> *</b> : null}
       </span>
       {options === undefined ? (
-        <input type={type} value={value} onChange={handle} placeholder={placeholder} />
+        <input type={type} value={value} onChange={handle} placeholder={placeholder} readOnly={readOnly} />
       ) : (
-        <select value={value} onChange={handle}>
+        <select value={value} onChange={handle} disabled={readOnly}>
           <option value="">— select —</option>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
@@ -61,7 +83,7 @@ export function DataTable({
   onRowClick,
 }: {
   rows: Row[]
-  columns: { key: string; label: string }[]
+  columns: { key: string; label: string; render?: (row: Row) => ReactNode }[]
   empty?: string
   onRowClick?: (row: Row) => void
 }) {
@@ -85,7 +107,7 @@ export function DataTable({
             className={onRowClick === undefined ? undefined : 'clickable'}
           >
             {columns.map((c) => (
-              <td key={c.key}>{formatCell(row[c.key])}</td>
+              <td key={c.key}>{c.render === undefined ? formatCell(row[c.key]) : c.render(row)}</td>
             ))}
           </tr>
         ))}

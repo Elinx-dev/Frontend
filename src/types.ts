@@ -16,9 +16,16 @@ export interface UserProfile {
 export interface LoginResponse {
   mfaRequired?: boolean
   challengeId?: string
+  maskedEmail?: string
+  demoOtp?: string
   accessToken?: string
   expiresAt?: string
   user?: UserProfile
+}
+
+export interface PasswordResetResponse {
+  message: string
+  demoResetUrl?: string
 }
 
 export type Row = Record<string, unknown>
@@ -28,12 +35,21 @@ export interface DeedType {
   name: string
   survey_rule?: string
   allowed_transfer_scopes?: string[] | string
+  requires_relationship_category?: boolean
+  side1_role?: string
+  side2_role?: string
+  first_party_label?: string
+  second_party_label?: string
 }
 
 export interface Bootstrap {
   state: Row
   modules: Row
   deedTypes: DeedType[]
+  transactionTypes?: Row[]
+  surveyFees?: Row[]
+  bloodRelations?: Row[]
+  feeRelationshipCategories?: Row[]
   optionSets: Record<string, Row[]>
   relationships: Row[]
   documentTypes: Row[]
@@ -43,6 +59,8 @@ export interface Bootstrap {
 
 export interface TransactionDetail extends Row {
   txn_ref: string
+  childProperties?: Row[]
+  tokenBlocks?: Row[]
   status: string
   current_stage_code?: string
   deed_type_code: string
@@ -54,12 +72,15 @@ export interface TransactionDetail extends Row {
   witnesses: Row[]
   consents: Row[]
   ruleCheckResults: Row[]
+  ruleCheckPolicy?: Row[]
   feeCalculation: Row | null
+  schedules?: Row[]
+  feeScheduleLines?: Row[]
   payments: Row[]
   registeredOwners: Row[]
   surveyParcels: Row[]
   availableActions: Row[]
-  validation: Row
+  validation: Row[]
   stages: Row[]
   registrationResult: Row[]
   mutation: Row[]
