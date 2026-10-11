@@ -67,6 +67,7 @@ export default function PropertyDetail() {
   const measurements = rows(property.boundaryMeasurements)
   const chainOfTitle = rows(property.chainOfTitle)
   const transactions = rows(property.transactions)
+  const relations = rows(property.propertyRelations)
   const ownerTypeCode = str(property, 'owner_type_code') || str(owners[0], 'owner_type_code')
   const ownerTypeLabel = ownerTypes.find((type) => type.value === ownerTypeCode)?.label ?? ownerTypeCode
   const layout = ownerLayout(ownerTypeCode)
@@ -116,6 +117,25 @@ export default function PropertyDetail() {
                 <ViewField label="Token" value={property.token_ref} />
                 <ViewField label="Created at" value={property.created_at} />
               </div>
+              {relations.length > 0 ? (
+                <DataTable
+                  rows={relations}
+                  columns={[
+                    { key: 'relation_type', label: 'Parent / child' },
+                    { key: 'property_ref', label: 'Property' },
+                    { key: 'property_status', label: 'Status' },
+                    { key: 'survey_no', label: 'Survey no' },
+                    { key: 'subdivision_no', label: 'Subdivision' },
+                    { key: 'extent_value', label: 'Extent' },
+                    { key: 'token_ref', label: 'Token' },
+                    { key: 'token_status', label: 'Token status' },
+                    { key: 'token_approval_status', label: 'Approval status' },
+                    { key: 'token_state_version', label: 'Blocks' },
+                    { key: 'parent_token_ref', label: 'Parent token' },
+                  ]}
+                  empty=""
+                />
+              ) : null}
             </Panel> : null}
             {activeStage === 1 ? <Panel title="">
               <div className="owner-type-select"><ViewField label="Owner type" value={ownerTypeLabel} /></div>

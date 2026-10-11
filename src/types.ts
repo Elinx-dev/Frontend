@@ -60,6 +60,7 @@ export interface Bootstrap {
 export interface TransactionDetail extends Row {
   txn_ref: string
   childProperties?: Row[]
+  tokenBlocks?: Row[]
   status: string
   current_stage_code?: string
   deed_type_code: string

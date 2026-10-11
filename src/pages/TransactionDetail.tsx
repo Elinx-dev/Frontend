@@ -944,8 +944,30 @@ export default function TransactionDetail({
                     { key: 'extent_unit', label: 'Unit' },
                     { key: 'status', label: 'Status' },
                     { key: 'token_ref', label: 'Token' },
+                    { key: 'parent_token_ref', label: 'Parent token' },
+                    { key: 'approval_status', label: 'Approval status' },
+                    { key: 'token_blocks', label: 'Blocks' },
                   ]}
                   empty="No new properties."
+                />
+            </Panel>
+            <Panel title="Blockchain blocks (parent inactive, actions recorded on each child token)">
+                <DataTable
+                  rows={txn.tokenBlocks ?? []}
+                  columns={[
+                    { key: 'relation', label: 'Parent / child' },
+                    { key: 'property_ref', label: 'Property' },
+                    { key: 'token_ref', label: 'Token' },
+                    { key: 'block', label: 'Block' },
+                    { key: 'operation', label: 'Operation' },
+                    { key: 'action_code', label: 'Action' },
+                    { key: 'actor_role', label: 'By' },
+                    { key: 'decision', label: 'Decision' },
+                    { key: 'approval_status', label: 'Status after' },
+                    { key: 'anchor_status', label: 'Anchor' },
+                    { key: 'recorded_at', label: 'Recorded at' },
+                  ]}
+                  empty="No blocks recorded yet."
                 />
             </Panel>
           </div>
