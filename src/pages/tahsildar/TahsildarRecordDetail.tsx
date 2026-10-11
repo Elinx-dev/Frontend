@@ -9,19 +9,14 @@ import { errorText, useVaoResource } from '../vao/useVao'
 import { VaoModal } from '../vao/VaoUi'
 import { deedLabel, formatTimestamp, purposeLabel, rupees, when } from '../vao/vaoShared'
 import { TahsildarStagePill } from './TahsildarUi'
-import { RevealPii } from '../RevealPii'
+import { RecordInfoTabs } from '../vao/RecordInfoTabs'
+import { INFO_TABS, isInfoTab } from '../vao/recordInfo'
+import type { InfoTab } from '../vao/recordInfo'
 import type { TahsildarDetail } from './tahsildarShared'
 
-type Tab = 'transaction' | 'parties' | 'fees' | 'survey' | 'verification' | 'timeline'
+type Tab = InfoTab | 'verification' | 'timeline'
 
-const TABS: [Tab, string][] = [
-  ['transaction', 'Deed Details'],
-  ['parties', 'Parties'],
-  ['fees', 'Fees & Payments'],
-  ['survey', 'Survey'],
-  ['verification', 'VAO Verification'],
-  ['timeline', 'Timeline'],
-]
+const TABS: [Tab, string][] = [...INFO_TABS, ['verification', 'VAO Verification'], ['timeline', 'Timeline']]
 
 function Fact({ label, value, mono = false }: { label: string; value: unknown; mono?: boolean }) {
   return (
@@ -48,8 +43,6 @@ function Rows({ rows, columns, empty }: { rows: Row[]; columns: [string, string,
   )
 }
 
-const money = (v: unknown) => rupees(v == null ? null : Number(v))
-
 export default function TahsildarRecordDetail() {
   const { txnRef = '' } = useParams()
   const { data, error, reload } = useVaoResource<TahsildarDetail>(`/api/tahsildar/records/${encodeURIComponent(txnRef)}`)
@@ -67,8 +60,6 @@ export default function TahsildarRecordDetail() {
   }
   const record = data
   const property = record.property
-  const survey = record.survey
-  const fee = record.feeCalculation
   const objections = record.mutation?.objections ?? []
   const awaiting = record.status === 'TAHSILDAR_PENDING'
   const failed = record.checklist.filter((c) => !c.passed)
@@ -152,88 +143,7 @@ export default function TahsildarRecordDetail() {
             ))}
           </div>
 
-          {tab === 'transaction' ? (
-            <>
-              <div className="vao-facts">
-                <Fact label="Transaction ID" value={record.txn_ref} mono />
-                <Fact label="Deed type" value={deedLabel(record.deed_type_code)} />
-                <Fact label="Sub-type" value={record.subtype} />
-                <Fact label="SRO" value={record.sro_code} />
-                <Fact label="Initiated" value={formatTimestamp(record.initiated_at)} />
-                <Fact label="Registration date" value={record.registration?.registration_date} />
-                <Fact label="Document no." value={record.registered_document_no} mono />
-                <Fact label="Declared consideration" value={rupees(record.declared_consideration)} />
-              </div>
-              <p className="vao-card-eyebrow">Property</p>
-              <div className="vao-facts">
-                <Fact label="Property ref" value={record.property_ref} mono />
-                <Fact label="ULPIN" value={property.ulpin} mono />
-                <Fact label="Survey no. / Sub-division" value={`${formatCell(property.survey_no)} / ${formatCell(property.subdivision_no)}`} />
-                <Fact label="Village" value={record.village_name ?? property.village_code} />
-                <Fact label="Taluk / District" value={`${formatCell(property.taluk_code)} / ${formatCell(property.district_code)}`} />
-                <Fact label="Extent" value={`${formatCell(property.extent_value)} ${formatCell(property.extent_unit)}`} />
-                <Fact label="Land type / Classification" value={`${formatCell(property.land_type_code)} / ${formatCell(property.classification_code)}`} />
-                <Fact label="Boundaries (N / S / E / W)" value={[property.boundary_north, property.boundary_south, property.boundary_east, property.boundary_west].map(formatCell).join(' / ')} />
-              </div>
-            </>
-          ) : null}
-
-          {tab === 'parties' ? (
-            <>
-              <Rows
-                rows={record.parties}
-                empty="No parties recorded."
-                columns={[['side', 'Side', (v) => (v === 'SIDE_1' ? 'Transferor' : 'Transferee')], ['role', 'Role'], ['name', 'Name'], ['owner_type_code', 'Owner type'], ['aadhaar_last4', 'Aadhaar', (v) => (v == null ? '—' : `XXXX-${String(v)}`)], ['extent_transferred', 'Extent transferred']]}
-              />
-              {(record.parties ?? []).map((party: Row, i: number) => <div className="pii-party" key={String(party.id ?? i)}>
-                <strong>{formatCell(party.name)}</strong>
-                <RevealPii source="TRANSACTION_PARTY" id={party.id} />
-              </div>)}
-              <p className="vao-card-eyebrow">Witnesses</p>
-              <Rows rows={record.witnesses} empty="No witnesses recorded." columns={[['name', 'Name'], ['address', 'Address']]} />
-              <p className="vao-card-eyebrow">Current registered owners</p>
-              <Rows rows={record.registeredOwners} empty="No registered owners on record." columns={[['owner_name', 'Owner'], ['share_pct', 'Share %'], ['effective_from', 'Since']]} />
-            </>
-          ) : null}
-
-          {tab === 'fees' ? (
-            <>
-              {fee == null ? <p className="muted">No fee calculation recorded.</p> : (
-                <div className="vao-facts">
-                  <Fact label="Valuation basis" value={fee.valuation_basis_used} />
-                  <Fact label="Valuation amount" value={money(fee.valuation_amount)} />
-                  <Fact label="Stamp duty" value={money(fee.stamp_duty)} />
-                  <Fact label="Registration fee" value={money(fee.registration_fee)} />
-                  <Fact label="Survey fee" value={money(fee.survey_fee)} />
-                  <Fact label="Other charges" value={money(fee.other_charges)} />
-                  <Fact label="Total payable" value={money(fee.total_payable)} />
-                  <Fact label="Calculated" value={formatTimestamp(fee.calculated_at)} />
-                </div>
-              )}
-              <p className="vao-card-eyebrow">Payments</p>
-              <Rows
-                rows={record.payments}
-                empty="No payments recorded."
-                columns={[['mode', 'Mode'], ['reference_no', 'Reference'], ['amount', 'Amount', money], ['paid_at', 'Paid', formatTimestamp], ['status', 'Status']]}
-              />
-            </>
-          ) : null}
-
-          {tab === 'survey' ? (
-            !record.survey_required && survey == null ? <p className="muted">No survey was required for this transaction.</p> : survey == null ? <p className="muted">The Surveyor has not submitted a survey yet.</p> : (
-              <div className="vao-facts">
-                <Fact label="Surveyor" value={survey.submitted_by_name ?? record.assigned_surveyor_name} />
-                <Fact label="Submitted" value={formatTimestamp(survey.submitted_at)} />
-                <Fact label="Recorded extent" value={`${formatCell(survey.authoritative_recorded_extent)} ${formatCell(property.extent_unit)}`} />
-                <Fact label="Measured extent" value={`${formatCell(survey.measured_extent)} ${formatCell(survey.extent_unit)}`} />
-                <Fact label="Variance" value={`${formatCell(survey.variance_pct)}% (tolerance ${formatCell(survey.tolerance_pct)}%)`} />
-                <Fact label="Within tolerance" value={survey.within_tolerance === true ? 'Yes' : 'No — conflict flagged'} />
-                <Fact label="GPS centroid" value={survey.centroid_lat == null ? null : `${formatCell(survey.centroid_lat)}, ${formatCell(survey.centroid_lon)}`} mono />
-                <Fact label="Boundaries (N / S / E / W)" value={[survey.boundary_north, survey.boundary_south, survey.boundary_east, survey.boundary_west].map(formatCell).join(' / ')} />
-                <Fact label="Site notes" value={survey.site_notes} />
-              </div>
-            )
-          ) : null}
+          {isInfoTab(tab) ? <RecordInfoTabs record={record} tab={tab} /> : null}
 
           {tab === 'verification' ? (
             <>
