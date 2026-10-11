@@ -10,6 +10,9 @@ import type { Portal } from './portal'
 import { StagePill, VaoHeading } from './VaoUi'
 import { todayIso, when } from './vaoShared'
 import type { Slot, VaoRecord } from './vaoShared'
+import { RecordInfoTabs } from './RecordInfoTabs'
+import { INFO_TABS } from './recordInfo'
+import type { InfoTab } from './recordInfo'
 
 export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }) {
   const [params, setParams] = useSearchParams()
@@ -18,12 +21,14 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [infoTab, setInfoTab] = useState<InfoTab>('transaction')
   const records = useVaoResource<VaoRecord[]>(`${portal.api}/records`)
   const slots = useVaoResource<{ date: string; slots: Slot[] }>(date === '' ? null : `${portal.api}/slots?date=${date}`)
 
   const bookable = useMemo(() => (records.data ?? []).filter(portal.canBook), [records.data, portal])
   const txnRef = params.get('txn') ?? bookable[0]?.txn_ref ?? ''
   const record = (records.data ?? []).find((r) => r.txn_ref === txnRef) ?? null
+  const detail = useVaoResource<object>(portal.key === 'VAO' && record != null ? `${portal.api}/records/${encodeURIComponent(record.txn_ref)}` : null)
 
   async function book() {
     if (record == null || time === '') return
@@ -118,6 +123,18 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
           )}
         </section>
       </div>
+
+      {record == null || detail.data == null ? null : (
+        <section className="vao-card">
+          <p className="vao-card-eyebrow">Record details · <span className="mono">{record.txn_ref}</span></p>
+          <div className="vao-tabs inline">
+            {INFO_TABS.map(([key, label]) => (
+              <button key={key} className={infoTab === key ? 'active' : ''} onClick={() => setInfoTab(key)}>{label}</button>
+            ))}
+          </div>
+          <RecordInfoTabs record={detail.data} tab={infoTab} />
+        </section>
+      )}
     </div>
   )
 }

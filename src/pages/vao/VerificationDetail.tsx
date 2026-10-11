@@ -10,8 +10,11 @@ import { StagePill, VaoModal } from './VaoUi'
 import { VisitModal } from './VisitModal'
 import { deedLabel, formatTimestamp, parties, purposeLabel, rupees, when } from './vaoShared'
 import type { VaoDetail } from './vaoShared'
+import { RecordInfoTabs } from './RecordInfoTabs'
+import { INFO_TABS, isInfoTab } from './recordInfo'
+import type { InfoTab } from './recordInfo'
 
-type Tab = 'identity' | 'parties' | 'visits' | 'mutation'
+type Tab = InfoTab | 'visits' | 'mutation'
 
 function Fact({ label, value, mono = false }: { label: string; value: unknown; mono?: boolean }) {
   return (
@@ -25,7 +28,7 @@ function Fact({ label, value, mono = false }: { label: string; value: unknown; m
 export default function VerificationDetail() {
   const { txnRef = '' } = useParams()
   const { data, error, reload } = useVaoResource<VaoDetail>(`/api/vao/records/${encodeURIComponent(txnRef)}`)
-  const [tab, setTab] = useState<Tab>('identity')
+  const [tab, setTab] = useState<Tab>('transaction')
   const [showVisit, setShowVisit] = useState(false)
   const [showVerify, setShowVerify] = useState(false)
   const [showObjection, setShowObjection] = useState(false)
@@ -40,7 +43,6 @@ export default function VerificationDetail() {
     return <div className="vao-page"><Banner kind="error" message={error} />{error === '' ? <p className="muted">Loading…</p> : null}</div>
   }
   const record = data
-  const property = record.property
   const survey = record.survey
   const mutationId = record.mutation_id
   const awaitingVerification = record.status === 'VAO_PENDING'
@@ -126,41 +128,13 @@ export default function VerificationDetail() {
 
       <div className="vao-detail-grid">
         <section className="vao-card">
-          <p className="vao-card-eyebrow">Property details</p>
+          <p className="vao-card-eyebrow">Record details</p>
           <div className="vao-tabs inline">
-            {([['identity', 'Identity & Location'], ['parties', 'Parties'], ['visits', 'Site Visits'], ['mutation', 'Mutation & Objections']] as [Tab, string][]).map(([key, label]) => (
+            {([...INFO_TABS, ['visits', 'Site Visits'], ['mutation', 'Mutation & Objections']] as [Tab, string][]).map(([key, label]) => (
               <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{label}</button>
             ))}
           </div>
-          {tab === 'identity' ? (
-            <div className="vao-facts">
-              <Fact label="Survey no." value={property.survey_no} />
-              <Fact label="Sub-division" value={property.subdivision_no} />
-              <Fact label="ULPIN" value={property.ulpin} mono />
-              <Fact label="Land type" value={property.land_type_code} />
-              <Fact label="District" value={property.district_code} />
-              <Fact label="Taluk" value={property.taluk_code} />
-              <Fact label="Village" value={record.village_name ?? property.village_code} />
-              <Fact label="Extent" value={`${formatCell(property.extent_value)} ${formatCell(property.extent_unit)}`} />
-              <Fact label="GPS centroid" value={survey?.centroid_lat == null ? null : `${formatCell(survey.centroid_lat)}, ${formatCell(survey.centroid_lon)}`} mono />
-              <Fact label="Boundaries (N / S / E / W)" value={survey == null ? null : [survey.boundary_north, survey.boundary_south, survey.boundary_east, survey.boundary_west].map(formatCell).join(' / ')} />
-            </div>
-          ) : null}
-          {tab === 'parties' ? (
-            <table className="vao-table compact">
-              <thead><tr><th>Side</th><th>Role</th><th>Name</th><th>Share transferred</th></tr></thead>
-              <tbody>
-                {record.parties.map((p: Row) => (
-                  <tr key={String(p.id)}>
-                    <td>{p.side === 'SIDE_1' ? 'Transferor' : 'Transferee'}</td>
-                    <td>{formatCell(p.role)}</td>
-                    <td>{formatCell(p.name)}</td>
-                    <td>{p.share_transferred_pct == null ? '—' : `${formatCell(p.share_transferred_pct)}%`}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : null}
+          {isInfoTab(tab) ? <RecordInfoTabs record={record} tab={tab} /> : null}
           {tab === 'visits' ? (
             record.visits.length === 0 ? <p className="muted">No site visit planned yet.</p> : (
               <table className="vao-table compact">
