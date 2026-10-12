@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { ApiError, get, post, put } from '../api'
+import { ApiError, del, get, post, put } from '../api'
 import { useAuth } from '../auth'
 import { optionsFrom } from './propertyShared'
 import type { Row, TransactionDetail as Txn } from '../types'
@@ -60,6 +60,7 @@ export default function TransactionDetail({
   compact?: boolean
 } = {}) {
   const { txnRef: routeTxnRef = '' } = useParams()
+  const navigate = useNavigate()
   const txnRef = transactionRef ?? routeTxnRef
   const [txn, setTxn] = useState<Txn | null>(null)
   const [error, setError] = useState('')
@@ -374,8 +375,31 @@ export default function TransactionDetail({
     )
   }
 
-  const transition = (actionCode: string) =>
-    guard(() => post(`/api/transactions/${txnRef}/transitions`, { actionCode }, true), `${actionCode} applied.`)
+  const transition = (actionCode: string, requiresReason = false) => {
+    let reason: string | undefined
+    if (requiresReason) {
+      const entered = window.prompt(`Reason for ${actionCode}`)
+      if (entered === null) return
+      if (entered.trim() === '') {
+        setError(`A reason is required for ${actionCode}.`)
+        return
+      }
+      reason = entered.trim()
+    }
+    return guard(() => post(`/api/transactions/${txnRef}/transitions`, { actionCode, reason }, true), `${actionCode} applied.`)
+  }
+
+  const deleteDraft = async () => {
+    if (!window.confirm(`Delete draft transaction ${txnRef}? This cannot be undone.`)) return
+    setError('')
+    setInfo('')
+    try {
+      await del(`/api/transactions/${encodeURIComponent(txnRef)}`)
+      navigate('/transactions/new', { replace: true })
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    }
+  }
 
   const requestConsent = async () => {
     setError('')
@@ -818,18 +842,20 @@ export default function TransactionDetail({
               {renderReadinessDetails('Rule checks')}
               <p className="muted">{rulePolicyText(txn.ruleCheckPolicy)}</p>
               {ruleStopped ? <Banner kind="error" message={ruleBlockedText(latestRuleResults)} /> : null}
-              <DataTable
-                rows={latestRuleResults}
-                columns={[
-                  { key: 'engine', label: 'Engine' },
-                  { key: 'overall_outcome', label: 'Outcome' },
-                  { key: 'reason_code', label: 'Reason' },
-                  { key: 'proceed', label: 'Next step' },
-                  { key: 'summary', label: 'Summary' },
-                  { key: 'executed_at', label: 'Executed' },
-                ]}
-                empty="Rule checks have not been run."
-              />
+              <div className="rule-check-table">
+                <DataTable
+                  rows={latestRuleResults}
+                  columns={[
+                    { key: 'engine', label: 'Engine' },
+                    { key: 'overall_outcome', label: 'Outcome' },
+                    { key: 'reason_code', label: 'Reason' },
+                    { key: 'proceed', label: 'Next step' },
+                    { key: 'summary', label: 'Summary', className: 'rule-summary-cell' },
+                    { key: 'executed_at', label: 'Executed' },
+                  ]}
+                  empty="Rule checks have not been run."
+                />
+              </div>
               <RuleCheckDetails results={latestRuleResults} />
               <div className="form-submit-row">
                 <button type="button" className="primary" disabled={txn.status !== 'RULE_CHECK_PENDING'} onClick={() => void runRules()}>Run rule checks</button>
@@ -973,7 +999,7 @@ export default function TransactionDetail({
             </Panel>
           </div>
 
-          {txn.availableActions.length > 0 ? (
+          {txn.availableActions.length > 0 || txn.status === 'DRAFT' ? (
             <div className="property-stage-actions">
               <span className="stage-label">Quick actions</span>
               <div className="actions">
@@ -981,11 +1007,16 @@ export default function TransactionDetail({
                   <button
                     key={`${formatCell(action.actionCode)}-${index}`}
                     type="button"
-                    onClick={() => void transition(formatCell(action.actionCode))}
+                    onClick={() => void transition(formatCell(action.actionCode), action.requiresReason === true)}
                   >
                     {formatCell(action.actionCode)}
                   </button>
                 ))}
+                {txn.status === 'DRAFT' ? (
+                  <button type="button" className="danger" onClick={() => void deleteDraft()}>
+                    Delete draft
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}

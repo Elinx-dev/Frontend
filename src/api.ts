@@ -59,7 +59,7 @@ function newIdempotencyKey(): string {
 }
 
 export async function api<T>(
-  method: 'GET' | 'POST' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
   options?: { idempotent?: boolean },
@@ -129,6 +129,7 @@ export const get = <T,>(path: string) => api<T>('GET', path)
 export const post = <T,>(path: string, body?: unknown, idempotent = false) =>
   api<T>('POST', path, body ?? {}, { idempotent })
 export const put = <T,>(path: string, body: unknown) => api<T>('PUT', path, body)
+export const del = <T,>(path: string) => api<T>('DELETE', path)
 
 export function qs(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()

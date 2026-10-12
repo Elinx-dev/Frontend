@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { ApiError, get, post, put, qs } from '../api'
+import { ApiError, del, get, post, put, qs } from '../api'
 import { useAuth } from '../auth'
 import type { Row, TransactionDetail as Txn } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
@@ -1323,6 +1323,36 @@ export default function TransactionStart() {
     : Array.isArray(property?.chain_of_title)
       ? property.chain_of_title
       : []
+  const withdrawAction = txn?.availableActions.find((action) => action.actionCode === 'WITHDRAW')
+  const withdrawTransaction = async () => {
+    const entered = window.prompt(`Reason for withdrawing ${createdTransactionRef}`)
+    if (entered === null) return
+    if (entered.trim() === '') {
+      setError('A reason is required to withdraw the transaction.')
+      return
+    }
+    setError('')
+    setInfo('')
+    try {
+      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/transitions`, { actionCode: 'WITHDRAW', reason: entered.trim() }, true)
+      await loadTransaction(createdTransactionRef, true)
+      setInfo(`Transaction ${createdTransactionRef} withdrawn.`)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    }
+  }
+  const deleteDraftTransaction = async () => {
+    if (!window.confirm(`Delete draft transaction ${createdTransactionRef}? This cannot be undone.`)) return
+    setError('')
+    setInfo('')
+    try {
+      await del(`/api/transactions/${encodeURIComponent(createdTransactionRef)}`)
+      window.location.assign('/transactions/new')
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    }
+  }
+
   const summaryPropertyRef = String(property?.property_ref ?? property?.propertyRef ?? txn?.property?.property_ref ?? txn?.property?.propertyRef ?? '')
   const showPropertySummary = [1, 2, 5].includes(activeStage) && summaryPropertyRef.length > 0
 
@@ -1334,7 +1364,15 @@ export default function TransactionStart() {
           <h1>{pageTitle}</h1>
           <p className="muted">{pageDescription}</p>
         </div>
-        <span className="stage-label">Draft · Step {activeStage + 1} of {stages.length}</span>
+        <div className="page-heading-actions">
+          <span className="stage-label">Draft · Step {activeStage + 1} of {stages.length}</span>
+          {transactionCreated && withdrawAction !== undefined ? (
+            <button type="button" className="outline" onClick={() => void withdrawTransaction()}>Withdraw</button>
+          ) : null}
+          {transactionCreated && txnStatus === 'DRAFT' ? (
+            <button type="button" className="danger" onClick={() => void deleteDraftTransaction()}>Delete draft</button>
+          ) : null}
+        </div>
       </div>
       <Banner kind="error" message={error} />
       <Banner kind="success" message={info} />
@@ -1965,6 +2003,15 @@ export default function TransactionStart() {
                     <h2>5. Aadhaar consent</h2>
                   </header>
                   <div className="panel-body">
+                    <div className="consent-request-row">
+                      <button
+                        className="primary"
+                        disabled={consentBusy || txnLoading || txn === null || !['DRAFT', 'CONSENT_PENDING'].includes(txnStatus)}
+                        onClick={() => void requestConsent()}
+                      >
+                        {txnStatus === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}
+                      </button>
+                    </div>
                     <p className="helper">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
                     <MissingAadhaarCapture
@@ -2008,15 +2055,6 @@ export default function TransactionStart() {
                         </div>
                       )
                     })}
-                    <div className="form-submit-row">
-                      <button
-                        className="primary"
-                        disabled={consentBusy || txnLoading || txn === null || !['DRAFT', 'CONSENT_PENDING'].includes(txnStatus)}
-                        onClick={() => void requestConsent()}
-                      >
-                        {txnStatus === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}
-                      </button>
-                    </div>
                   </div>
                 </section>
               </div>
@@ -2031,18 +2069,20 @@ export default function TransactionStart() {
                     <p className="helper">{rulePolicyText(txn?.ruleCheckPolicy)}</p>
                     {txnStatus === 'RULE_CHECK_PENDING' ? <Banner kind="error" message={ruleBlockedText(latestRuleResults)} /> : null}
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
-                    <DataTable
-                      rows={latestRuleResults}
-                      columns={[
-                        { key: 'engine', label: 'Engine' },
-                        { key: 'overall_outcome', label: 'Outcome' },
-                        { key: 'reason_code', label: 'Reason' },
-                        { key: 'proceed', label: 'Next step' },
-                        { key: 'summary', label: 'Summary' },
-                        { key: 'executed_at', label: 'Executed' },
-                      ]}
-                      empty="Rule checks have not been run."
-                    />
+                    <div className="rule-check-table">
+                      <DataTable
+                        rows={latestRuleResults}
+                        columns={[
+                          { key: 'engine', label: 'Engine' },
+                          { key: 'overall_outcome', label: 'Outcome' },
+                          { key: 'reason_code', label: 'Reason' },
+                          { key: 'proceed', label: 'Next step' },
+                          { key: 'summary', label: 'Summary', className: 'rule-summary-cell' },
+                          { key: 'executed_at', label: 'Executed' },
+                        ]}
+                        empty="Rule checks have not been run."
+                      />
+                    </div>
                     <RuleCheckDetails results={latestRuleResults} />
                     <div className="form-submit-row">
                       <button
