@@ -9,6 +9,7 @@ import { MissingAadhaarCapture, OwnerFields } from './OwnerFields'
 import PropertySummaryPanel from './PropertySummaryPanel'
 import { emptyOwner, optionsFrom, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
+import ActionDialog, { type ActionDialogRequest } from './ActionDialog'
 import { FeeSummary, ScheduleEditor } from './FeeFields'
 import { PartitionWorkspace } from './PartitionFields'
 import {
@@ -157,6 +158,7 @@ export default function TransactionStart() {
   const [resultingSubparcelCount, setResultingSubparcelCount] = useState('')
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [dialog, setDialog] = useState<ActionDialogRequest | null>(null)
   const [busy, setBusy] = useState(false)
   const [partyBusy, setPartyBusy] = useState(false)
   const [witnessBusy, setWitnessBusy] = useState(false)
@@ -1324,34 +1326,29 @@ export default function TransactionStart() {
       ? property.chain_of_title
       : []
   const withdrawAction = txn?.availableActions.find((action) => action.actionCode === 'WITHDRAW')
-  const withdrawTransaction = async () => {
-    const entered = window.prompt(`Reason for withdrawing ${createdTransactionRef}`)
-    if (entered === null) return
-    if (entered.trim() === '') {
-      setError('A reason is required to withdraw the transaction.')
-      return
-    }
-    setError('')
-    setInfo('')
-    try {
-      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/transitions`, { actionCode: 'WITHDRAW', reason: entered.trim() }, true)
+  const withdrawTransaction = () => setDialog({
+    title: 'Withdraw transaction',
+    message: `Transaction ${createdTransactionRef} will be withdrawn and can no longer be processed.`,
+    reasonLabel: 'Withdrawal comments',
+    confirmLabel: 'Withdraw transaction',
+    danger: true,
+    onConfirm: async (reason) => {
+      await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/transitions`, { actionCode: 'WITHDRAW', reason }, true)
       await loadTransaction(createdTransactionRef, true)
+      setError('')
       setInfo(`Transaction ${createdTransactionRef} withdrawn.`)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e))
-    }
-  }
-  const deleteDraftTransaction = async () => {
-    if (!window.confirm(`Delete draft transaction ${createdTransactionRef}? This cannot be undone.`)) return
-    setError('')
-    setInfo('')
-    try {
+    },
+  })
+  const deleteDraftTransaction = () => setDialog({
+    title: 'Delete draft transaction',
+    message: `Draft ${createdTransactionRef} and its parties, witnesses and consent records will be deleted. This cannot be undone.`,
+    confirmLabel: 'Delete draft',
+    danger: true,
+    onConfirm: async () => {
       await del(`/api/transactions/${encodeURIComponent(createdTransactionRef)}`)
       window.location.assign('/transactions/new')
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e))
-    }
-  }
+    },
+  })
 
   const summaryPropertyRef = String(property?.property_ref ?? property?.propertyRef ?? txn?.property?.property_ref ?? txn?.property?.propertyRef ?? '')
   const showPropertySummary = [1, 2, 5].includes(activeStage) && summaryPropertyRef.length > 0
@@ -1367,15 +1364,16 @@ export default function TransactionStart() {
         <div className="page-heading-actions">
           <span className="stage-label">Draft · Step {activeStage + 1} of {stages.length}</span>
           {transactionCreated && withdrawAction !== undefined ? (
-            <button type="button" className="outline" onClick={() => void withdrawTransaction()}>Withdraw</button>
+            <button type="button" className="outline" onClick={withdrawTransaction}>Withdraw</button>
           ) : null}
           {transactionCreated && txnStatus === 'DRAFT' ? (
-            <button type="button" className="danger" onClick={() => void deleteDraftTransaction()}>Delete draft</button>
+            <button type="button" className="danger" onClick={deleteDraftTransaction}>Delete draft</button>
           ) : null}
         </div>
       </div>
       <Banner kind="error" message={error} />
       <Banner kind="success" message={info} />
+      {dialog !== null ? <ActionDialog request={dialog} onClose={() => setDialog(null)} /> : null}
       <div className="property-stage-layout">
         <div className="property-stage-content">
           <div className="property-stage-tabs" role="tablist" aria-label="Transaction sections">

@@ -5956,3 +5956,9 @@ button.danger {
 button.danger:hover:not(:disabled) {
   background: #912018;
 }
+
+.action-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
