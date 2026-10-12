@@ -11,6 +11,7 @@ import {
   emptyOwner, labelFor, ownerLayout, ownerPayload, ownerTypeOptionsFrom, validateOwner, type OwnerForm,
 } from './propertyShared'
 import RuleCheckDetails from './RuleCheckDetails'
+import ActionDialog, { type ActionDialogRequest } from './ActionDialog'
 import RecordTimeline from './RecordTimeline'
 import { FeeSummary, ScheduleEditor } from './FeeFields'
 import { PartitionWorkspace } from './PartitionFields'
@@ -65,6 +66,7 @@ export default function TransactionDetail({
   const [txn, setTxn] = useState<Txn | null>(null)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [dialog, setDialog] = useState<ActionDialogRequest | null>(null)
   const [consideration, setConsideration] = useState('')
   const [transactionDate, setTransactionDate] = useState('')
   const [extent, setExtent] = useState('')
@@ -376,30 +378,37 @@ export default function TransactionDetail({
   }
 
   const transition = (actionCode: string, requiresReason = false) => {
-    let reason: string | undefined
-    if (requiresReason) {
-      const entered = window.prompt(`Reason for ${actionCode}`)
-      if (entered === null) return
-      if (entered.trim() === '') {
-        setError(`A reason is required for ${actionCode}.`)
-        return
-      }
-      reason = entered.trim()
+    if (!requiresReason) {
+      return guard(() => post(`/api/transactions/${txnRef}/transitions`, { actionCode }, true), `${actionCode} applied.`)
     }
-    return guard(() => post(`/api/transactions/${txnRef}/transitions`, { actionCode, reason }, true), `${actionCode} applied.`)
+    const withdraw = actionCode === 'WITHDRAW'
+    setDialog({
+      title: withdraw ? 'Withdraw transaction' : actionCode.replaceAll('_', ' '),
+      message: withdraw
+        ? `Transaction ${txnRef} will be withdrawn and can no longer be processed.`
+        : `Give a reason for ${actionCode.replaceAll('_', ' ')} on ${txnRef}.`,
+      reasonLabel: withdraw ? 'Withdrawal comments' : 'Reason',
+      confirmLabel: withdraw ? 'Withdraw transaction' : 'Confirm',
+      danger: withdraw,
+      onConfirm: async (reason) => {
+        await post(`/api/transactions/${txnRef}/transitions`, { actionCode, reason }, true)
+        setError('')
+        setInfo(withdraw ? `Transaction ${txnRef} withdrawn.` : `${actionCode} applied.`)
+        await load()
+      },
+    })
   }
 
-  const deleteDraft = async () => {
-    if (!window.confirm(`Delete draft transaction ${txnRef}? This cannot be undone.`)) return
-    setError('')
-    setInfo('')
-    try {
+  const deleteDraft = () => setDialog({
+    title: 'Delete draft transaction',
+    message: `Draft ${txnRef} and its parties, witnesses and consent records will be deleted. This cannot be undone.`,
+    confirmLabel: 'Delete draft',
+    danger: true,
+    onConfirm: async () => {
       await del(`/api/transactions/${encodeURIComponent(txnRef)}`)
       navigate('/transactions/new', { replace: true })
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e))
-    }
-  }
+    },
+  })
 
   const requestConsent = async () => {
     setError('')
@@ -999,6 +1008,7 @@ export default function TransactionDetail({
             </Panel>
           </div>
 
+          {dialog !== null ? <ActionDialog request={dialog} onClose={() => setDialog(null)} /> : null}
           {txn.availableActions.length > 0 || txn.status === 'DRAFT' ? (
             <div className="property-stage-actions">
               <span className="stage-label">Quick actions</span>
@@ -1013,7 +1023,7 @@ export default function TransactionDetail({
                   </button>
                 ))}
                 {txn.status === 'DRAFT' ? (
-                  <button type="button" className="danger" onClick={() => void deleteDraft()}>
+                  <button type="button" className="danger" onClick={deleteDraft}>
                     Delete draft
                   </button>
                 ) : null}
