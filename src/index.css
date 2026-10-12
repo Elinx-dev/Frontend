@@ -5926,3 +5926,33 @@ a.vao-quick:hover {
 .verify-warn { background: #fff4e5; color: #9a5b00; }
 .mono { font-family: ui-monospace, monospace; font-size: 12px; }
 @media print { .no-print, .sidebar, .topbar { display: none !important; } html, body, .app, main, .main { background: #fff !important; } }
+
+/* Rule check result grid: Summary column gets the room and wraps */
+.rule-check-table .grid td.rule-summary-cell,
+.rule-check-table .grid th.rule-summary-cell {
+  min-width: 280px;
+  max-width: 520px;
+}
+.rule-check-table .grid th {
+  white-space: nowrap;
+}
+
+.consent-request-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.page-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+button.danger {
+  border-color: #b42318;
+  background: #b42318;
+  color: #fff;
+}
+button.danger:hover:not(:disabled) {
+  background: #912018;
+}
