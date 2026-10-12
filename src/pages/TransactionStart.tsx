@@ -1138,6 +1138,19 @@ export default function TransactionStart() {
       setError('Calculate the fee before recording payment.')
       return
     }
+    if (Number(payable) <= 0) {
+      setError('')
+      setInfo('')
+      try {
+        await post(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/transitions`, { actionCode: 'RECORD_PAYMENT' }, true)
+        await loadTransaction(createdTransactionRef, true)
+        setActiveStage(7)
+        setInfo('No fee is payable. Transaction is ready for registration.')
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : String(e))
+      }
+      return
+    }
     if (paymentRef.trim().length === 0) {
       setError('Payment reference is required.')
       return
@@ -2158,7 +2171,7 @@ export default function TransactionStart() {
                       </button>
                       <button
                         className="primary"
-                        disabled={txnStatus !== 'FEE_PAYMENT_PENDING' || txn.feeCalculation === null || paymentRef.length === 0}
+                        disabled={txnStatus !== 'FEE_PAYMENT_PENDING' || txn.feeCalculation === null || (paymentRef.length === 0 && Number(txn.feeCalculation?.total_payable) > 0)}
                         onClick={() => void recordPayment()}
                       >
                         Record payment
