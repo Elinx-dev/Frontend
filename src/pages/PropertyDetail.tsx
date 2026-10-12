@@ -168,6 +168,7 @@ export default function PropertyDetail() {
             {activeStage === 1 ? <Panel title="">
               <div className="owner-type-select"><ViewField label="Owner type" value={ownerTypeLabel} /></div>
               {owners.length === 0 ? <p className="chain-history-empty">No owners recorded.</p> : null}
+              {owners.length > 0 && owners.every((owner) => owner.effective_to) ? <p className="chain-history-empty">This property is inactive. These are its owners when it became inactive, kept for history.</p> : null}
               {owners.map((owner, index) => {
                 const representative = layout.representative
                 return <section className="owner-entry" key={index}>
@@ -181,6 +182,7 @@ export default function PropertyDetail() {
                     <ViewField label={layout.addressLabel} value={owner.address} />
                     <ViewField label="Source" value={owner.source} />
                     <ViewField label="Effective from" value={owner.effective_from} />
+                    {owner.effective_to ? <ViewField label="Effective to" value={owner.effective_to} /> : null}
                   </div>
                   <RevealPii source="PROPERTY_OWNER" id={owner.id} />
                   {representative ? <div className="owner-representative">
