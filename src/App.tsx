@@ -33,6 +33,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
 import PropertyCreate from './pages/PropertyCreate'
+import TokenisationDemo from './pages/TokenisationDemo'
 import PropertyDetail from './pages/PropertyDetail'
 import PropertySearch from './pages/PropertySearch'
 import PublicView from './pages/PublicView'
@@ -102,6 +103,7 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/vao/slots"><ClockIcon />Slot Booking</NavLink>
             <NavLink to="/vao/verification"><ShieldCheckIcon />Verification Queue</NavLink>
             <NavLink to="/properties" end><ListIcon />Property List</NavLink>
+            <NavLink to="/tokenisation"><ShieldCheckIcon />Land Tokenisation</NavLink>
           </div>
         ) : null}
         {isSurveyor ? (
@@ -113,6 +115,7 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/surveyor/field-survey"><QueueIcon />Field Survey</NavLink>
             <NavLink to="/surveyor/verification"><ShieldCheckIcon />Verification View</NavLink>
             <NavLink to="/properties" end><ListIcon />Property List</NavLink>
+            <NavLink to="/tokenisation"><ShieldCheckIcon />Land Tokenisation</NavLink>
           </div>
         ) : null}
         {isTahsildar ? (
@@ -122,6 +125,7 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/tahsildar/verification"><ShieldCheckIcon />Verification Queue</NavLink>
             <NavLink to="/tahsildar/transactions"><TransferIcon />Transactions</NavLink>
             <NavLink to="/properties" end><ListIcon />Property List</NavLink>
+            <NavLink to="/tokenisation"><ShieldCheckIcon />Land Tokenisation</NavLink>
             <NavLink to="/audit"><AuditIcon />Audit Trail</NavLink>
           </div>
         ) : null}
@@ -132,6 +136,7 @@ function Shell({ children }: { children: ReactNode }) {
           {has('REGISTRATION_OFFICER') ? <NavLink to="/transactions/new"><TransferIcon />Initiate Transaction</NavLink> : null}
           {has('REGISTRATION_OFFICER') ? <Link to="/ro"><QueueIcon />Pending Queue</Link> : null}
           {has('REGISTRATION_OFFICER') ? <NavLink to="/properties" end><ListIcon />Property List</NavLink> : null}
+          <NavLink to="/tokenisation"><ShieldCheckIcon />Land Tokenisation</NavLink>
           <NavLink to={canAdminister ? `/audit${adminStateQuery}` : '/audit'}><AuditIcon />Audit Trail</NavLink>
         </div>}
         {canAdminister ? (
@@ -176,6 +181,7 @@ const VAO_PAGES: [string, string][] = [
   ['/vao/slots', 'Slot Booking'],
   ['/vao/verification', 'Verification Queue'],
   ['/properties', 'Property List'],
+  ['/tokenisation', 'Land Tokenisation'],
 ]
 
 const SURVEYOR_PAGES: [string, string][] = [
@@ -184,6 +190,7 @@ const SURVEYOR_PAGES: [string, string][] = [
   ['/surveyor/field-survey', 'Field Survey'],
   ['/surveyor/verification', 'Verification View'],
   ['/properties', 'Property List'],
+  ['/tokenisation', 'Land Tokenisation'],
 ]
 
 const TAHSILDAR_PAGES: [string, string][] = [
@@ -191,6 +198,7 @@ const TAHSILDAR_PAGES: [string, string][] = [
   ['/tahsildar/transactions', 'Transactions'],
   ['/properties', 'Property List'],
   ['/audit', 'Audit Trail'],
+  ['/tokenisation', 'Land Tokenisation'],
 ]
 
 const REGISTRAR_PAGES: [string, string][] = [
@@ -198,6 +206,7 @@ const REGISTRAR_PAGES: [string, string][] = [
   ['/properties/new', 'Mint Property'],
   ['/properties', 'Property List'],
   ['/audit', 'Audit Trail'],
+  ['/tokenisation', 'Land Tokenisation'],
 ]
 
 function PortalBreadcrumb({ root, label, pages, detailPrefix }: { root: string; label: string; pages: [string, string][]; detailPrefix: string }) {
@@ -245,6 +254,7 @@ export default function App() {
           <Route path="/properties" element={<Protected><PropertySearch /></Protected>} />
           <Route path="/properties/new" element={<Protected><PropertyCreate /></Protected>} />
           <Route path="/properties/:propertyRef" element={<Protected><PropertyDetail /></Protected>} />
+          <Route path="/tokenisation" element={<Protected><TokenisationDemo /></Protected>} />
           <Route path="/transactions/new" element={<Protected><TransactionStart /></Protected>} />
           <Route path="/transactions/:txnRef" element={<Protected><TransactionDetail /></Protected>} />
           <Route path="/surveyor" element={<Protected><SurveyorDashboard /></Protected>} />

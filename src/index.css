@@ -5972,3 +5972,12 @@ button.danger:hover:not(:disabled) {
 .vao-modal button.danger:hover:not(:disabled) {
   background: #912018;
 }
+
+/* Land tokenisation */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0; }
+.stat-card { background: #fff; border: 1px solid #e3e7ef; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.stat-card span { color: #5b6475; font-size: 0.85rem; }
+.stat-card strong { font-size: 1.6rem; color: #0f2a4a; }
+.stat-card small { color: #7a8394; }
+.inline-actions { display: flex; gap: 6px; align-items: center; }
+.inline-actions input { min-width: 140px; }
