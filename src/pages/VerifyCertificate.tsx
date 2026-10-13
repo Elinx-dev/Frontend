@@ -20,7 +20,7 @@ function Status({ value }: { value: unknown }) {
 
 export default function VerifyCertificate() {
   const [search] = useSearchParams()
-  const documentNo = search.get('doc') ?? ''
+  const documentNo = search.get('doc') ?? search.get('documentNo') ?? ''
   const [data, setData] = useState<Row | null>(null)
   const [error, setError] = useState('')
 

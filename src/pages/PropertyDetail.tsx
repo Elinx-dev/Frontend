@@ -8,13 +8,14 @@ import { str, type Row } from '../types'
 import { Banner, DataTable, Field, Panel } from '../ui'
 import PropertyMap from './PropertyMap'
 import RecordTimeline from './RecordTimeline'
+import TokenLedgerPanel from './TokenLedgerPanel'
 import {
   jurisdictionOptions, labelFor, 
   optionsFrom, ownerLayout, ownerTypes, usePropertyMap,
   displayValue, maskAadhaar, type SelectOption,
 } from './propertyShared'
 
-const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value', 'Transactions', 'Timeline'] as const
+const stages = ['Identification', 'Property owners', 'Location', 'Survey', 'Boundaries', 'Chain of Title', 'Guideline Value', 'Transactions', 'Timeline', 'Blockchain'] as const
 const EMPTY_ROWS: Row[] = []
 const noop = () => undefined
 
@@ -82,7 +83,7 @@ export default function PropertyDetail() {
   const stageSummary = [
     display(property.status), count(owners.length, 'owner'), villageName || '—', count(surveyRecords.length, 'record'),
     count(measurements.length, 'measurement'), count(chainOfTitle.length, 'record'),
-    property.guideline_value ? 'Recorded' : 'Not recorded', count(transactions.length, 'transaction'), 'Audit log',
+    property.guideline_value ? 'Recorded' : 'Not recorded', count(transactions.length, 'transaction'), 'Audit log', property.token_ref ? 'Fabric ledger' : 'No token',
   ]
 
   return (
@@ -293,6 +294,7 @@ export default function PropertyDetail() {
             {activeStage === 8 ? <Panel title="Timeline">
               <RecordTimeline path={`/api/audit/properties/${encodeURIComponent(propertyRef)}`} />
             </Panel> : null}
+            {activeStage === 9 ? <TokenLedgerPanel tokenRef={str(property, 'token_ref')} /> : null}
           </div>
           <div className="property-stage-actions">
             <button type="button" onClick={() => setActiveStage((current) => Math.max(0, current - 1))} disabled={activeStage === 0}>Previous section</button>
