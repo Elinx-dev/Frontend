@@ -476,6 +476,10 @@ export default function TransactionDetail({
     const payable = txn.feeCalculation?.total_payable
     return guard(
       async () => {
+        if (Number(payable) <= 0) {
+          await post(`/api/transactions/${txnRef}/transitions`, { actionCode: 'RECORD_PAYMENT' }, true)
+          return
+        }
         if (paymentDate > today()) throw new Error('Payment date cannot be in the future.')
         const summary = await post<Row>(
           `/api/transactions/${txnRef}/payments`,
@@ -486,7 +490,9 @@ export default function TransactionDetail({
           await post(`/api/transactions/${txnRef}/transitions`, { actionCode: 'RECORD_PAYMENT' }, true)
         }
       },
-      'Payment recorded. Transaction is ready for registration.',
+      Number(payable) <= 0
+        ? 'No fee is payable. Transaction is ready for registration.'
+        : 'Payment recorded. Transaction is ready for registration.',
     )
   }
 
@@ -895,7 +901,7 @@ export default function TransactionDetail({
                 <button
                   type="button"
                   className="primary"
-                  disabled={txn.status !== 'FEE_PAYMENT_PENDING' || txn.feeCalculation === null || paymentRef.length === 0}
+                  disabled={txn.status !== 'FEE_PAYMENT_PENDING' || txn.feeCalculation === null || (paymentRef.length === 0 && Number(txn.feeCalculation?.total_payable) > 0)}
                   onClick={() => void recordPayment()}
                 >
                   Record payment
