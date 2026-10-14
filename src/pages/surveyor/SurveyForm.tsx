@@ -12,7 +12,6 @@ import {
   areaUnitCode,
   areaUnitLabel,
   convertArea,
-  isPartition,
   num,
   toSquareMetres,
   vertex,
@@ -150,7 +149,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const areaM2 = extentNum == null ? null : toSquareMetres(extentNum, unit)
   const polygon = useMemo(() => points.map(vertex).filter((p): p is [number, number] => p != null), [points])
   const filledSegments = segments.filter((s) => (num(s.value) ?? 0) > 0)
-  const partition = isPartition(record)
+  const partitionDeed = record.deed_type_code === 'PARTITION'
   const propertyTabs = parcels.map((_pc, i): [LeftTab, string] => [`property-${i}`, `Property ${i + 1}`])
   const leftTabs = subdivision ? LEFT_TABS.flatMap((t) => (t[0] === 'notes' ? [...propertyTabs, t] : [t])) : LEFT_TABS
   const activeParcel = leftTab.startsWith('property-') ? Number(leftTab.slice('property-'.length)) : -1
@@ -249,7 +248,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
         true,
       )
       onSubmitted(result.withinTolerance
-        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the ${subdivision ? 'Tahsildar for approval' : 'VAO for verification'} (variance ${Number(result.variancePct).toFixed(2)}%).`
+        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the ${subdivision && !partitionDeed ? 'Tahsildar for approval' : 'VAO for verification'} (variance ${Number(result.variancePct).toFixed(2)}%).`
         : `Survey for ${record.ulpin ?? record.txn_ref} saved with a conflict flag (variance ${Number(result.variancePct).toFixed(2)}%). It is routed for survey correction review.`)
       onClose()
     } catch (e) {
@@ -358,9 +357,9 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                     <button className="sv-add" onClick={() => setPoints((rows) => [...rows, { ...EMPTY_POINT, latDir: rows[rows.length - 1]?.latDir ?? 'N', lonDir: rows[rows.length - 1]?.lonDir ?? 'E' }])}>+ Add Point</button>
                   </div>
                   <p className="sv-hint">Enter GPS coordinates for each boundary vertex in order (minimum 3). Map updates live.</p>
-                  {partition ? (
+                  {partitionDeed && subdivision ? (
                     <div className="sv-note">
-                      <b>Partition transaction:</b> The polygon you define here represents the boundary of the <b>portion being transferred to the buyer</b>. This will become the new token&apos;s map boundary after Tahsildar approval.
+                      <b>Partition transaction:</b> Registration created one new property per partition schedule. Draw the outer boundary of the parent parcel here, then record the measured extent, official subdivision number and boundaries of each new property in its tab.
                     </div>
                   ) : null}
                   <div className="sv-rows">
@@ -438,7 +437,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 </div>
               ) : null}
               <button className={conflict ? 'sv-submit conflict' : 'sv-submit'} disabled={busy} onClick={() => void submit()}>
-                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : subdivision ? 'Submit Survey & Forward to Tahsildar' : 'Submit Survey & Forward to VAO'}
+                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : subdivision && !partitionDeed ? 'Submit Survey & Forward to Tahsildar' : 'Submit Survey & Forward to VAO'}
               </button>
             </footer>
           </div>
