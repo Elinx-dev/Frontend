@@ -12,7 +12,6 @@ import {
   areaUnitCode,
   areaUnitLabel,
   convertArea,
-  isPartition,
   num,
   toSquareMetres,
   vertex,
@@ -39,6 +38,8 @@ interface ParcelDraft {
   south: string
   east: string
   west: string
+  northSouth: string
+  eastWest: string
   propertyRef: string
   side: string
   owners: string
@@ -105,6 +106,8 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
           south: text(pc.boundary_south),
           east: text(pc.boundary_east),
           west: text(pc.boundary_west),
+          northSouth: '',
+          eastWest: '',
           propertyRef: text(cp.property_ref),
           side: text(cp.allotted_side),
           owners: text(cp.owners),
@@ -142,15 +145,10 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   const gpsEntered = lat.trim() !== '' || lon.trim() !== ''
   const gpsValid = latNum != null && lonNum != null && Math.abs(latNum) <= 90 && Math.abs(lonNum) <= 180
   const extentNum = num(extent)
-  const recorded = num(record.extent_value)
-  const tolerance = Number(record.tolerance_pct ?? 0)
-  const measuredInRecord = extentNum == null ? null : convertArea(extentNum, unit, record.extent_unit)
-  const variance = measuredInRecord == null || recorded == null || recorded === 0 ? null : (Math.abs(measuredInRecord - recorded) / recorded) * 100
-  const conflict = variance != null && variance > tolerance
   const areaM2 = extentNum == null ? null : toSquareMetres(extentNum, unit)
   const polygon = useMemo(() => points.map(vertex).filter((p): p is [number, number] => p != null), [points])
   const filledSegments = segments.filter((s) => (num(s.value) ?? 0) > 0)
-  const partition = isPartition(record)
+  const partitionDeed = record.deed_type_code === 'PARTITION'
   const propertyTabs = parcels.map((_pc, i): [LeftTab, string] => [`property-${i}`, `Property ${i + 1}`])
   const leftTabs = subdivision ? LEFT_TABS.flatMap((t) => (t[0] === 'notes' ? [...propertyTabs, t] : [t])) : LEFT_TABS
   const activeParcel = leftTab.startsWith('property-') ? Number(leftTab.slice('property-'.length)) : -1
@@ -160,7 +158,6 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
     const converted = convertArea(value, pc.unit, unit)
     return converted == null ? null : sum + converted
   }, 0)
-  const parcelGap = parcelTotal == null || extentNum == null || extentNum === 0 ? null : (Math.abs(parcelTotal - extentNum) / extentNum) * 100
 
   function updateParcel(i: number, patch: Partial<ParcelDraft>) {
     setParcels((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
@@ -178,8 +175,6 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
       if ((num(pc.extent) ?? 0) <= 0) return [`Enter the extent of ${label}.`, i]
       if (SIDES.some((side) => pc[side].trim() === '')) return [`Enter the north, south, east and west boundaries of ${label}.`, i]
     }
-    if (parcelGap == null) return ['The new property extents cannot be compared with the measured extent; use compatible units.', 0]
-    if (parcelGap > tolerance) return [`The new properties add up to ${parcelTotal?.toFixed(4)} ${areaUnitLabel(unit, areaUnits)} but the measured extent is ${extentNum} ${areaUnitLabel(unit, areaUnits)} (difference ${parcelGap.toFixed(2)}%, allowed ${tolerance}%).`, 0]
     return ['', 0]
   }
 
@@ -217,7 +212,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
     }
     setBusy(true)
     try {
-      const result = await post<SubmitResult>(
+      await post<SubmitResult>(
         `/api/surveyor/records/${encodeURIComponent(record.txn_ref)}/survey`,
         {
           measuredExtent: extentNum,
@@ -243,14 +238,15 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 boundaryEast: pc.east.trim(),
                 boundaryWest: pc.west.trim(),
                 propertyRef: pc.propertyRef,
+                segments: [['North', 'South', pc.northSouth], ['East', 'West', pc.eastWest]]
+                  .filter(([, , v]) => (num(v) ?? 0) > 0)
+                  .map(([from, to, v]) => ({ fromPoint: from, toPoint: to, lengthValue: Number(v), lengthUnit: 'FT' })),
               }))
             : [],
         },
         true,
       )
-      onSubmitted(result.withinTolerance
-        ? `Survey for ${record.ulpin ?? record.txn_ref} saved and forwarded to the ${subdivision ? 'Tahsildar for approval' : 'VAO for verification'} (variance ${Number(result.variancePct).toFixed(2)}%).`
-        : `Survey for ${record.ulpin ?? record.txn_ref} saved with a conflict flag (variance ${Number(result.variancePct).toFixed(2)}%). It is routed for survey correction review.`)
+      onSubmitted(`Survey for ${record.ulpin ?? record.txn_ref} saved; the surveyed extent and boundaries are now on the ${subdivision ? 'new properties' : 'property'}. Forwarded to the ${subdivision && !partitionDeed ? 'Tahsildar for approval' : 'VAO for verification'}.`)
       onClose()
     } catch (e) {
       setError(errorText(e))
@@ -291,7 +287,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                   </section>
                   <section className="sv-section">
                     <h3><ListIcon /> Extent Area</h3>
-                    <p className="sv-hint">Token record: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></p>
+                    <p className="sv-hint">Recorded extent: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></p>
                     <div className="sv-grid-extent">
                       <label><span>Measured extent</span><input type="number" step="any" min="0" value={extent} onChange={(e) => setExtent(e.target.value)} /></label>
                       <label><span>Unit</span>
@@ -300,13 +296,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                         </select>
                       </label>
                     </div>
-                    {extentNum == null ? null : variance == null ? (
-                      <p className="sv-err">This unit cannot be compared with the token record's unit.</p>
-                    ) : conflict ? (
-                      <p className="sv-err">Area differs by {variance.toFixed(2)}% from the token record (tolerance {tolerance}%). The survey will be flagged as a conflict.</p>
-                    ) : (
-                      <p className="sv-ok">Area within {tolerance}% ({variance.toFixed(2)}%) - will forward to the VAO for verification.</p>
-                    )}
+                    <p className="sv-hint">The surveyed value is final and replaces the recorded extent{subdivision ? ' of each new property' : ''}.</p>
                   </section>
                 </>
               ) : null}
@@ -358,9 +348,9 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                     <button className="sv-add" onClick={() => setPoints((rows) => [...rows, { ...EMPTY_POINT, latDir: rows[rows.length - 1]?.latDir ?? 'N', lonDir: rows[rows.length - 1]?.lonDir ?? 'E' }])}>+ Add Point</button>
                   </div>
                   <p className="sv-hint">Enter GPS coordinates for each boundary vertex in order (minimum 3). Map updates live.</p>
-                  {partition ? (
+                  {partitionDeed && subdivision ? (
                     <div className="sv-note">
-                      <b>Partition transaction:</b> The polygon you define here represents the boundary of the <b>portion being transferred to the buyer</b>. This will become the new token&apos;s map boundary after Tahsildar approval.
+                      <b>Partition transaction:</b> Registration created one new property per partition schedule. Draw the outer boundary of the parent parcel here, then record the measured extent, official subdivision number and boundaries of each new property in its tab.
                     </div>
                   ) : null}
                   <div className="sv-rows">
@@ -411,13 +401,15 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                             <label key={side}><span>{side[0].toUpperCase() + side.slice(1)}</span><input value={pc[side]} onChange={(e) => updateParcel(i, { [side]: e.target.value })} /></label>
                           ))}
                         </div>
+                        <div className="sv-grid4">
+                          <label><span>North → South length (ft)</span><input type="number" step="any" min="0" value={pc.northSouth} onChange={(e) => updateParcel(i, { northSouth: e.target.value })} /></label>
+                          <label><span>East → West length (ft)</span><input type="number" step="any" min="0" value={pc.eastWest} onChange={(e) => updateParcel(i, { eastWest: e.target.value })} /></label>
+                        </div>
+                        <p className="sv-hint">These values replace the new property's extent, boundaries and measurements. Leave the lengths blank to keep the measurements copied from the parent.</p>
                       </div>
                     ))}
                     <div className="sv-parcel-total">
                       <span>New properties total: <b>{parcelTotal == null ? '—' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit, areaUnits)}`}</b> · measured {extentNum ?? '—'} {areaUnitLabel(unit, areaUnits)}</span>
-                      {parcelGap == null ? null : parcelGap > tolerance
-                        ? <span className="sv-err">Differs by {parcelGap.toFixed(2)}% (allowed {tolerance}%)</span>
-                        : <span className="sv-ok">Within {tolerance}% ({parcelGap.toFixed(2)}%)</span>}
                     </div>
                   </section>
                 </>
@@ -432,13 +424,8 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
             </div>
             <footer className="sv-footer">
               <Banner kind="error" message={error} />
-              {conflict ? (
-                <div className="sv-conflict">
-                  <b>Area conflict:</b> measured {extent} {areaUnitLabel(unit, areaUnits)} vs token record {record.extent_value} {areaUnitLabel(record.extent_unit, areaUnits)} ({variance?.toFixed(2)}% &gt; {tolerance}%). Submitting will flag this record for survey correction review.
-                </div>
-              ) : null}
-              <button className={conflict ? 'sv-submit conflict' : 'sv-submit'} disabled={busy} onClick={() => void submit()}>
-                <CheckCircleIcon /> {conflict ? 'Submit with Conflict Flag' : subdivision ? 'Submit Survey & Forward to Tahsildar' : 'Submit Survey & Forward to VAO'}
+              <button className="sv-submit" disabled={busy} onClick={() => void submit()}>
+                <CheckCircleIcon /> {subdivision && !partitionDeed ? 'Submit Survey & Forward to Tahsildar' : 'Submit Survey & Forward to VAO'}
               </button>
             </footer>
           </div>
