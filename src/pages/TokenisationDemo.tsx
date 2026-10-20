@@ -7,7 +7,7 @@ import { Banner, DataTable, Field, Panel } from '../ui'
 import TokenLedgerPanel from './TokenLedgerPanel'
 
 const rows = (value: unknown) => (Array.isArray(value) ? (value as Row[]) : [])
-const tabs = ['Overview & metrics', 'Parcel NFT explorer', 'Fractional ownership', 'Title verification (QR)'] as const
+const tabs = ['Overview & metrics', 'Parcel NFT explorer', 'Title verification (QR)'] as const
 
 /** Tokenisation showcase on the local Hyperledger Fabric network (Registration, Revenue, Survey). */
 export default function TokenisationDemo() {
@@ -16,7 +16,6 @@ export default function TokenisationDemo() {
   const [metrics, setMetrics] = useState<Row | null>(null)
   const [tokenInput, setTokenInput] = useState(params.get('token') ?? '')
   const [tokenRef, setTokenRef] = useState(params.get('token') ?? '')
-  const [owners, setOwners] = useState('Meena Rajan:50\nKarthik Raja:25\nDivya Menon:25')
   const [documentNo, setDocumentNo] = useState('')
   const [verify, setVerify] = useState<Row | null>(null)
   const [error, setError] = useState('')
@@ -33,11 +32,6 @@ export default function TokenisationDemo() {
     void load()
   }, [load])
 
-  const parsed = owners.split('\n').map((l) => l.split(':')).filter((p) => p[0]?.trim())
-  const total = parsed.reduce((sum, p) => sum + (Number(p[1]) || 0), 0)
-  const equal = total !== 100 || parsed.some((p) => !(Number(p[1]) > 0))
-  const units = parsed.map((p) => (equal ? Math.floor(10000 / parsed.length) : Math.round(Number(p[1]) * 100)))
-  if (units.length > 0) units[0] += 10000 - units.reduce((a, b) => a + b, 0)
   const tokens = (metrics?.tokens ?? {}) as Row
 
   return (
@@ -46,7 +40,7 @@ export default function TokenisationDemo() {
         <div>
           <span className="eyebrow">Hyperledger Fabric · local permissioned network</span>
           <h1>Land tokenisation</h1>
-          <p className="muted">Each parcel is a unique NFT in registry custody, with fractional share units, title, geo-location and encumbrance hashes, managed by the slateland chaincode. Organisations: Registration, Revenue, Survey.</p>
+          <p className="muted">Each parcel is a unique NFT in registry custody, listing its current owners as pseudonymous holder ids, with title, geo-location and encumbrance hashes, managed by the slateland chaincode. Organisations: Registration, Revenue, Survey.</p>
         </div>
       </div>
       <Banner kind="error" message={error} />
@@ -94,16 +88,7 @@ export default function TokenisationDemo() {
         {tokenRef ? <TokenLedgerPanel key={tokenRef} tokenRef={tokenRef} showDemo /> : null}
       </> : null}
 
-      {tab === 2 ? <Panel title="Fractional ownership / inheritance calculator">
-        <p className="muted">One owner per line as <code>Name:percent</code>. Shares that don't add up to 100 are split equally (as for legal heirs). Only the pseudonymous holder id and units go on the ledger.</p>
-        <label className="field"><span>Owners</span><textarea rows={5} value={owners} onChange={(e) => setOwners(e.target.value)} /></label>
-        <DataTable rows={parsed.map((p, i) => ({ owner: p[0].trim(), units: units[i], share: `${(units[i] / 100).toFixed(2)}%` }))} columns={[
-          { key: 'owner', label: 'Owner' }, { key: 'units', label: 'Share units' }, { key: 'share', label: 'Share' },
-        ]} />
-        <p className="muted">{equal ? 'Split equally: shares missing or not totalling 100%.' : 'Units follow the given percentages.'} Total: 10,000 units.</p>
-      </Panel> : null}
-
-      {tab === 3 ? <Panel title="Instant title verification">
+      {tab === 2 ? <Panel title="Instant title verification">
         <p className="muted">The certificate QR opens the public verify page, which compares the deed hash in SLATE with the hash on the Fabric ledger.</p>
         <div className="form-grid three">
           <Field label="Document number (e.g. 000005/2026)" value={documentNo} onChange={setDocumentNo} />

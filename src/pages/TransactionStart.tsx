@@ -1202,7 +1202,7 @@ export default function TransactionStart() {
       setActiveStage(7)
       const created = (result.newProperties ?? []).map((p) => String(p.property_ref))
       setInfo(created.length > 0
-        ? `Transaction registered. The property is now inactive and new properties ${created.join(' and ')} were created; next it goes to the VAO.`
+        ? `Transaction registered. The property is now inactive and new properties ${created.join(', ')} were created; next it goes to the ${selectedTypeCode === 'PARTITION' ? 'Surveyor' : 'VAO'}.`
         : 'Transaction registered.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))

@@ -11,9 +11,8 @@ const short = (value: unknown) => {
   const text = value === null || value === undefined ? '' : String(value)
   return text.length > 18 ? `${text.slice(0, 10)}…${text.slice(-6)}` : text || '—'
 }
-const pct = (units: number) => `${(units / 100).toFixed(2)}%`
 
-/** The parcel NFT on the Hyperledger Fabric ledger: shares, metadata, encumbrances, rule check and ledger history. */
+/** The parcel NFT on the Hyperledger Fabric ledger: holders, metadata, encumbrances, rule check and ledger history. */
 export default function TokenLedgerPanel({ tokenRef, showDemo = false }: { tokenRef: string; showDemo?: boolean }) {
   const { user } = useAuth()
   const [view, setView] = useState<Row | null>(null)
@@ -66,10 +65,10 @@ export default function TokenLedgerPanel({ tokenRef, showDemo = false }: { token
   const parcel = (view.parcel ?? null) as Row | null
   const meta = ((view.metadata as Row | undefined)?.metadata ?? null) as Row | null
   const owners = rows(view.owners)
-  const shares = (parcel?.shares ?? meta?.shareUnits ?? {}) as Record<string, number>
-  const shareRows: Row[] = Object.entries(shares).map(([holder, units]) => {
+  const holders = (Array.isArray(parcel?.holders) ? parcel.holders : Array.isArray(meta?.holders) ? meta.holders : []) as string[]
+  const holderRows: Row[] = holders.map((holder) => {
     const owner = owners.find((o) => o.holder_hash === holder)
-    return { holder: owner ? str(owner, 'owner_name') : 'Previous holder', holder_hash: holder, units, share: pct(units) }
+    return { holder: owner ? str(owner, 'owner_name') : 'Previous holder', holder_hash: holder }
   })
   const integrity = String(view.integrity ?? '')
   const integrityKind = integrity === 'MATCH' ? 'success' : integrity === 'MISMATCH' ? 'error' : 'info'
@@ -94,13 +93,11 @@ export default function TokenLedgerPanel({ tokenRef, showDemo = false }: { token
         <Banner kind={integrityKind} message={integrity === 'MATCH' ? 'Integrity: SLATE record matches the ledger.' : integrity === 'MISMATCH' ? 'Integrity: SLATE record does NOT match the ledger. Possible tampering.' : `Integrity: ${integrity.replace(/_/g, ' ').toLowerCase()}.`} />
       </Panel>
 
-      <Panel title="Fractional ownership (10,000 share units = 100%)">
-        <DataTable rows={shareRows} columns={[
+      <Panel title="Owners on the ledger">
+        <DataTable rows={holderRows} columns={[
           { key: 'holder', label: 'Owner (off-chain)' },
           { key: 'holder_hash', label: 'Pseudonymous holder id on ledger', render: (r) => short(r.holder_hash) },
-          { key: 'units', label: 'Units' },
-          { key: 'share', label: 'Share' },
-        ]} empty="No share units recorded." />
+        ]} empty="No owners recorded on the ledger yet." />
       </Panel>
 
       <Panel title="Transfer rule check (mock court and revenue rules)">
@@ -176,7 +173,7 @@ export default function TokenLedgerPanel({ tokenRef, showDemo = false }: { token
           { key: 'status', label: 'Status' },
           { key: 'lastOperation', label: 'Operation' },
           { key: 'lastOrg', label: 'Organisation' },
-          { key: 'shares', label: 'Holders', render: (r) => String(Object.keys((r.shares ?? {}) as Row).length) },
+          { key: 'holders', label: 'Holders', render: (r) => String(Array.isArray(r.holders) ? r.holders.length : Object.keys((r.shares ?? {}) as Row).length) },
           { key: 'txId', label: 'Fabric tx id', render: (r) => short(r.txId) },
         ]} empty="No ledger history (ledger not connected or parcel not yet on ledger)." />
       </Panel>
