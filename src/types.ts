@@ -19,6 +19,8 @@ export interface LoginResponse {
   maskedEmail?: string
   demoOtp?: string
   emailOtp?: boolean
+  otpChannel?: 'SMS' | 'EMAIL' | 'MOCK'
+  maskedMobile?: string
   accessToken?: string
   expiresAt?: string
   user?: UserProfile
