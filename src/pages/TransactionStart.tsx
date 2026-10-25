@@ -2023,7 +2023,7 @@ export default function TransactionStart() {
                         {txnStatus === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}
                       </button>
                     </div>
-                    <p className="helper">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
+                    <p className="helper">While live Aadhaar OTP is off (Admin → Feature flags) the mock OTP is <code>123456</code>. Raw Aadhaar is never stored.</p>
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
                     <MissingAadhaarCapture
                       parties={txnParties}

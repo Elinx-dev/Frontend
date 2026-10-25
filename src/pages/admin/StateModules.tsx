@@ -18,7 +18,7 @@ const MODULE_INFO: Record<string, string> = {
   SURVEY: 'Boundary survey and FMB updates for sub-division transactions.',
   REVENUE: 'VAO verification, objections and Tahsildar mutation orders.',
   RULE_CHECK: 'Automated rule engines run against every transaction.',
-  BLOCKCHAIN: 'Anchoring transaction evidence on the Besu network.',
+  BLOCKCHAIN: 'Anchoring transaction evidence on the Hyperledger Fabric ledger.',
   PUBLIC_VIEW: 'Citizen-facing public property view.',
 }
 

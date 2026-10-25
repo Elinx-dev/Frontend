@@ -49,7 +49,6 @@ export default function TahsildarRecordDetail() {
   const [tab, setTab] = useState<Tab>('transaction')
   const [showApprove, setShowApprove] = useState(false)
   const [showPatta, setShowPatta] = useState(false)
-  const [registerNumber, setRegisterNumber] = useState('')
   const [remarks, setRemarks] = useState('')
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -69,7 +68,6 @@ export default function TahsildarRecordDetail() {
     setActionError('')
     try {
       await post(`/api/tahsildar/records/${encodeURIComponent(record.txn_ref)}/approve`, {
-        mutationRegisterNumber: registerNumber.trim() === '' ? null : registerNumber.trim(),
         remarks: remarks.trim() === '' ? null : remarks.trim(),
       }, true)
       setMessage('Mutation approved. The Revenue record has been updated and the revenue document generated.')
@@ -216,10 +214,6 @@ export default function TahsildarRecordDetail() {
           <ul className="vao-checklist">
             {record.checklist.map((c) => <li key={c.code} className={c.passed ? 'ok' : ''}>{c.label}</li>)}
           </ul>
-          <label className="vao-textarea">
-            <span>Mutation register number (optional)</span>
-            <input value={registerNumber} onChange={(e) => setRegisterNumber(e.target.value)} placeholder="Leave blank to use the number issued by Revenue" />
-          </label>
           <label className="vao-textarea">
             <span>Remarks</span>
             <textarea rows={4} value={remarks} placeholder="Approval remarks…" onChange={(e) => setRemarks(e.target.value)} />

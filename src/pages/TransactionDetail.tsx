@@ -809,7 +809,7 @@ export default function TransactionDetail({
               actions={<button type="button" disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)} onClick={() => void requestConsent()}>{txn.status === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}</button>}
             >
               {renderReadinessDetails('Aadhaar consent')}
-              <p className="muted">Demo Aadhaar OTP: <code>123456</code>. Raw Aadhaar is never stored.</p>
+              <p className="muted">While live Aadhaar OTP is off (Admin → Feature flags) the mock OTP is <code>123456</code>. Raw Aadhaar is never stored.</p>
               <MissingAadhaarCapture
                 parties={txn.parties}
                 disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)}
