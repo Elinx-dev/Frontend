@@ -103,9 +103,13 @@ export default function Login() {
           </>
         ) : (
           <>
-            <p className="auth-note">
-              A verification code was sent to <strong>{challenge.maskedEmail ?? 'your registered email'}</strong>.
-            </p>
+            {challenge.emailOtp === false ? (
+              <p className="auth-note">Email verification is switched off for your state (mock mode). Enter the mock verification code.</p>
+            ) : (
+              <p className="auth-note">
+                A verification code was sent to <strong>{challenge.maskedEmail ?? 'your registered email'}</strong>.
+              </p>
+            )}
             {challenge.demoOtp === undefined ? null : (
               <Banner kind="info" message={`Local demo verification code: ${challenge.demoOtp}`} />
             )}

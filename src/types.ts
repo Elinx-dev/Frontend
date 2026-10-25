@@ -18,6 +18,7 @@ export interface LoginResponse {
   challengeId?: string
   maskedEmail?: string
   demoOtp?: string
+  emailOtp?: boolean
   accessToken?: string
   expiresAt?: string
   user?: UserProfile

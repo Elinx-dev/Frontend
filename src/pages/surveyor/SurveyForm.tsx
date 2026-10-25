@@ -166,10 +166,12 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
   function parcelError(): [string, number] {
     if (!subdivision) return ['', 0]
     const seen = new Set<string>()
+    const parentKey = `${text(record.survey_no).trim()}/${text(record.subdivision_no).trim()}`.toUpperCase()
     for (const [i, pc] of parcels.entries()) {
       const label = pc.propertyRef || `Property ${i + 1}`
       if (pc.surveyNo.trim() === '') return [`Enter the new survey number of ${label}.`, i]
       const key = `${pc.surveyNo.trim()}/${pc.subdivisionNo.trim()}`.toUpperCase()
+      if (key === parentKey) return [`${label} has the parent property's survey number ${record.survey_no ?? ''}${record.subdivision_no ? `/${record.subdivision_no}` : ''}; enter the new survey / subdivision number.`, i]
       if (seen.has(key)) return [`${label} repeats survey number ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}.`, i]
       seen.add(key)
       if ((num(pc.extent) ?? 0) <= 0) return [`Enter the extent of ${label}.`, i]
