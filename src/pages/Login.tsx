@@ -103,7 +103,11 @@ export default function Login() {
           </>
         ) : (
           <>
-            {challenge.emailOtp === false ? (
+            {challenge.otpChannel === 'SMS' ? (
+              <p className="auth-note">
+                A verification code was sent by SMS to your mobile <strong>{challenge.maskedMobile ?? 'registered mobile'}</strong>.
+              </p>
+            ) : challenge.emailOtp === false ? (
               <p className="auth-note">Email verification is switched off for your state (mock mode). Enter the mock verification code.</p>
             ) : (
               <p className="auth-note">
@@ -114,7 +118,7 @@ export default function Login() {
               <Banner kind="info" message={`Local demo verification code: ${challenge.demoOtp}`} />
             )}
             <Field
-              label="Email verification code"
+              label={challenge.otpChannel === 'SMS' ? 'SMS verification code' : 'Email verification code'}
               value={otp}
               onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
               required
