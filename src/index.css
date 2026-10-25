@@ -259,6 +259,14 @@ a {
   font-weight: 600;
 }
 
+.network-down {
+  display: block;
+  padding: 6px 10px 0;
+  color: #f2a7a7;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .side-signout {
   display: flex;
   align-items: center;
@@ -2458,7 +2466,8 @@ button:disabled {
   .brand-text,
   .side-section > span,
   .side-section p,
-  .network-up {
+  .network-up,
+  .network-down {
     display: none;
   }
 

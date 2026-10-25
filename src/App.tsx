@@ -1,5 +1,8 @@
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+
+import { get } from './api'
 
 import { AuthProvider, homeRouteFor, useAuth } from './auth'
 import {
@@ -69,6 +72,30 @@ function AdminOnly({ children }: { children: ReactNode }) {
   if (user === null) return <Navigate to="/login" replace />
   if (!user.roles.includes('STATE_ADMIN') && !user.roles.includes('CENTRAL_ADMIN')) return <Navigate to={homeRouteFor(user)} replace />
   return <Shell>{children}</Shell>
+}
+
+interface ChainStatus {
+  channel: string
+  chaincode: string
+  connected: boolean
+  blockHeight: number | null
+  peersUp: number
+  peersTotal: number
+}
+
+function NetworkStatus() {
+  const [status, setStatus] = useState<ChainStatus | null>(null)
+  useEffect(() => {
+    get<ChainStatus>('/api/chain/status').then(setStatus).catch(() => setStatus(null))
+  }, [])
+  const up = status !== null && status.connected && status.peersUp > 0
+  return (
+    <div className="side-section">
+      <span>Network</span>
+      <p>Hyperledger Fabric · channel {status?.channel ?? 'slate'}<br />{up && status.blockHeight !== null ? `Block #${status.blockHeight.toLocaleString('en-IN')}` : 'Ledger offline'}</p>
+      <small className={up ? 'network-up' : 'network-down'}>● {status ? `${status.peersUp}/${status.peersTotal} peers up` : 'Status unavailable'}</small>
+    </div>
+  )
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -152,11 +179,7 @@ function Shell({ children }: { children: ReactNode }) {
             </div>
           </div>
         ) : null}
-        <div className="side-section">
-          <span>Network</span>
-          <p>Besu QBFT · chainId 2026<br />Block #18,442</p>
-          <small className="network-up">● 4/4 validators up</small>
-        </div>
+        <NetworkStatus />
         <button className="side-signout" onClick={() => void logout().then(() => navigate('/login'))}>
           <SignOutIcon />
           Sign out
