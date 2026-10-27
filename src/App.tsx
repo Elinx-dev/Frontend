@@ -24,6 +24,7 @@ import {
   WorkflowIcon,
 } from './icons'
 import AdminUsers from './pages/admin/AdminUsers'
+import BulkUpload from './pages/admin/BulkUpload'
 import FeatureFlags from './pages/admin/FeatureFlags'
 import RuleCheckControl from './pages/admin/RuleCheckControl'
 import StateModules from './pages/admin/StateModules'
@@ -174,6 +175,7 @@ function Shell({ children }: { children: ReactNode }) {
               <NavLink to={`/admin/users${adminStateQuery}`}><UsersIcon />User administration</NavLink>
               <NavLink to={`/admin/modules${adminStateQuery}`}><ModulesIcon />State modules</NavLink>
               <NavLink to={`/admin/feature-flags${adminStateQuery}`}><FlagIcon />Feature flags</NavLink>
+              <NavLink to={`/admin/bulk-upload${adminStateQuery}`}><UsersIcon />Bulk upload</NavLink>
               <NavLink to={`/admin/rule-checks${adminStateQuery}`}><ShieldCheckIcon />Rule check control</NavLink>
               <NavLink to={`/admin/workflows${adminStateQuery}`}><WorkflowIcon />Workflow definitions</NavLink>
             </div>
@@ -301,6 +303,7 @@ export default function App() {
           <Route path="/admin/users" element={<AdminOnly><AdminUsers /></AdminOnly>} />
           <Route path="/admin/modules" element={<AdminOnly><StateModules /></AdminOnly>} />
           <Route path="/admin/feature-flags" element={<AdminOnly><FeatureFlags /></AdminOnly>} />
+          <Route path="/admin/bulk-upload" element={<AdminOnly><BulkUpload /></AdminOnly>} />
           <Route path="/admin/rule-checks" element={<AdminOnly><RuleCheckControl /></AdminOnly>} />
           <Route path="/admin/workflows" element={<AdminOnly><WorkflowDefinitions /></AdminOnly>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
