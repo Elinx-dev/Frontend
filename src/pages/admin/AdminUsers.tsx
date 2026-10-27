@@ -16,6 +16,9 @@ interface AdminUser {
   department: string
   status: string
   mfa_required: boolean
+  lockout_enabled?: boolean
+  locked_until?: string | null
+  failed_login_count?: number
   roles: string[]
 }
 
@@ -35,6 +38,7 @@ interface UserForm {
   department: string
   status: string
   mfaRequired: boolean
+  lockoutEnabled: boolean
   password: string
   roles: string[]
 }
@@ -43,7 +47,7 @@ type FormErrors = Partial<Record<keyof UserForm, string>>
 
 const EMPTY_FORM: UserForm = {
   username: '', fullName: '', email: '', mobile: '', designation: '', department: 'REGISTRATION',
-  status: 'ACTIVE', mfaRequired: true, password: '', roles: [],
+  status: 'ACTIVE', mfaRequired: true, lockoutEnabled: true, password: '', roles: [],
 }
 
 const STATUSES = [
@@ -179,7 +183,11 @@ export default function AdminUsers() {
                     <td>{humanize(u.department)}</td>
                     <td><div className="chips">{u.roles.map((code) => <span className="chip" key={code} title={code}>{roleName.get(code) ?? code}</span>)}</div></td>
                     <td><span className={u.mfa_required ? 'adm-badge on' : 'adm-badge'}>{u.mfa_required ? 'Required' : 'Off'}</span></td>
-                    <td><StatusPill status={u.status} /></td>
+                    <td>
+                      <StatusPill status={u.status} />
+                      {u.status === 'LOCKED' && u.locked_until ? <span className="cell-subtext">until {formatTime(u.locked_until)}</span> : null}
+                      {u.lockout_enabled === false ? <span className="cell-subtext">Lockout off</span> : null}
+                    </td>
                     <td className="num"><button className="outline" onClick={(e) => { e.stopPropagation(); setInfo(''); setEditing(u) }}>Edit</button></td>
                   </tr>
                 ))}
@@ -217,7 +225,7 @@ function UserDrawer({ user, roles, isSelf, centralAdmin, stateCode, onClose, onS
   const [form, setForm] = useState<UserForm>(() => user === null ? EMPTY_FORM : {
     username: user.username, fullName: user.full_name, email: user.email ?? '', mobile: user.mobile ?? '',
     designation: user.designation ?? '', department: user.department, status: user.status,
-    mfaRequired: user.mfa_required, password: '', roles: user.roles,
+    mfaRequired: user.mfa_required, lockoutEnabled: user.lockout_enabled ?? true, password: '', roles: user.roles,
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [showPassword, setShowPassword] = useState(false)
@@ -309,6 +317,17 @@ function UserDrawer({ user, roles, isSelf, centralAdmin, stateCode, onClose, onS
                 <div><strong>Account status</strong><span>Locked and disabled users cannot sign in.</span></div>
                 <Segmented label="Account status" value={form.status} options={STATUSES} onChange={(v) => change('status', v)} />
               </div>
+              {user?.status === 'LOCKED' && form.status === 'LOCKED' ? (
+                <p className="adm-note">
+                  {user.locked_until
+                    ? `Locked after ${user.failed_login_count ?? 5} wrong passwords until ${formatTime(user.locked_until)}. Set the status to Active to unlock now.`
+                    : 'Locked by an administrator. Set the status to Active to unlock.'}
+                </p>
+              ) : null}
+              <div className="adm-setting">
+                <div><strong>Lock after 5 wrong passwords</strong><span>Blocks sign-in for 2 hours after 5 wrong passwords. Turn off if someone keeps locking this officer out.</span></div>
+                <Switch label="Lock after 5 wrong passwords" checked={form.lockoutEnabled} onChange={(v) => change('lockoutEnabled', v)} />
+              </div>
               <div className="adm-setting">
                 <div><strong>Multi-factor authentication</strong><span>Ask for a one-time code at every sign-in.</span></div>
                 <Switch label="Multi-factor authentication" checked={form.mfaRequired} onChange={(v) => change('mfaRequired', v)} />
@@ -366,4 +385,8 @@ function TextField({ label, value, onChange, error, hint, required = false, disa
       {error !== undefined ? <span className="field-error">{error}</span> : hint !== undefined ? <small className="adm-hint">{hint}</small> : null}
     </label>
   )
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
