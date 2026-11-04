@@ -864,7 +864,7 @@ export default function TransactionStart() {
         errors.aadhaarNumber = 'Validate the Aadhaar with OTP; the details are filled from Aadhaar.'
       }
       if (bloodRelationRequired && party.relationshipCode.length === 0) {
-        errors.relationshipCode = `Select the relationship to the ${firstPartyLabel.toLowerCase()}.`
+        errors.relationshipCode = `Select the Relationship Category.`
       }
       if (Object.keys(errors).length > 0) nextErrors[index] = errors
     })
@@ -1889,7 +1889,7 @@ export default function TransactionStart() {
                     {firstPartyLabel} → {secondPartyLabel}. Survey: <b>{surveyDecision}</b>
                     {surveyNeeded ? '. After registration the transaction moves to Survey.' : '. After registration the transaction moves to VAO verification.'}
                     {subdivisionYes ? ' The subdivision number is recorded only after the Survey authority provides it.' : ''}
-                    {bloodRelationRequired ? ` Each ${secondPartyLabel.toLowerCase()} must be a configured blood relation of the ${firstPartyLabel.toLowerCase()}.` : ''}
+                    {bloodRelationRequired ? ` Each ${secondPartyLabel.toLowerCase()} needs a Relationship Category.` : ''}
                   </p>
                 ) : null}
               </Panel>
@@ -2047,7 +2047,7 @@ export default function TransactionStart() {
                               <div className="owner-fields">
                                 <div>
                                   <Field
-                                    label={`Relationship to ${firstPartyLabel.toLowerCase()}`}
+                                    label="Relationship Category"
                                     value={party.relationshipCode}
                                     onChange={(value) => updateParty(index, 'relationshipCode', value)}
                                     options={bloodRelations.map((relation) => ({
