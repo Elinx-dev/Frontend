@@ -203,6 +203,8 @@ export default function PropertyCreate() {
     const stageFields: Partial<Record<number, Array<[keyof PropertyState, string]>>> = {
       0: [
         ['propertyTypeCode', 'Property type is required.'],
+        ['natureOfTitleCode', 'Nature of title is required.'],
+        ['landTypeCode', 'Land type is required.'],
         ['classificationCode', 'Classification is required.'],
       ],
       2: [
@@ -268,6 +270,8 @@ export default function PropertyCreate() {
     setError('')
     const requiredFields: Array<[keyof PropertyState, string]> = [
       ['propertyTypeCode', 'Property type is required.'],
+      ['natureOfTitleCode', 'Nature of title is required.'],
+      ['landTypeCode', 'Land type is required.'],
       ['classificationCode', 'Classification is required.'],
       ['sroCode', 'SRO is required.'],
       ['districtCode', 'Registration district is required.'],
@@ -363,9 +367,9 @@ export default function PropertyCreate() {
     && entry.transactionDate
     && entry.natureOfTransaction.trim()
     && entry.surveyNo.trim())
-  const stageComplete = [Boolean(property.propertyTypeCode && property.classificationCode), ownersComplete, locationComplete, surveyComplete,
+  const stageComplete = [Boolean(property.propertyTypeCode && property.natureOfTitleCode && property.landTypeCode && property.classificationCode), ownersComplete, locationComplete, surveyComplete,
     boundariesComplete, chainHistoryComplete, Boolean(property.guidelineValue)]
-  const stageHasErrors = [['propertyTypeCode', 'classificationCode'].some((key) => fieldErrors[key] !== undefined), Object.keys(ownerErrors).length > 0 || fieldErrors.ownerTypeCode !== undefined,
+  const stageHasErrors = [['propertyTypeCode', 'natureOfTitleCode', 'landTypeCode', 'classificationCode'].some((key) => fieldErrors[key] !== undefined), Object.keys(ownerErrors).length > 0 || fieldErrors.ownerTypeCode !== undefined,
     ['sroCode', 'districtCode', 'talukCode', 'villageCode'].some((key) => fieldErrors[key] !== undefined),
     Object.keys(surveyErrors).length > 0,
     ['boundaryNorth', 'boundarySouth', 'boundaryEast', 'boundaryWest'].some((key) => fieldErrors[key] !== undefined)
@@ -404,8 +408,8 @@ export default function PropertyCreate() {
       {activeStage === 0 ? <Panel title="">
         <div className="form-grid three">
           <Field label="Property type" value={property.propertyTypeCode} onChange={(v) => update('propertyTypeCode', v)} options={options('PROPERTY_TYPE')} required />
-          <Field label="Nature of title" value={property.natureOfTitleCode} onChange={(v) => update('natureOfTitleCode', v)} options={options('NATURE_OF_TITLE')} />
-          <Field label="Land type" value={property.landTypeCode} onChange={(v) => update('landTypeCode', v)} options={options('LAND_TYPE')} />
+          <Field label="Nature of title" value={property.natureOfTitleCode} onChange={(v) => update('natureOfTitleCode', v)} options={options('NATURE_OF_TITLE')} required />
+          <Field label="Land type" value={property.landTypeCode} onChange={(v) => update('landTypeCode', v)} options={options('LAND_TYPE')} required />
           <Field label="Classification" value={property.classificationCode} onChange={(v) => update('classificationCode', v)} options={options('CLASSIFICATION')} required />
         </div>
       </Panel> : null}

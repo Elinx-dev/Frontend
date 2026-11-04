@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import { formatCell } from '../../ui'
 import type { Row } from '../../types'
 import { labelFor, useOptionSet } from '../propertyShared'
@@ -100,6 +102,9 @@ export function RecordInfoTabs({ record, tab }: { record: object; tab: InfoTab }
           <Fact label="Guideline value" value={money(property.guideline_value)} />
           <Fact label="Boundaries (N / S / E / W)" value={[property.boundary_north, property.boundary_south, property.boundary_east, property.boundary_west].map((v) => formatCell(v ?? null)).join(' / ')} />
         </div>
+        {property.property_ref ?? r.property_ref ? (
+          <p><Link className="vao-back" to={`/properties/${encodeURIComponent(String(property.property_ref ?? r.property_ref))}`}>Open full property details →</Link></p>
+        ) : null}
         <p className="vao-card-eyebrow">Survey numbers</p>
         <Table
           rows={rowsOf(r.surveyRecords)}
