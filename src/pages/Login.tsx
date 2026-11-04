@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api'
 import { homeRouteFor, useAuth } from '../auth'
 import type { LoginResponse } from '../types'
+import slateMark from '../assets/slate-mark-light.png'
 import { AuthShell, Banner, Field } from '../ui'
 
 const DEMO_USERS = [
@@ -79,10 +80,16 @@ export default function Login() {
         <Banner kind="error" message={error} />
         {challenge === null ? (
           <>
-            <Field label="Username or email" value={loginId} onChange={setLoginId} required />
-            <Field label="Password" value={password} onChange={setPassword} type="password" required />
-            <button className="primary" disabled={busy} onClick={() => void submitPassword()}>
-              {busy ? 'Checking credentials…' : 'Continue'}
+            <Field label="Username or email" value={loginId} onChange={setLoginId} icon={<UserIcon />} required />
+            <Field label="Password" value={password} onChange={setPassword} type="password" icon={<LockIcon />} required />
+            <button className="primary login-continue" disabled={busy} onClick={() => void submitPassword()}>
+              {busy ? 'Checking credentials…' : (
+                <>
+                  <img src={slateMark} alt="" />
+                  Continue
+                  <ArrowIcon />
+                </>
+              )}
             </button>
             <div className="auth-links">
               <Link to="/forgot-password">Forgot password?</Link>
@@ -139,9 +146,57 @@ export default function Login() {
           </>
         )}
         <p className="muted">
-          <Link to="/public">Continue to the public property search without signing in</Link>
+          <Link className="login-public-link" to="/public">
+            Continue to the public property search without signing in <ExternalIcon />
+          </Link>
         </p>
       </div>
     </AuthShell>
+  )
+}
+
+const iconProps = {
+  viewBox: '0 0 24 24',
+  width: 18,
+  height: 18,
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+}
+
+function UserIcon() {
+  return (
+    <svg className="field-icon" {...iconProps}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  )
+}
+
+function LockIcon() {
+  return (
+    <svg className="field-icon" {...iconProps}>
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  )
+}
+
+function ArrowIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  )
+}
+
+function ExternalIcon() {
+  return (
+    <svg {...iconProps} width={14} height={14}>
+      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+    </svg>
   )
 }
