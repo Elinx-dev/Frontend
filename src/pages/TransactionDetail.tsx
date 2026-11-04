@@ -87,6 +87,7 @@ export default function TransactionDetail({
   const [witnessTwoAddress, setWitnessTwoAddress] = useState('')
   const [witnessTwoPhone, setWitnessTwoPhone] = useState('')
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
+  const [mockOtpByParty, setMockOtpByParty] = useState<Record<string, string>>({})
   const [paymentMode, setPaymentMode] = useState('E_CHALLAN')
   const [paymentRef, setPaymentRef] = useState('')
   const [paymentDate, setPaymentDate] = useState(today())
@@ -414,8 +415,13 @@ export default function TransactionDetail({
     setError('')
     setInfo('')
     try {
-      await post(`/api/transactions/${txnRef}/consent/request`, {})
-      setInfo('Consent started and Aadhaar OTP requested for all parties.')
+      const otpRows = await post<Row[]>(`/api/transactions/${txnRef}/consent/request`, {})
+      const mockOtps: Record<string, string> = {}
+      ;(Array.isArray(otpRows) ? otpRows : []).forEach((row) => {
+        if (row.demoOtp) mockOtps[String(row.partyId ?? row.party_id ?? '')] = String(row.demoOtp)
+      })
+      setMockOtpByParty(mockOtps)
+      setInfo(`Consent started and Aadhaar OTP requested for all parties.${Object.keys(mockOtps).length > 0 ? ' The mock OTP is shown next to each party.' : ''}`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     } finally {
@@ -809,7 +815,7 @@ export default function TransactionDetail({
               actions={<button type="button" disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)} onClick={() => void requestConsent()}>{txn.status === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}</button>}
             >
               {renderReadinessDetails('Aadhaar consent')}
-              <p className="muted">While live Aadhaar OTP is off (Admin → Feature flags) the mock OTP is <code>123456</code>. Raw Aadhaar is never stored.</p>
+              <p className="muted">While live Aadhaar OTP is off (Admin → Feature flags) the mock Aadhaar service sends a new 6-digit OTP each time, shown next to each party. Raw Aadhaar is never stored.</p>
               <MissingAadhaarCapture
                 parties={txn.parties}
                 disabled={!['DRAFT', 'CONSENT_PENDING'].includes(txn.status)}
@@ -833,6 +839,9 @@ export default function TransactionDetail({
                       return `${role}: ${name} — ${formatCell(c.status)}`
                     })()}
                   </span>
+                  {mockOtpByParty[formatCell(c.party_id)] && formatCell(c.status) === 'PENDING' ? (
+                    <span className="muted">Mock OTP: <b className="mono">{mockOtpByParty[formatCell(c.party_id)]}</b></span>
+                  ) : null}
                   <Field
                     label="OTP"
                     value={otpByParty[formatCell(c.party_id)] ?? ''}

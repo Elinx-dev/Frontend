@@ -55,7 +55,7 @@ const TRANSACTION_TYPE_HELP: Record<string, string> = {
 function ChoiceCards({ name, value, options, onChange, disabled }: {
   name: string
   value: string
-  options: Array<{ value: string; title: string; help: string }>
+  options: Array<{ value: string; title: string; help?: string }>
   onChange: (value: string) => void
   disabled?: boolean
 }) {
@@ -145,8 +145,8 @@ const hasStatus = (status: string, allowed: readonly string[]) => allowed.includ
 const stages = [
   'Property details',
   'Transaction details',
-  'Witnesses',
   'Buyer details & Aadhaar consent',
+  'Witnesses',
   'Rule checks',
   'Fees and payment',
   'Registration',
@@ -199,6 +199,7 @@ export default function TransactionStart() {
   const [witnesses, setWitnesses] = useState<WitnessForm[]>([emptyWitness(), emptyWitness()])
   const [witnessErrors, setWitnessErrors] = useState<WitnessErrors>({})
   const [witnessesSaved, setWitnessesSaved] = useState(false)
+  const [mockOtpByParty, setMockOtpByParty] = useState<Record<string, string>>({})
   const [txn, setTxn] = useState<Txn | null>(null)
   const [txnLoading, setTxnLoading] = useState(false)
   const [otpByParty, setOtpByParty] = useState<Record<string, string>>({})
@@ -251,7 +252,7 @@ export default function TransactionStart() {
       ? 'Required (requested by party)'
       : 'No survey'
   const stageLabels = stages.map((stage, index) =>
-    index === 3 ? (isPartition ? 'Partition parties & Aadhaar consent' : `${secondPartyLabel} details & Aadhaar consent`) : stage)
+    index === 2 ? (isPartition ? 'Partition parties & Aadhaar consent' : `${secondPartyLabel} details & Aadhaar consent`) : stage)
   const transactionDetailsComplete = Boolean(
     deedTypeCode
     && (!subdivisionAllowed || subdivisionRequired)
@@ -344,8 +345,8 @@ export default function TransactionStart() {
   const stageComplete = (index: number) => {
     if (index === 0) return property !== null
     if (index === 1) return transactionDetailsComplete
-    if (index === 2) return createdTransactionRef.length > 0 && witnessesSaved
-    if (index === 3) return createdTransactionRef.length > 0 && buyerDetailsSaved && consentCompleted
+    if (index === 2) return createdTransactionRef.length > 0 && buyerDetailsSaved && consentCompleted
+    if (index === 3) return createdTransactionRef.length > 0 && witnessesSaved
     if (index === 4) return createdTransactionRef.length > 0 && rulesCompleted
     if (index === 5) return createdTransactionRef.length > 0 && paymentCompleted
     if (index === 6) return createdTransactionRef.length > 0 && registrationCompleted
@@ -357,15 +358,15 @@ export default function TransactionStart() {
     if (index === 1) return stageComplete(index) ? 'Complete' : property ? activeStage === index ? 'In progress' : 'Required' : 'Waiting'
     if (index === 2) {
       if (createdTransactionRef.length === 0) return 'Available after draft'
-      return stageComplete(index) ? 'Complete' : activeStage === index ? 'In progress' : 'Required'
-    }
-    if (index === 3) {
-      if (createdTransactionRef.length === 0 || !witnessesSaved) return 'Waiting'
       if (txnLoading) return 'Loading'
       return stageComplete(index) ? 'Complete' : activeStage === index ? 'In progress' : 'Required'
     }
-    if (index === 4) {
+    if (index === 3) {
       if (createdTransactionRef.length === 0 || !consentCompleted) return 'Waiting'
+      return stageComplete(index) ? 'Complete' : activeStage === index ? 'In progress' : 'Required'
+    }
+    if (index === 4) {
+      if (createdTransactionRef.length === 0 || !consentCompleted || !witnessesSaved) return 'Waiting'
       if (txnLoading) return 'Loading'
       return stageComplete(index) ? 'Complete' : activeStage === index ? 'In progress' : 'Required'
     }
@@ -821,7 +822,7 @@ export default function TransactionStart() {
       ])
       await loadTransaction(createdTransactionRef, true)
       setBuyerDetailsSaved(true)
-      setActiveStage(3)
+      setActiveStage(2)
       setInfo(`${firstPartyLabel} and ${secondPartyLabel.toLowerCase()} saved. Now complete the Aadhaar OTP consent below.`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
@@ -900,7 +901,7 @@ export default function TransactionStart() {
       )
       await loadTransaction(createdTransactionRef, true)
       setBuyerDetailsSaved(true)
-      setActiveStage(3)
+      setActiveStage(2)
       setInfo(`${secondPartyLabel} details saved. Now complete the Aadhaar OTP consent below.`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
@@ -1004,8 +1005,8 @@ export default function TransactionStart() {
       )
       await loadTransaction(createdTransactionRef, true)
       setWitnessesSaved(true)
-      setActiveStage(3)
-      setInfo(`Witness details saved. Continue with ${secondPartyLabel.toLowerCase()} details.`)
+      setActiveStage(4)
+      setInfo('Witness details saved. Continue with rule checks.')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
     } finally {
@@ -1027,10 +1028,14 @@ export default function TransactionStart() {
     setConsentBusy(true)
     try {
       const otpRows = await post<Row[]>(`/api/transactions/${encodeURIComponent(createdTransactionRef)}/consent/request`, {})
-      const mockOtp = otpRows.find((row) => row.demoOtp)?.demoOtp
+      const mockOtps: Record<string, string> = {}
+      otpRows.forEach((row) => {
+        if (row.demoOtp) mockOtps[String(row.partyId ?? row.party_id ?? '')] = String(row.demoOtp)
+      })
+      setMockOtpByParty(mockOtps)
       await loadTransaction(createdTransactionRef, true)
-      setActiveStage(3)
-      setInfo(`Aadhaar OTP sent.${mockOtp ? ` Mock Aadhaar service OTP: ${String(mockOtp)}` : ''}`)
+      setActiveStage(2)
+      setInfo(`Aadhaar OTP sent.${Object.keys(mockOtps).length > 0 ? ' The mock OTP is shown next to each party.' : ''}`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e))
       await loadTransaction(createdTransactionRef, true)
@@ -1075,8 +1080,8 @@ export default function TransactionStart() {
       }
       if (result.allPartiesVerified === true
         || nextStatus === 'RULE_CHECK_PENDING') {
-        setActiveStage(4)
-        setInfo('Consent captured. Continue with rule checks.')
+        setActiveStage(witnessesSaved ? 4 : 3)
+        setInfo(witnessesSaved ? 'Consent captured. Continue with rule checks.' : 'Consent captured. Continue with witness details.')
       } else {
         setInfo('Consent captured.')
       }
@@ -1088,6 +1093,11 @@ export default function TransactionStart() {
   }
 
   const runRules = async () => {
+    if (!witnessesSaved) {
+      setError('Save the witness details (step 4) before running rule checks.')
+      setActiveStage(3)
+      return
+    }
     if (createdTransactionRef.length === 0) {
       setError('Create the transaction before running rule checks.')
       return
@@ -1352,7 +1362,7 @@ export default function TransactionStart() {
     ? `Transaction ${createdTransactionRef} has been created. Continue using the tabs below.`
     : 'Select a registered property and capture the transaction instruction. To add a property, use Mint Property.'
   const maxAvailableStage = transactionCreated
-    ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted ? 5 : witnessesSaved ? 4 : 3)
+    ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted && witnessesSaved ? 5 : consentCompleted ? 4 : 3)
     : 1
   const detailsEditable = !transactionCreated
     || (['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING'].includes(txnStatus) && (txn?.payments.length ?? 0) === 0)
@@ -1827,8 +1837,8 @@ export default function TransactionStart() {
                       disabled={transactionCreated}
                       onChange={changeSubdivision}
                       options={[
-                        { value: 'YES', title: 'Yes, subdivide', help: `Only part of the property is transferred. A surveyor measures it and the new subdivision number is given after the survey. The survey fee${surveyFeeText} is added to the fees.` },
-                        { value: 'NO', title: 'No subdivision', help: 'The property is transferred as it is, without splitting it.' },
+                        { value: 'YES', title: 'Yes' },
+                        { value: 'NO', title: 'No' },
                       ]}
                     />
                   </div>
@@ -1842,8 +1852,8 @@ export default function TransactionStart() {
                       disabled={transactionCreated}
                       onChange={setSurveyRequiredByParty}
                       options={[
-                        { value: 'YES', title: 'Yes, survey the parcel', help: `A surveyor verifies the boundary after registration, before VAO verification. The survey fee${surveyFeeText} is added to the fees.` },
-                        { value: 'NO', title: 'No survey', help: 'After registration the record goes straight to VAO verification.' },
+                        { value: 'YES', title: 'Yes' },
+                        { value: 'NO', title: 'No' },
                       ]}
                     />
                   </div>
@@ -1884,11 +1894,11 @@ export default function TransactionStart() {
                 ) : null}
               </Panel>
             ) : null}
-            {activeStage === 3 && createdTransactionRef.length > 0 && isPartition ? (
+            {activeStage === 2 && createdTransactionRef.length > 0 && isPartition ? (
               <div ref={detailRef}>
                 <section className="panel">
                   <header className="panel-head">
-                    <h2>4. Partition parties &amp; schedules</h2>
+                    <h2>3. Partition parties &amp; schedules</h2>
                   </header>
                   <div className="panel-body">
                     <PartitionWorkspace
@@ -1903,7 +1913,7 @@ export default function TransactionStart() {
                   </div>
                 </section>
               </div>
-            ) : activeStage === 3 && createdTransactionRef.length > 0 && isRelease ? (
+            ) : activeStage === 2 && createdTransactionRef.length > 0 && isRelease ? (
               <div ref={detailRef}>
                 <section className="panel">
                   <header className="panel-head">
@@ -1946,7 +1956,7 @@ export default function TransactionStart() {
                   </div>
                 </section>
               </div>
-            ) : activeStage === 3 && createdTransactionRef.length > 0 ? (
+            ) : activeStage === 2 && createdTransactionRef.length > 0 ? (
               <div ref={detailRef}>
                 <section className="panel">
                   <header className="panel-head">
@@ -2064,11 +2074,11 @@ export default function TransactionStart() {
                 </section>
               </div>
             ) : null}
-            {activeStage === 2 && createdTransactionRef.length > 0 ? (
+            {activeStage === 3 && createdTransactionRef.length > 0 ? (
               <div ref={detailRef}>
                 <section className="panel">
                   <header className="panel-head">
-                    <h2>3. Witness details</h2>
+                    <h2>4. Witness details</h2>
                   </header>
                   <div className="panel-body">
                     <p className="helper">Validate each witness's Aadhaar with OTP; name, address and mobile are filled from Aadhaar.</p>
@@ -2082,7 +2092,7 @@ export default function TransactionStart() {
                 </section>
               </div>
             ) : null}
-            {activeStage === 3 && createdTransactionRef.length > 0 && buyerDetailsSaved ? (
+            {activeStage === 2 && createdTransactionRef.length > 0 && buyerDetailsSaved ? (
               <div>
                 <section className="panel">
                   <header className="panel-head">
@@ -2098,7 +2108,7 @@ export default function TransactionStart() {
                         {txnStatus === 'DRAFT' ? 'Start consent and request OTP' : 'Request OTP for all parties'}
                       </button>
                     </div>
-                    <p className="helper">While live Aadhaar OTP is off (Admin → Feature flags) the mock OTP is <code>123456</code>. Raw Aadhaar is never stored.</p>
+                    <p className="helper">While live Aadhaar OTP is off (Admin → Feature flags) the mock Aadhaar service sends a new 6-digit OTP each time, shown next to each party. Raw Aadhaar is never stored.</p>
                     {txnLoading ? <p className="helper">Loading transaction details…</p> : null}
                     <MissingAadhaarCapture
                       parties={txnParties}
@@ -2112,6 +2122,7 @@ export default function TransactionStart() {
                       const partyId = String(consent.party_id ?? consent.partyId ?? '')
                       const party = txnParties.find((item) => String(item.id ?? item.party_id ?? item.partyId ?? '') === partyId)
                       const consentStatus = String(consent.status ?? consent.consent_status ?? consent.consentStatus ?? '')
+                      if (consentStatus === 'VERIFIED' && party?.side === 'SIDE_2' && !isRelease && !isPartition) return null
                       const role = String(
                         party?.role
                         ?? (party?.side === 'SIDE_1' ? selectedDeed?.side1_role : selectedDeed?.side2_role)
@@ -2124,6 +2135,9 @@ export default function TransactionStart() {
                             {role}: {name} — {consentStatus}
                           </span>
                           {consentStatus === 'VERIFIED' ? null : <>
+                          {mockOtpByParty[partyId] && consentStatus === 'PENDING' ? (
+                            <span className="helper">Mock OTP: <b className="mono">{mockOtpByParty[partyId]}</b></span>
+                          ) : null}
                           <Field
                             label="OTP"
                             value={otpByParty[partyId] ?? ''}
@@ -2313,9 +2327,9 @@ export default function TransactionStart() {
               <button type="button" className="primary" onClick={() => setActiveStage(1)}>
                 Next section
               </button>
-            ) : activeStage === 3 && createdTransactionRef.length > 0 ? (
-              <span className="stage-label">{buyerDetailsSaved ? 'Complete Aadhaar consent above to continue' : `Save ${isPartition ? 'partition parties' : secondPartyLabel.toLowerCase() + ' details'} above to continue`}</span>
             ) : activeStage === 2 && createdTransactionRef.length > 0 ? (
+              <span className="stage-label">{buyerDetailsSaved ? 'Complete Aadhaar consent above to continue' : `Save ${isPartition ? 'partition parties' : secondPartyLabel.toLowerCase() + ' details'} above to continue`}</span>
+            ) : activeStage === 3 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">Save witness details above to continue</span>
             ) : activeStage === 4 && createdTransactionRef.length > 0 ? (
               <span className="stage-label">{txnStatus === 'RULE_CHECK_PENDING' && latestRuleResults.some(ruleBlocking) ? 'Stopped by rule check · next steps locked' : 'Run rule checks above to continue'}</span>
