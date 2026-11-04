@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, get, put } from '../api'
 import type { Row } from '../types'
+import { useAuth } from '../auth'
 import { Banner, DataTable, Field } from '../ui'
 import { useOptionSet } from './propertyShared'
 
@@ -28,6 +29,7 @@ interface OwnerForm {
   propertyOwnerId: number
   name: string
   status: string
+  maritalStatus: string
   dateOfDeath: string
   certificateNo: string
   certificateDate: string
@@ -63,7 +65,12 @@ interface PartitionScheduleForm {
 const text = (value: unknown) => (value === null || value === undefined ? '' : String(value))
 const money = (value: number) => value.toLocaleString('en-IN', { maximumFractionDigits: 2 })
 function usePartitionOptions() {
+  const { bootstrap } = useAuth()
   return {
+    relationOptions: (bootstrap?.bloodRelations ?? []).map((relation) => ({
+      value: String(relation.relationship_name),
+      label: String(relation.relationship_name),
+    })),
     statusOptions: useOptionSet('LIFE_STATUS'),
     yesNo: useOptionSet('YES_NO'),
     maritalOptions: useOptionSet('MARITAL_STATUS'),
@@ -114,6 +121,7 @@ const ownersFrom = (data: Row): OwnerForm[] => {
       propertyOwnerId: Number(owner.id),
       name: text(owner.owner_name),
       status: text(m?.living_status),
+      maritalStatus: text(m?.marital_status),
       dateOfDeath: text(m?.date_of_death),
       certificateNo: text(m?.death_cert_no),
       certificateDate: text(m?.death_cert_date),
@@ -167,6 +175,12 @@ const heirPayload = (heir: HeirForm): Row => ({
   address: heir.address || undefined,
   pan: heir.status === 'LIVING' ? heir.pan.trim().toUpperCase() || undefined : undefined,
 })
+
+const unmarriedDeceased = (person: { status: string; maritalStatus: string }) =>
+  person.status === 'DECEASED' && person.maritalStatus === 'UNMARRIED'
+
+const unmarriedMessage = (name: string, heirs: string) =>
+  `${name} is unmarried, so ${heirs} cannot be added and the partition cannot proceed.`
 
 const lineTotal = (schedule: PartitionScheduleForm) => {
   const entered = schedule.surveys.filter((line) => line.value.trim().length > 0)
@@ -259,7 +273,7 @@ function HeirTable({
   title: string
   depth: number
 }) {
-  const { statusOptions, yesNo, maritalOptions } = usePartitionOptions()
+  const { statusOptions, yesNo, maritalOptions, relationOptions } = usePartitionOptions()
   const update = (index: number, patch: Partial<HeirForm>) =>
     onChange((current) => current.map((h, i) => (i === index ? { ...h, ...patch } : h)))
   return (
@@ -285,11 +299,9 @@ function HeirTable({
           </div>
           <div className="form-grid three">
             <Field label="Name" value={heir.name} onChange={(v) => update(index, { name: v })} readOnly={readOnly} required />
-            <Field label="Relationship" value={heir.relationship} onChange={(v) => update(index, { relationship: v })} readOnly={readOnly} required />
+            <Field label="Relationship" value={heir.relationship} options={relationOptions} onChange={(v) => update(index, { relationship: v })} readOnly={readOnly} required />
             <Field label="Living / Deceased" value={heir.status} options={statusOptions} onChange={(v) => update(index, { status: v })} readOnly={readOnly} required />
-            {depth === 0 ? (
-              <Field label="Marital status" value={heir.maritalStatus} options={maritalOptions} onChange={(v) => update(index, { maritalStatus: v })} readOnly={readOnly} />
-            ) : null}
+            <Field label="Marital status" value={heir.maritalStatus} options={maritalOptions} onChange={(v) => update(index, { maritalStatus: v })} readOnly={readOnly} required />
             {heir.status === 'LIVING' ? (
               <>
                 <Field
@@ -309,6 +321,7 @@ function HeirTable({
           {heir.status === 'DECEASED' ? (
             <>
               <DeathFields txnRef={txnRef} form={heir} onChange={(patch) => update(index, patch)} readOnly={readOnly} />
+              {unmarriedDeceased(heir) ? <Banner kind="error" message={unmarriedMessage(heir.name || 'This legal heir', 'successors')} /> : (<>
               <div className="form-grid three">
                 <Field
                   label="Successor / legal heirs available?"
@@ -329,6 +342,7 @@ function HeirTable({
                   depth={depth + 1}
                 />
               ) : null}
+              </>)}
             </>
           ) : null}
         </div>
@@ -350,7 +364,7 @@ export function PartitionWorkspace({
   onSaved?: () => void
   schedulesOnly?: boolean
 }) {
-  const { statusOptions, yesNo, unitOptions } = usePartitionOptions()
+  const { statusOptions, yesNo, maritalOptions, unitOptions } = usePartitionOptions()
   const [data, setData] = useState<Row | null>(null)
   const [owners, setOwners] = useState<OwnerForm[]>([])
   const [schedules, setSchedules] = useState<PartitionScheduleForm[]>([])
@@ -377,6 +391,9 @@ export function PartitionWorkspace({
   const participants = (data.participants as Row[] | undefined) ?? []
   const singleLivingOwner = owners.length === 1 && owners[0].status === 'LIVING'
   const blockedByCertificate = owners.some((o) => o.status === 'DECEASED' && o.lhcAvailable === 'NO')
+  const unmarriedIn = (heirs: HeirForm[]): boolean => heirs.some((h) =>
+    unmarriedDeceased(h) || (h.status === 'DECEASED' && h.successorsAvailable === 'YES' && unmarriedIn(h.successors)))
+  const blockedByMarital = owners.some((o) => unmarriedDeceased(o) || (o.status === 'DECEASED' && o.lhcAvailable === 'YES' && unmarriedIn(o.heirs)))
   const updateOwner = (index: number, patch: Partial<OwnerForm>) =>
     setOwners((current) => current.map((o, i) => (i === index ? { ...o, ...patch } : o)))
   const missingHeirs = (heirs: HeirForm[]): string[] => heirs.flatMap((h) => {
@@ -402,6 +419,7 @@ export function PartitionWorkspace({
         owners: owners.map((o) => ({
           propertyOwnerId: o.propertyOwnerId,
           status: o.status,
+          maritalStatus: o.maritalStatus || undefined,
           death: o.status === 'DECEASED' ? death(o) : undefined,
           legalHeirCertificate: o.status === 'DECEASED' ? {
             available: o.lhcAvailable === 'YES',
@@ -512,11 +530,13 @@ export function PartitionWorkspace({
                 readOnly={partiesReadOnly}
                 required
               />
+              <Field label="Marital status" value={owner.maritalStatus} options={maritalOptions} onChange={(v) => updateOwner(index, { maritalStatus: v })} readOnly={partiesReadOnly} required />
             </div>
             {owner.status === 'DECEASED' ? (
               <>
                 <h5>Deceased owner details</h5>
                 <DeathFields txnRef={txnRef} form={owner} onChange={(patch) => updateOwner(index, patch)} readOnly={partiesReadOnly} />
+                {unmarriedDeceased(owner) ? <Banner kind="error" message={unmarriedMessage(owner.name, 'legal heirs')} /> : (<>
                 <div className="form-grid three">
                   <Field label="Legal heir certificate available?" value={owner.lhcAvailable} options={yesNo} onChange={(v) => updateOwner(index, v === 'YES' && owner.heirs.length === 0 ? { lhcAvailable: v, heirs: [emptyHeir()] } : { lhcAvailable: v })} readOnly={partiesReadOnly} required />
                   {owner.lhcAvailable === 'YES' ? (
@@ -544,6 +564,7 @@ export function PartitionWorkspace({
                     depth={0}
                   />
                 ) : null}
+                </>)}
               </>
             ) : null}
           </div>
@@ -551,7 +572,7 @@ export function PartitionWorkspace({
         {singleLivingOwner ? <Banner kind="error" message="Partition not applicable: the only current owner is living." /> : null}
         {partiesReadOnly ? null : (
           <div className="form-submit-row">
-            <button type="button" className="primary" disabled={busy || singleLivingOwner || blockedByCertificate} onClick={() => void saveMembers()}>
+            <button type="button" className="primary" disabled={busy || singleLivingOwner || blockedByCertificate || blockedByMarital} onClick={() => void saveMembers()}>
               {busy ? 'Saving…' : 'Save partition parties'}
             </button>
           </div>
