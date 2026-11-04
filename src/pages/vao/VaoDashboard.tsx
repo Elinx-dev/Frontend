@@ -45,7 +45,7 @@ export default function VaoDashboard() {
           <strong>{kpis?.scheduled ?? (loading ? '…' : 0)}</strong>
           <small>Visit slots booked</small>
         </div>
-        <div className="vao-kpi tone-gold">
+        <div className="vao-kpi tone-emerald">
           <span>Visit done <PinIcon /></span>
           <strong>{kpis?.visitDone ?? (loading ? '…' : 0)}</strong>
           <small>Checked in at site</small>

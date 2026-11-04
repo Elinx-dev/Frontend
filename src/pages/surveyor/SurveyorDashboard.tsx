@@ -47,7 +47,7 @@ export default function SurveyorDashboard() {
           <strong>{count(kpis?.scheduled)}</strong>
           <small>Survey visits booked</small>
         </div>
-        <div className="vao-kpi tone-gold">
+        <div className="vao-kpi tone-emerald">
           <span>Survey due <PinIcon /></span>
           <strong>{count(kpis?.surveyDue)}</strong>
           <small>Checked in or flagged</small>

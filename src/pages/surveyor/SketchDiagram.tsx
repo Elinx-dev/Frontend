@@ -59,7 +59,7 @@ export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
           </pattern>
         </defs>
         <rect width={W} height={H} fill="url(#sv-grid)" />
-        <polygon points={screen.slice(0, n).map((p) => p.join(',')).join(' ')} fill="rgba(184,146,61,0.14)" stroke="#0f2a4a" strokeWidth="2" />
+        <polygon points={screen.slice(0, n).map((p) => p.join(',')).join(' ')} fill="rgba(184,146,61,0.14)" stroke="#102b4c" strokeWidth="2" />
         {closes ? null : (
           <line x1={screen[n][0]} y1={screen[n][1]} x2={screen[0][0]} y2={screen[0][1]} stroke="#c0392b" strokeDasharray="5 4" strokeWidth="1.5" />
         )}
@@ -80,7 +80,7 @@ export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
           const d = Math.hypot(x - cx, y - cy) || 1
           return (
             <g key={`pt-${i}`}>
-              <circle cx={x} cy={y} r="4" fill="#b8923d" stroke="#0f2a4a" />
+              <circle cx={x} cy={y} r="4" fill="#16845b" stroke="#102b4c" />
               <text x={x + ((x - cx) / d) * 14} y={y + ((y - cy) / d) * 14 + 4} textAnchor="middle" className="sv-sketch-pt">
                 {String.fromCharCode(65 + i)}
               </text>
@@ -88,7 +88,7 @@ export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
           )
         })}
         <g transform={`translate(${W - 28}, 30)`}>
-          <path d="M0 -14 L6 6 L0 2 L-6 6 Z" fill="#0f2a4a" />
+          <path d="M0 -14 L6 6 L0 2 L-6 6 Z" fill="#102b4c" />
           <text y="20" textAnchor="middle" className="sv-sketch-pt">N</text>
         </g>
       </svg>

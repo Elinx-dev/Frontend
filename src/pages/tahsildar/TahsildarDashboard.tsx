@@ -47,7 +47,7 @@ export default function TahsildarDashboard() {
           <strong>{value(kpis?.total)}</strong>
           <small>{kpis?.inProgress ?? 0} with Surveyor / VAO · {kpis?.objections ?? 0} objections</small>
         </div>
-        <div className="vao-kpi tone-gold">
+        <div className="vao-kpi tone-emerald">
           <span>Approved today <CheckCircleIcon /></span>
           <strong>{value(kpis?.approvedToday)}</strong>
           <small>{kpis?.approvedThisMonth ?? 0} this month</small>
