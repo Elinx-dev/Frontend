@@ -56,7 +56,7 @@ export default function TransactionQueue() {
         <div className="vao-kpi"><span>In Progress</span><strong>{inProgress}</strong><small>Fees, objections, Tahsildar</small></div>
         <div className="vao-kpi tone-danger"><span>Open Exceptions</span><strong>{exceptions}</strong><small>Need manual review</small></div>
         <div className="vao-kpi tone-success"><span>Registered (MTD)</span><strong>{registered}</strong><small>Registered or approved</small></div>
-        <div className="vao-kpi tone-gold"><span>Fee Collected (Session)</span><strong>₹ {feeTotal.toLocaleString('en-IN')}</strong><small>Across listed transactions</small></div>
+        <div className="vao-kpi tone-emerald"><span>Fee Collected (Session)</span><strong>₹ {feeTotal.toLocaleString('en-IN')}</strong><small>Across listed transactions</small></div>
       </div>
       <Panel title="Queue Snapshot">
         <div className="queue-toolbar"><Field label="Status filter" value={status} onChange={setStatus} options={['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING', 'REGISTERED', 'SURVEY_PENDING', 'VAO_PENDING', 'OBJECTION_PENDING', 'TAHSILDAR_PENDING', 'REVENUE_APPROVED', 'WITHDRAWN'].map((s) => ({ value: s, label: s }))} /></div>

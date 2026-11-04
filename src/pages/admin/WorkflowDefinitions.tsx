@@ -76,7 +76,7 @@ export default function WorkflowDefinitions() {
       <div className="adm-stats">
         <StatCard label="Deed types" value={new Set(workflows.map((w) => w.deed_type_code)).size} />
         <StatCard label="Published" value={count('PUBLISHED')} tone="success" />
-        <StatCard label="Draft" value={count('DRAFT')} tone="gold" />
+        <StatCard label="Draft" value={count('DRAFT')} tone="emerald" />
         <StatCard label="Retired" value={count('RETIRED')} tone="danger" />
       </div>
 

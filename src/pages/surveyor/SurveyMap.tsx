@@ -46,10 +46,10 @@ export function SurveyMap({ lat, lon, areaM2, polygon }: { lat: number | null; l
       const dLat = half / 111320
       const dLon = half / (111320 * Math.cos((lat * Math.PI) / 180))
       bounds = L.rectangle([[lat - dLat, lon - dLon], [lat + dLat, lon + dLon]], {
-        color: '#b8923d', weight: 2, dashArray: '6 4', fillOpacity: 0.15,
+        color: '#16845b', weight: 2, dashArray: '6 4', fillOpacity: 0.15,
       }).addTo(group).getBounds()
     }
-    L.circleMarker([lat, lon], { radius: 7, color: '#0f2a4a', weight: 2, fillColor: '#b8923d', fillOpacity: 0.9 }).addTo(group)
+    L.circleMarker([lat, lon], { radius: 7, color: '#102b4c', weight: 2, fillColor: '#16845b', fillOpacity: 0.9 }).addTo(group)
     m.fitBounds(bounds.pad(0.6), { maxZoom: 18 })
   }, [lat, lon, areaM2, polygon])
 

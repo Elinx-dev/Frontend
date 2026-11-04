@@ -93,7 +93,7 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
-const PALETTE = ['#0f2a4a', '#b8923d', '#2e6fb0', '#1c7a4e', '#7a9cc6', '#d9a75a', '#5f6670', '#16304f']
+const PALETTE = ['#102b4c', '#16845b', '#2e6fb0', '#7fd6a6', '#7a9cc6', '#116b49', '#5f6670', '#16304f']
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'TODAY', label: 'Today' },
@@ -104,8 +104,8 @@ const PERIODS: { value: Period; label: string }[] = [
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: '#9aa1a9',
-  CONSENT_PENDING: '#e8cd95',
-  RULE_CHECK_PENDING: '#d9a75a',
+  CONSENT_PENDING: '#a8d8bf',
+  RULE_CHECK_PENDING: '#4fb38a',
   EXCEPTION: '#b0392f',
   FEE_PAYMENT_PENDING: '#b8722e',
   SUBMITTED: '#5b8cc4',
@@ -119,9 +119,9 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const SERIES = [
-  { key: 'transactions', label: 'Transactions', color: '#0f2a4a' },
+  { key: 'transactions', label: 'Transactions', color: '#102b4c' },
   { key: 'registered', label: 'Registered', color: '#1c7a4e' },
-  { key: 'properties', label: 'New properties', color: '#b8923d' },
+  { key: 'properties', label: 'New properties', color: '#3a8fb7' },
   { key: 'failures', label: 'Failures', color: '#b0392f' },
 ] as const
 
@@ -341,9 +341,9 @@ function DashboardTab({ data, tab, explore }: { data: DashboardData; tab: Exclud
   const kpis = [
     { label: 'Transactions', value: num(s.transactionsInitiated).toLocaleString('en-IN'), note: 'Initiated in period', tone: 'navy' },
     { label: 'Registered', value: num(s.transactionsRegistered).toLocaleString('en-IN'), note: `${percent(num(s.transactionsRegistered), num(s.transactionsInitiated))} of initiated`, tone: 'success' },
-    { label: 'New Properties', value: num(s.propertiesAdded).toLocaleString('en-IN'), note: 'Minted in period', tone: 'gold' },
+    { label: 'New Properties', value: num(s.propertiesAdded).toLocaleString('en-IN'), note: 'Minted in period', tone: 'emerald' },
     { label: 'Revenue Approved', value: num(s.mutationsApproved).toLocaleString('en-IN'), note: 'Mutations by Tahsildar', tone: 'info' },
-    { label: 'Fees Collected', value: `₹ ${num(s.feesCollected).toLocaleString('en-IN')}`, note: 'Successful payments', tone: 'gold', money: true },
+    { label: 'Fees Collected', value: `₹ ${num(s.feesCollected).toLocaleString('en-IN')}`, note: 'Successful payments', tone: 'emerald', money: true },
     { label: 'Failures & Holds', value: totalFailures(data).toLocaleString('en-IN'), note: 'Rule, VAO, survey, API', tone: 'danger' },
     { label: 'Open Exceptions', value: num(s.openExceptions).toLocaleString('en-IN'), note: 'Current, all time', tone: 'warning' },
     { label: 'Open Pipeline', value: num(s.openPipeline).toLocaleString('en-IN'), note: typeof s.avgHoursToRegister === 'number' ? `Avg ${s.avgHoursToRegister} h to register` : 'Current, all time', tone: 'navy' },
@@ -744,8 +744,8 @@ function TrendChart({ points, bucket, series = SERIES }: { points: TrendPoint[];
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Activity trend chart" onMouseLeave={() => setHover(null)}>
         <defs>
           <linearGradient id="ad-area" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#0f2a4a" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#0f2a4a" stopOpacity="0" />
+            <stop offset="0%" stopColor="#102b4c" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#102b4c" stopOpacity="0" />
           </linearGradient>
         </defs>
         {ticks.map((t) => (
@@ -873,9 +873,9 @@ function RevenuePipeline({ revenue }: { revenue: DashboardData['revenue'] }) {
 
 function StateComparison({ rows }: { rows: DashboardData['byState'] }) {
   const metrics = [
-    { key: 'transactions', label: 'Transactions', color: '#0f2a4a' },
+    { key: 'transactions', label: 'Transactions', color: '#102b4c' },
     { key: 'registered', label: 'Registered', color: '#1c7a4e' },
-    { key: 'properties', label: 'New properties', color: '#b8923d' },
+    { key: 'properties', label: 'New properties', color: '#3a8fb7' },
     { key: 'exceptions', label: 'Exceptions', color: '#b0392f' },
   ] as const
   const max = Math.max(1, ...rows.flatMap((r) => metrics.map((m) => num(r[m.key]))))

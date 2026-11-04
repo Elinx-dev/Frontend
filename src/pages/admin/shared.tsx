@@ -94,7 +94,7 @@ export function SearchBox({ value, onChange, placeholder }: {
   )
 }
 
-export function StatCard({ label, value, tone = 'navy' }: { label: string; value: number | string; tone?: 'navy' | 'success' | 'warning' | 'danger' | 'gold' }) {
+export function StatCard({ label, value, tone = 'navy' }: { label: string; value: number | string; tone?: 'navy' | 'success' | 'warning' | 'danger' | 'emerald' }) {
   return (
     <div className={`adm-stat ad-tone-${tone}`}>
       <span>{label}</span>

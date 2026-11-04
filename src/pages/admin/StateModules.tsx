@@ -62,7 +62,7 @@ export default function StateModules() {
       <div className="adm-stats">
         <StatCard label="Modules" value={modules.length} />
         <StatCard label="Facilitated" value={modules.filter((m) => m.enabled && m.mode === 'FACILITATE').length} tone="success" />
-        <StatCard label="Record only" value={modules.filter((m) => m.enabled && m.mode === 'RECORD').length} tone="gold" />
+        <StatCard label="Record only" value={modules.filter((m) => m.enabled && m.mode === 'RECORD').length} tone="emerald" />
         <StatCard label="Off or disabled" value={modules.filter((m) => !m.enabled || m.mode === 'DISABLED').length} tone="danger" />
       </div>
 
