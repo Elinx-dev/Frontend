@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import slateMark from './assets/slate-mark-light.png'
 
 import { get } from './api'
 
@@ -117,7 +118,7 @@ function Shell({ children }: { children: ReactNode }) {
     <div className={isRegistrar ? 'app ro-portal' : 'app'}>
       <aside className="sidebar">
         <Link className="brand" to={homeRouteFor(user)}>
-          <span className="brand-mark">S</span>
+          <img className="brand-mark" src={slateMark} alt="" />
           <span className="brand-text">
             <strong>SLATE</strong>
             <small>Secured Land Asset Token Exchange</small>
