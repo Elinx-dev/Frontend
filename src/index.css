@@ -2255,15 +2255,16 @@ button:disabled {
 .login-card {
   position: relative;
   width: 100%;
-  max-width: 565px;
+  max-width: 430px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 52px;
+  gap: 12px;
+  padding: 36px 38px 32px;
   overflow: hidden;
   background: #fff;
-  border-radius: 24px;
-  box-shadow: 0 20px 50px rgba(8, 35, 58, 0.11);
+  border: 1px solid rgba(16, 43, 76, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 18px 44px rgba(8, 35, 58, 0.12), 0 2px 6px rgba(8, 35, 58, 0.04);
 }
 
 .login-card::before {
@@ -2272,38 +2273,38 @@ button:disabled {
   top: 0;
   left: 0;
   right: 0;
-  height: 6px;
+  height: 5px;
   background: linear-gradient(90deg, #30c963, #119b77, #082b4b);
 }
 
 .login-card h1 {
-  margin: 0;
+  margin: 0 0 6px;
   color: #071f3b;
-  font-size: 31px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.6px;
+  letter-spacing: -0.4px;
 }
 
 .login-card > .muted:first-of-type {
-  margin: -6px 0 20px;
+  margin: -6px 0 12px;
   color: #60718a;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.55;
 }
 
 .login-card .field > span {
   color: #071f3b;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .login-card .field-input input {
-  height: 53px;
-  padding: 0 46px;
+  height: 44px;
+  padding: 0 42px;
   border: 1px solid #cdd9e5;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #071f3b;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .login-card input:focus {
@@ -2313,20 +2314,20 @@ button:disabled {
 }
 
 .login-card .field-input .field-icon {
-  left: 15px;
+  left: 14px;
   color: #165479;
 }
 
 .login-card button.primary {
-  min-height: 62px;
-  margin-top: 5px;
-  padding: 13px 18px;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 10px 16px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 10px;
   background: linear-gradient(100deg, #061d38 0%, #07314b 65%, #109b64 100%);
-  font-size: 17px;
-  font-weight: 700;
-  box-shadow: 0 10px 20px rgba(4, 30, 54, 0.15);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 8px 16px rgba(4, 30, 54, 0.14);
 }
 
 .login-card button.primary:hover:not(:disabled) {
@@ -2334,14 +2335,14 @@ button:disabled {
 }
 
 .login-card details {
-  border: 1px solid #cdd9e5;
-  border-radius: 12px;
+  border: 1px solid #dfe6ee;
+  border-radius: 10px;
   background: #f8fafc;
 }
 
 .login-card a {
   color: #07518c;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .login-continue {
@@ -2352,13 +2353,24 @@ button:disabled {
 }
 
 .login-continue img {
-  width: 20px;
+  width: 17px;
   height: auto;
 }
 
 .login-public-link {
   align-self: center;
   text-align: center;
+}
+
+.login-card > p.muted:last-child {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+}
+
+.login-card > p.muted:last-child .login-public-link {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .login-public-link svg {
@@ -2369,6 +2381,7 @@ button:disabled {
 .auth-links {
   display: flex;
   justify-content: flex-end;
+  margin-top: -2px;
   font-size: 12.5px;
 }
 
@@ -2502,7 +2515,7 @@ button:disabled {
   }
 
   .login-card h1 {
-    font-size: 25px;
+    font-size: 22px;
   }
 
   .login-card > .muted:first-of-type {
@@ -2510,7 +2523,11 @@ button:disabled {
   }
 
   .login-card button.primary {
-    min-height: 55px;
+    min-height: 44px;
+  }
+
+  .login-card > p.muted:last-child .login-public-link {
+    white-space: normal;
   }
 }
 
