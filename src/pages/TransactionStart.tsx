@@ -1300,9 +1300,14 @@ export default function TransactionStart() {
             aadhaarNumber={witness.aadhaarNumber}
             verified={witness.aadhaarNumber.length > 0 && witness.verifiedAadhaar === witness.aadhaarNumber}
             onAadhaarChange={(value) => updateWitness(index, 'aadhaarNumber', value)}
-            onVerified={(profile: AadhaarProfile, number) => setWitnesses((current) => current.map((item, i) => (i === index
-              ? { name: profile.name, address: profile.address, phoneNumber: profile.mobile, aadhaarNumber: number, verifiedAadhaar: number }
-              : item)))}
+            onVerified={(profile: AadhaarProfile, number) => {
+              setWitnesses((current) => current.map((item, i) => (i === index
+                ? { name: profile.name, address: profile.address, phoneNumber: profile.mobile, aadhaarNumber: number, verifiedAadhaar: number }
+                : item)))
+              setWitnessErrors((current) => ({ ...current, [index]: {} }))
+              setWitnessesSaved(false)
+              setError('')
+            }}
           />
           {witnessErrors[index]?.aadhaarNumber ? <span className="field-error">{witnessErrors[index].aadhaarNumber}</span> : null}
           {witness.aadhaarNumber.length > 0 && witness.verifiedAadhaar === witness.aadhaarNumber ? (
@@ -1998,9 +2003,14 @@ export default function TransactionStart() {
                                   verified={party.aadhaarNumber.length > 0 && party.verifiedAadhaar === party.aadhaarNumber}
                                   onAadhaarChange={(value) => setParties((current) => current.map((item, i) => (i === index
                                     ? { ...item, aadhaarNumber: value, verifiedAadhaar: '', ownerName: '', address: '', mobile: '' } : item)))}
-                                  onVerified={(profile: AadhaarProfile, number) => setParties((current) => current.map((item, i) => (i === index
-                                    ? { ...item, ownerName: profile.name, address: profile.address, mobile: profile.mobile, aadhaarNumber: number, verifiedAadhaar: number }
-                                    : item)))}
+                                  onVerified={(profile: AadhaarProfile, number) => {
+                                    setParties((current) => current.map((item, i) => (i === index
+                                      ? { ...item, ownerName: profile.name, address: profile.address, mobile: profile.mobile, aadhaarNumber: number, verifiedAadhaar: number }
+                                      : item)))
+                                    setPartyErrors((current) => ({ ...current, [index]: {} }))
+                                    setBuyerDetailsSaved(false)
+                                    setError('')
+                                  }}
                                 />
                                 {partyErrors[index]?.aadhaarNumber ? <span className="field-error">{partyErrors[index].aadhaarNumber}</span> : null}
                                 {party.aadhaarNumber.length > 0 && party.verifiedAadhaar === party.aadhaarNumber ? (
@@ -2113,6 +2123,7 @@ export default function TransactionStart() {
                           <span className="grow">
                             {role}: {name} — {consentStatus}
                           </span>
+                          {consentStatus === 'VERIFIED' ? null : <>
                           <Field
                             label="OTP"
                             value={otpByParty[partyId] ?? ''}
@@ -2128,6 +2139,7 @@ export default function TransactionStart() {
                           >
                             Verify
                           </button>
+                          </>}
                         </div>
                       )
                     })}
