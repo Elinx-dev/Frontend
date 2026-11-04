@@ -2031,6 +2031,21 @@ export default function TransactionStart() {
                                         <Field label={buyerLayout.panLabel} value={party.pan} onChange={(value) => updateParty(index, 'pan', value.toUpperCase())} required />
                                         {partyErrors[index]?.pan ? <span className="field-error">{partyErrors[index].pan}</span> : null}
                                       </div>
+                                      {bloodRelationRequired ? (
+                                        <div>
+                                          <Field
+                                            label="Relationship Category"
+                                            value={party.relationshipCode}
+                                            onChange={(value) => updateParty(index, 'relationshipCode', value)}
+                                            options={bloodRelations.map((relation) => ({
+                                              value: String(relation.code),
+                                              label: String(relation.relationship_name),
+                                            }))}
+                                            required
+                                          />
+                                          {partyErrors[index]?.relationshipCode ? <span className="field-error">{partyErrors[index].relationshipCode}</span> : null}
+                                        </div>
+                                      ) : null}
                                     </div>
                                   </>
                                 ) : null}
@@ -2043,7 +2058,7 @@ export default function TransactionStart() {
                                 onChange={(field, value) => updateParty(index, field, value)}
                               />
                             )}
-                            {bloodRelationRequired ? (
+                            {bloodRelationRequired && !buyerLayout.aadhaar ? (
                               <div className="owner-fields">
                                 <div>
                                   <Field
