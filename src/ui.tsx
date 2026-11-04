@@ -1,75 +1,19 @@
 import { useState, type ChangeEvent, type ReactNode } from 'react'
 
 import type { Row } from './types'
-import slateLogo from './assets/slate-logo.png'
-import slateLogoLight from './assets/slate-logo-light.png'
+import loginArt from './assets/login-art.jpg'
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="login-page">
-      <aside className="login-brand">
-        <svg className="login-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="login-navy" x1="0" y1="0" x2="0.4" y2="1">
-              <stop offset="0" stopColor="#0a1628" />
-              <stop offset="0.55" stopColor="#0f2a4a" />
-              <stop offset="1" stopColor="#0d3b45" />
-            </linearGradient>
-            <linearGradient id="login-edge" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#2fa36f" stopOpacity="0.95" />
-              <stop offset="1" stopColor="#1c7a4e" stopOpacity="0.55" />
-            </linearGradient>
-          </defs>
-          <path d="M0,0 H100 C84,28 74,62 66,100 H0 Z" fill="url(#login-edge)" />
-          <path d="M0,0 H93 C77,28 67,62 59,100 H0 Z" fill="url(#login-navy)" />
-        </svg>
-        <div className="login-brand-inner">
-          <img className="login-logo" src={slateLogoLight} alt="SLATE, Secured Land Asset Token Exchange" />
-          <div className="login-rule" />
-          <h2 className="login-headline">Secure. Verify. Record.</h2>
-          <p className="login-lead">A trusted blockchain layer for land transactions and ownership.</p>
-        </div>
-        <ParcelArt />
-      </aside>
-      <div className="login-form-side">
-        <img className="login-mobile-logo" src={slateLogo} alt="SLATE, Secured Land Asset Token Exchange" />
-        {children}
-      </div>
+      <aside
+        className="login-art"
+        role="img"
+        aria-label="SLATE, Secured Land Asset Token Exchange. Secure. Verify. Record."
+        style={{ backgroundImage: `url(${loginArt})` }}
+      />
+      <div className="login-form-side">{children}</div>
     </div>
-  )
-}
-
-function ParcelArt() {
-  const rows = [0, 1, 2, 3, 4, 5, 6]
-  const cols = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
-  const y = (i: number) => 40 + i * i * 6 + i * 14
-  return (
-    <svg className="login-parcel" viewBox="0 0 600 340" aria-hidden="true">
-      <defs>
-        <radialGradient id="parcel-glow" cx="0.45" cy="0.55" r="0.5">
-          <stop offset="0" stopColor="#2fa36f" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#2fa36f" stopOpacity="0" />
-        </radialGradient>
-        <filter id="parcel-blur" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" />
-        </filter>
-      </defs>
-      <ellipse cx="270" cy="200" rx="260" ry="120" fill="url(#parcel-glow)" />
-      <g stroke="#5fc79a" strokeOpacity="0.22" strokeWidth="1" fill="none">
-        {rows.map((i) => <line key={`r${i}`} x1="0" y1={y(i)} x2="600" y2={y(i) - 40} />)}
-        {cols.map((c) => <line key={`c${c}`} x1={300 + c * 22} y1="20" x2={300 + c * 110} y2="340" />)}
-        <path d="M0 120 C120 90 220 140 340 110 S520 70 600 90" strokeOpacity="0.3" />
-        <path d="M0 150 C140 120 240 170 360 140 S520 100 600 120" strokeOpacity="0.18" />
-      </g>
-      <polygon points="150,230 330,170 400,225 220,295" fill="#2fa36f" fillOpacity="0.18" />
-      <polygon points="150,230 330,170 400,225 220,295" fill="none" stroke="#7ff0bd" strokeWidth="6" strokeOpacity="0.45" filter="url(#parcel-blur)" />
-      <polygon points="150,230 330,170 400,225 220,295" fill="none" stroke="#c9ffe6" strokeWidth="2" />
-      <g transform="translate(275 150)">
-        <ellipse cx="0" cy="78" rx="16" ry="5" fill="#2fa36f" fillOpacity="0.5" />
-        <path d="M0 76 C-6 60 -22 46 -22 28 A22 22 0 1 1 22 28 C22 46 6 60 0 76 Z" fill="#ffffff" />
-        <circle cx="0" cy="28" r="8" fill="#1c7a4e" />
-      </g>
-    </svg>
   )
 }
 
