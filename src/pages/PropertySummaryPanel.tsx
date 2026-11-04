@@ -14,7 +14,7 @@ const rows = (value: unknown) => (Array.isArray(value) ? (value as Row[]) : EMPT
 
 function Item({ label, value, options }: { label: string; value: unknown; options?: SelectOption[] }) {
   const text = displayValue(value)
-  return <><dt>{label}</dt><dd>{options && text !== '—' ? labelFor(options, text) : text}</dd></>
+  return <><dt>{label}</dt><dd>{options && text !== '-' ? labelFor(options, text) : text}</dd></>
 }
 
 export default function PropertySummaryPanel({ propertyRef, ownerLabel }: { propertyRef: string; ownerLabel?: string }) {

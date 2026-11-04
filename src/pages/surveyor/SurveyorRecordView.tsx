@@ -70,10 +70,10 @@ export default function SurveyorRecordView() {
         </div>
         <div className="vao-detail-meta">
           <span>Type: <b>{deedLabel(record.deed_type_code)}</b></span>
-          <span>Survey no.: <b>{record.survey_no ?? '—'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</b></span>
-          <span>Village: <b>{record.village_name ?? record.village_code ?? '—'}</b></span>
-          <span>Token extent: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></span>
-          <span>VAO: <b>{record.assigned_vao_name ?? '—'}</b></span>
+          <span>Survey no.: <b>{record.survey_no ?? '-'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</b></span>
+          <span>Village: <b>{record.village_name ?? record.village_code ?? '-'}</b></span>
+          <span>Token extent: <b>{record.extent_value ?? '-'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></span>
+          <span>VAO: <b>{record.assigned_vao_name ?? '-'}</b></span>
         </div>
         {survey == null ? null : (
           <div className="vao-surveyor-strip">
@@ -103,7 +103,7 @@ export default function SurveyorRecordView() {
               <Fact label={`In token unit (${areaUnitLabel(record.extent_unit, areaUnits)})`} value={survey.measured_extent_in_record_unit} />
               <Fact label="Token record extent" value={survey.authoritative_recorded_extent} />
               <Fact label="Variance / tolerance" value={`${Number(survey.variance_pct).toFixed(2)}% / ${formatCell(survey.tolerance_pct)}%`} />
-              <Fact label="Routing" value={survey.routed_to === 'VAO_VERIFICATION' ? 'Forwarded to VAO' : 'Conflict — survey correction review'} />
+              <Fact label="Routing" value={survey.routed_to === 'VAO_VERIFICATION' ? 'Forwarded to VAO' : 'Conflict: survey correction review'} />
               <Fact label="Survey date" value={survey.survey_date} />
             </div>
           ) : null}

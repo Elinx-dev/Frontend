@@ -126,9 +126,9 @@ export default function AadhaarEkyc({ aadhaarNumber, verified, disabled = false,
 export function AadhaarProfileFacts({ profile, extra }: { profile: { name: string; address: string; mobile: string }; extra?: React.ReactNode }) {
   return (
     <div className="vao-facts ekyc-facts">
-      <div className="vao-fact"><span>Name (from Aadhaar)</span><strong>{profile.name || '—'}</strong></div>
-      <div className="vao-fact"><span>Mobile (from Aadhaar)</span><strong>{profile.mobile || '—'}</strong></div>
-      <div className="vao-fact"><span>Address (from Aadhaar)</span><strong>{profile.address || '—'}</strong></div>
+      <div className="vao-fact"><span>Name (from Aadhaar)</span><strong>{profile.name || '-'}</strong></div>
+      <div className="vao-fact"><span>Mobile (from Aadhaar)</span><strong>{profile.mobile || '-'}</strong></div>
+      <div className="vao-fact"><span>Address (from Aadhaar)</span><strong>{profile.address || '-'}</strong></div>
       {extra}
     </div>
   )

@@ -96,22 +96,22 @@ export function canBook(record: VaoRecord): boolean {
 }
 
 export function purposeLabel(purpose: unknown): string {
-  return purpose === 'FIELD_VERIFICATION' ? 'Field verification' : purpose === 'FIELD_SURVEY' ? 'Field survey' : '—'
+  return purpose === 'FIELD_VERIFICATION' ? 'Field verification' : purpose === 'FIELD_SURVEY' ? 'Field survey' : '-'
 }
 
 export function planLabel(record: VaoRecord): string {
-  if (record.visit_status == null) return '—'
+  if (record.visit_status == null) return '-'
   return record.visit_status === 'COMPLETED' ? 'Completed' : 'Booked'
 }
 
 export function when(date: string | null, time: string | null): string {
-  if (date == null) return '—'
+  if (date == null) return '-'
   return time == null ? date : `${date} · ${time}`
 }
 
 export function parties(record: VaoRecord): string {
-  const first = record.first_parties ?? '—'
-  const second = record.second_parties ?? '—'
+  const first = record.first_parties ?? '-'
+  const second = record.second_parties ?? '-'
   return `${first} → ${second}`
 }
 
@@ -120,7 +120,7 @@ export function deedLabel(code: string): string {
 }
 
 export function rupees(value: number | null): string {
-  if (value == null || value === undefined) return '—'
+  if (value == null || value === undefined) return '-'
   return `₹${Number(value).toLocaleString('en-IN')}`
 }
 
@@ -131,7 +131,7 @@ export function todayIso(): string {
 }
 
 export function formatTimestamp(value: unknown): string {
-  if (typeof value !== 'string' || value.length === 0) return '—'
+  if (typeof value !== 'string' || value.length === 0) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })

@@ -165,7 +165,7 @@ function formatBucket(bucket: string, granularity: 'HOUR' | 'DAY'): string {
 
 function formatRange(from: string, to: string): string {
   const fmt = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  return from === to ? fmt(from) : `${fmt(from)} – ${fmt(to)}`
+  return from === to ? fmt(from) : `${fmt(from)} to ${fmt(to)}`
 }
 
 function percent(part: number, whole: number): string {
@@ -519,12 +519,12 @@ function text(key: string): (row: RecordRow) => string {
 function dateTime(key: string): (row: RecordRow) => string {
   return (row) => {
     const value = row[key]
-    if (typeof value !== 'string') return '—'
+    if (typeof value !== 'string') return '-'
     return new Date(value).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 }
 
-const pill = (key: string) => (row: RecordRow) => (typeof row[key] === 'string' ? <StatusPill status={String(row[key])} /> : '—')
+const pill = (key: string) => (row: RecordRow) => (typeof row[key] === 'string' ? <StatusPill status={String(row[key])} /> : '-')
 const strong = (key: string) => (row: RecordRow) => <strong>{formatCell(row[key])}</strong>
 
 const DATASETS: Record<Dataset, { label: string; placeholder: string; statusLabel: string; statuses: string[]; columns: Column[]; link: (row: RecordRow) => string | null }> = {
@@ -559,8 +559,8 @@ const DATASETS: Record<Dataset, { label: string; placeholder: string; statusLabe
       { label: 'District', value: text('districtCode') },
       { label: 'Village', value: text('villageCode') },
       { label: 'Office', value: text('sroCode') },
-      { label: 'Survey no', value: (row) => [row.surveyNo, row.subdivisionNo].filter((v) => typeof v === 'string' && v.length > 0).join(' / ') || '—' },
-      { label: 'Type', value: (row) => (typeof row.propertyType === 'string' ? humanize(row.propertyType) : '—') },
+      { label: 'Survey no', value: (row) => [row.surveyNo, row.subdivisionNo].filter((v) => typeof v === 'string' && v.length > 0).join(' / ') || '-' },
+      { label: 'Type', value: (row) => (typeof row.propertyType === 'string' ? humanize(row.propertyType) : '-') },
       { label: 'Extent', value: (row) => `${num(row.extentValue).toLocaleString('en-IN')} ${typeof row.extentUnit === 'string' ? humanize(row.extentUnit) : ''}`.trim(), numeric: true },
       { label: 'Status', value: text('status'), render: pill('status') },
       { label: 'Added', value: dateTime('createdAt') },
@@ -580,7 +580,7 @@ const DATASETS: Record<Dataset, { label: string; placeholder: string; statusLabe
       { label: 'Office', value: text('sroCode') },
       { label: 'Engine', value: (row) => ENGINE_LABELS[String(row.engine)] ?? formatCell(row.engine) },
       { label: 'Outcome', value: text('outcome'), render: pill('outcome') },
-      { label: 'Reason', value: (row) => (typeof row.reasonCode === 'string' ? humanize(row.reasonCode) : '—') },
+      { label: 'Reason', value: (row) => (typeof row.reasonCode === 'string' ? humanize(row.reasonCode) : '-') },
       { label: 'Txn status', value: text('transactionStatus'), render: pill('transactionStatus') },
     ],
   },
@@ -596,7 +596,7 @@ const DATASETS: Record<Dataset, { label: string; placeholder: string; statusLabe
       { label: 'Type', value: text('kind'), render: pill('kind') },
       { label: 'Action', value: (row) => humanize(String(row.action ?? '')) },
       { label: 'Transaction', value: text('transactionRef'), render: strong('transactionRef') },
-      { label: 'User', value: (row) => [row.actor, row.actorRole].filter((v) => typeof v === 'string').join(' · ') || '—' },
+      { label: 'User', value: (row) => [row.actor, row.actorRole].filter((v) => typeof v === 'string').join(' · ') || '-' },
       { label: 'Detail', value: text('detail'), render: (row) => <span className="ad-detail" title={formatCell(row.detail)}>{formatCell(row.detail)}</span> },
     ],
   },

@@ -81,7 +81,7 @@ export default function TahsildarDashboard() {
               <ShieldCheckIcon />
               <div>
                 <strong>Your jurisdiction</strong>
-                <small>{taluks.length > 0 ? `${taluks.join(', ')} Taluk` : '—'}</small>
+                <small>{taluks.length > 0 ? `${taluks.join(', ')} Taluk` : '-'}</small>
                 <small>{kpis?.total ?? 0} transactions · {kpis?.awaitingApproval ?? 0} pending approval</small>
               </div>
             </div>

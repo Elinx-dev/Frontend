@@ -171,7 +171,7 @@ export function usePropertyMap({ doorNo, street, village, taluk, district }: { d
   return { mapLocation, mapLocationName, mapStatus }
 }
 
-export const displayValue = (value: unknown) => (value === null || value === undefined || value === '' ? '—' : String(value))
+export const displayValue = (value: unknown) => (value === null || value === undefined || value === '' ? '-' : String(value))
 
 export const maskAadhaar = (value: unknown) => {
   const digits = value === null || value === undefined ? '' : String(value)

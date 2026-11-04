@@ -86,7 +86,7 @@ export default function TahsildarRecordDetail() {
         <div className="vao-detail-head">
           <Link className="vao-back" to="/tahsildar/verification">← Back to Queue</Link>
           <strong className="mono">{record.txn_ref}</strong>
-          <span className="vao-detail-parties">{record.sellers ?? '—'} → {record.buyers ?? '—'}</span>
+          <span className="vao-detail-parties">{record.sellers ?? '-'} → {record.buyers ?? '-'}</span>
           <span className="vao-detail-spacer" />
           <TahsildarStagePill record={record} />
           {awaiting ? (
@@ -107,7 +107,7 @@ export default function TahsildarRecordDetail() {
           <span>Type: <b>{deedLabel(record.deed_type_code)}</b></span>
           <span>Amount: <b>{rupees(record.declared_consideration)}</b></span>
           <span>Guideline value: <b>{rupees(record.guideline_value)}</b></span>
-          <span>Document no.: <b className="mono">{record.registered_document_no ?? '—'}</b></span>
+          <span>Document no.: <b className="mono">{record.registered_document_no ?? '-'}</b></span>
           <span>Registered: <b>{formatTimestamp(record.registered_at)}</b></span>
           <span>ULPIN: <b className="mono">{record.ulpin ?? record.property_ref}</b></span>
         </div>
@@ -123,8 +123,8 @@ export default function TahsildarRecordDetail() {
           <div className="vao-gate booked">
             <CheckCircleIcon />
             <span>
-              Approved {formatTimestamp(record.approved_at)} · Mutation register <b className="mono">{record.mutation_register_number ?? '—'}</b>
-              {' '}· Revenue record <b className="mono">{record.revenue_record_number ?? '—'}</b>
+              Approved {formatTimestamp(record.approved_at)} · Mutation register <b className="mono">{record.mutation_register_number ?? '-'}</b>
+              {' '}· Revenue record <b className="mono">{record.revenue_record_number ?? '-'}</b>
             </span>
           </div>
         )}
@@ -159,8 +159,8 @@ export default function TahsildarRecordDetail() {
                 empty="No site visit recorded."
                 columns={[
                   ['visit_purpose', 'Purpose', (v) => purposeLabel(v)],
-                  ['agreed_date', 'Slot', (v) => String(v ?? '—')],
-                  ['agreed_time', 'Time', (v) => String(v ?? '—')],
+                  ['agreed_date', 'Slot', (v) => String(v ?? '-')],
+                  ['agreed_time', 'Time', (v) => String(v ?? '-')],
                   ['status', 'Status'],
                   ['vao_checkin_at', 'VAO check-in', formatTimestamp],
                   ['surveyor_checkin_at', 'Surveyor check-in', formatTimestamp],

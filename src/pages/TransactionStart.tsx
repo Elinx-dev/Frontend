@@ -864,7 +864,7 @@ export default function TransactionStart() {
         errors.aadhaarNumber = 'Validate the Aadhaar with OTP; the details are filled from Aadhaar.'
       }
       if (bloodRelationRequired && party.relationshipCode.length === 0) {
-        errors.relationshipCode = `Select the relationship to the ${firstPartyLabel.toLowerCase()}.`
+        errors.relationshipCode = `Select the Relationship Category.`
       }
       if (Object.keys(errors).length > 0) nextErrors[index] = errors
     })
@@ -1673,49 +1673,49 @@ export default function TransactionStart() {
                             <dt>Property reference</dt>
                             <dd>{String(property.property_ref ?? property.propertyRef ?? propertyRef)}</dd>
                             <dt>ULPIN</dt>
-                            <dd>{valueOf(property, 'ulpin') || '—'}</dd>
+                            <dd>{valueOf(property, 'ulpin') || '-'}</dd>
                             <dt>Property type</dt>
-                            <dd>{valueOf(property, 'property_type_code', 'propertyTypeCode', 'property_type', 'propertyType') || '—'}</dd>
+                            <dd>{valueOf(property, 'property_type_code', 'propertyTypeCode', 'property_type', 'propertyType') || '-'}</dd>
                             <dt>Nature of title</dt>
-                            <dd>{valueOf(property, 'nature_of_title_code', 'natureOfTitleCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'nature_of_title_code', 'natureOfTitleCode') || '-'}</dd>
                             <dt>Land type</dt>
-                            <dd>{valueOf(property, 'land_type_code', 'landTypeCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'land_type_code', 'landTypeCode') || '-'}</dd>
                             <dt>Classification</dt>
-                            <dd>{valueOf(property, 'classification_code', 'classificationCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'classification_code', 'classificationCode') || '-'}</dd>
                             <dt>Record status</dt>
-                            <dd>{valueOf(property, 'status') || '—'}</dd>
+                            <dd>{valueOf(property, 'status') || '-'}</dd>
                           </dl>
                         </section>
                         <section className="property-detail-group">
                           <h3>Survey and extent</h3>
                           <dl className="kv">
                             <dt>Survey number</dt>
-                            <dd>{valueOf(property, 'survey_no', 'surveyNo') || '—'}</dd>
+                            <dd>{valueOf(property, 'survey_no', 'surveyNo') || '-'}</dd>
                             <dt>Subdivision number</dt>
-                            <dd>{valueOf(property, 'subdivision_no', 'subdivisionNo') || '—'}</dd>
+                            <dd>{valueOf(property, 'subdivision_no', 'subdivisionNo') || '-'}</dd>
                             <dt>Old survey reference</dt>
-                            <dd>{valueOf(property, 'old_survey_reference', 'oldSurveyReference') || '—'}</dd>
+                            <dd>{valueOf(property, 'old_survey_reference', 'oldSurveyReference') || '-'}</dd>
                             <dt>FMB reference</dt>
-                            <dd>{valueOf(property, 'fmb_reference_no', 'fmbReferenceNo') || '—'}</dd>
+                            <dd>{valueOf(property, 'fmb_reference_no', 'fmbReferenceNo') || '-'}</dd>
                             <dt>Extent</dt>
-                            <dd>{`${valueOf(property, 'extent_value', 'extentValue') || '—'} ${valueOf(property, 'extent_unit', 'extentUnit')}`.trim()}</dd>
+                            <dd>{`${valueOf(property, 'extent_value', 'extentValue') || '-'} ${valueOf(property, 'extent_unit', 'extentUnit')}`.trim()}</dd>
                           </dl>
                         </section>
                         <section className="property-detail-group">
                           <h3>Location</h3>
                           <dl className="kv">
                             <dt>District</dt>
-                            <dd>{valueOf(property, 'district_name', 'districtName', 'district_code', 'districtCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'district_name', 'districtName', 'district_code', 'districtCode') || '-'}</dd>
                             <dt>Taluk</dt>
-                            <dd>{valueOf(property, 'taluk_name', 'talukName', 'taluk_code', 'talukCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'taluk_name', 'talukName', 'taluk_code', 'talukCode') || '-'}</dd>
                             <dt>Village</dt>
-                            <dd>{valueOf(property, 'village_name', 'villageName', 'village_code', 'villageCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'village_name', 'villageName', 'village_code', 'villageCode') || '-'}</dd>
                             <dt>Sub-Registrar Office</dt>
-                            <dd>{valueOf(property, 'sro_name', 'sroName', 'sro_code', 'sroCode') || '—'}</dd>
+                            <dd>{valueOf(property, 'sro_name', 'sroName', 'sro_code', 'sroCode') || '-'}</dd>
                             <dt>Panchayat / ward</dt>
-                            <dd>{[valueOf(property, 'panchayat'), valueOf(property, 'ward_no', 'wardNo')].filter(Boolean).join(' / ') || '—'}</dd>
+                            <dd>{[valueOf(property, 'panchayat'), valueOf(property, 'ward_no', 'wardNo')].filter(Boolean).join(' / ') || '-'}</dd>
                             <dt>Street / door number</dt>
-                            <dd>{[valueOf(property, 'street'), valueOf(property, 'door_no', 'doorNo')].filter(Boolean).join(' / ') || '—'}</dd>
+                            <dd>{[valueOf(property, 'street'), valueOf(property, 'door_no', 'doorNo')].filter(Boolean).join(' / ') || '-'}</dd>
                           </dl>
                         </section>
                       </Panel>
@@ -1753,22 +1753,22 @@ export default function TransactionStart() {
                           {
                             key: 'owner_name',
                             label: 'Owner',
-                            render: (row) => String(row.owner_name ?? row.ownerName ?? row.full_name ?? row.fullName ?? row.name ?? '—'),
+                            render: (row) => String(row.owner_name ?? row.ownerName ?? row.full_name ?? row.fullName ?? row.name ?? '-'),
                           },
                           {
                             key: 'aadhaar_number',
                             label: 'Aadhaar',
-                            render: (row) => String(row.aadhaar_number ?? row.aadhaarNumber ?? '—'),
+                            render: (row) => String(row.aadhaar_number ?? row.aadhaarNumber ?? '-'),
                           },
                           {
                             key: 'pan',
                             label: 'PAN',
-                            render: (row) => String(row.pan ?? '—'),
+                            render: (row) => String(row.pan ?? '-'),
                           },
                           {
                             key: 'address',
                             label: 'Address',
-                            render: (row) => String(row.address ?? '—'),
+                            render: (row) => String(row.address ?? '-'),
                           },
                         ]}
                         empty="No registered owners were found for this property."
@@ -1780,12 +1780,12 @@ export default function TransactionStart() {
                         rows={chainOfTitle}
                         columns={[
                           { key: 'seq', label: '#' },
-                          { key: 'executor_name', label: 'Executor / seller', render: (row) => String(row.executor_name ?? row.executorName ?? '—') },
-                          { key: 'claimant_name', label: 'Claimant / purchaser', render: (row) => String(row.claimant_name ?? row.claimantName ?? '—') },
-                          { key: 'transaction_date', label: 'Transaction date', render: (row) => String(row.transaction_date ?? row.transactionDate ?? '—') },
-                          { key: 'nature_of_transaction', label: 'Nature', render: (row) => String(row.nature_of_transaction ?? row.natureOfTransaction ?? '—') },
-                          { key: 'reference_no', label: 'Reference no.', render: (row) => String(row.reference_no ?? row.referenceNo ?? '—') },
-                          { key: 'survey_no', label: 'Survey no.', render: (row) => String(row.survey_no ?? row.surveyNo ?? '—') },
+                          { key: 'executor_name', label: 'Executor / seller', render: (row) => String(row.executor_name ?? row.executorName ?? '-') },
+                          { key: 'claimant_name', label: 'Claimant / purchaser', render: (row) => String(row.claimant_name ?? row.claimantName ?? '-') },
+                          { key: 'transaction_date', label: 'Transaction date', render: (row) => String(row.transaction_date ?? row.transactionDate ?? '-') },
+                          { key: 'nature_of_transaction', label: 'Nature', render: (row) => String(row.nature_of_transaction ?? row.natureOfTransaction ?? '-') },
+                          { key: 'reference_no', label: 'Reference no.', render: (row) => String(row.reference_no ?? row.referenceNo ?? '-') },
+                          { key: 'survey_no', label: 'Survey no.', render: (row) => String(row.survey_no ?? row.surveyNo ?? '-') },
                         ]}
                         empty="No prior title history recorded for this property."
                       />
@@ -1794,9 +1794,9 @@ export default function TransactionStart() {
                     <Panel title="Guideline value">
                       <dl className="kv">
                         <dt>Guideline value</dt>
-                        <dd>{valueOf(property, 'guideline_value', 'guidelineValue') || '—'}</dd>
+                        <dd>{valueOf(property, 'guideline_value', 'guidelineValue') || '-'}</dd>
                         <dt>Guideline reference</dt>
-                        <dd>{valueOf(property, 'guideline_value_reference', 'guidelineValueReference') || '—'}</dd>
+                        <dd>{valueOf(property, 'guideline_value_reference', 'guidelineValueReference') || '-'}</dd>
                       </dl>
                     </Panel>
 
@@ -1889,7 +1889,7 @@ export default function TransactionStart() {
                     {firstPartyLabel} → {secondPartyLabel}. Survey: <b>{surveyDecision}</b>
                     {surveyNeeded ? '. After registration the transaction moves to Survey.' : '. After registration the transaction moves to VAO verification.'}
                     {subdivisionYes ? ' The subdivision number is recorded only after the Survey authority provides it.' : ''}
-                    {bloodRelationRequired ? ` Each ${secondPartyLabel.toLowerCase()} must be a configured blood relation of the ${firstPartyLabel.toLowerCase()}.` : ''}
+                    {bloodRelationRequired ? ` Each ${secondPartyLabel.toLowerCase()} needs a Relationship Category.` : ''}
                   </p>
                 ) : null}
               </Panel>
@@ -1927,7 +1927,7 @@ export default function TransactionStart() {
                       rows={registeredOwners}
                       empty="This property has no recorded owners."
                       columns={[
-                        { key: 'owner_name', label: 'Co-owner', render: (row) => String(row.owner_name ?? row.ownerName ?? '—') },
+                        { key: 'owner_name', label: 'Co-owner', render: (row) => String(row.owner_name ?? row.ownerName ?? '-') },
                         ...(['SIDE_1', 'SIDE_2'] as const).map((side) => ({
                           key: side,
                           label: side === 'SIDE_1' ? firstPartyLabel : secondPartyLabel,
@@ -2047,7 +2047,7 @@ export default function TransactionStart() {
                               <div className="owner-fields">
                                 <div>
                                   <Field
-                                    label={`Relationship to ${firstPartyLabel.toLowerCase()}`}
+                                    label="Relationship Category"
                                     value={party.relationshipCode}
                                     onChange={(value) => updateParty(index, 'relationshipCode', value)}
                                     options={bloodRelations.map((relation) => ({
@@ -2132,7 +2132,7 @@ export default function TransactionStart() {
                       return (
                         <div className="row" key={`${partyId}-${index}`}>
                           <span className="grow">
-                            {role}: {name} — {consentStatus}
+                            {role}: {name} ({consentStatus})
                           </span>
                           {consentStatus === 'VERIFIED' ? null : <>
                           {mockOtpByParty[partyId] && consentStatus === 'PENDING' ? (

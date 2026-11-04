@@ -64,7 +64,7 @@ export function Field({
         <input type={type} value={value} onChange={handle} placeholder={placeholder} readOnly={readOnly} />
       ) : (
         <select value={value} onChange={handle} disabled={readOnly}>
-          <option value="">— select —</option>
+          <option value="">Select</option>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -117,7 +117,7 @@ export function DataTable({
 }
 
 export function formatCell(value: unknown): string {
-  if (value === null || value === undefined) return '—'
+  if (value === null || value === undefined) return '-'
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (typeof value === 'object') return JSON.stringify(value)
   return String(value)

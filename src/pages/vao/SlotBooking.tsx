@@ -73,7 +73,7 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
               >
                 <div>
                   <strong>{r.ulpin ?? r.property_ref}</strong>
-                  <small>{r.txn_ref} · {r.village_name ?? r.village_code ?? '—'}</small>
+                  <small>{r.txn_ref} · {r.village_name ?? r.village_code ?? '-'}</small>
                 </div>
                 <StagePill record={r} portal={portal} />
               </button>
@@ -89,7 +89,7 @@ export default function SlotBooking({ portal = VAO_PORTAL }: { portal?: Portal }
             <>
               <div className="vao-booking-summary">
                 <div><span>ULPIN</span><strong className="mono">{record.ulpin ?? record.property_ref}</strong></div>
-                <div><span>Survey no.</span><strong>{record.survey_no ?? '—'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</strong></div>
+                <div><span>Survey no.</span><strong>{record.survey_no ?? '-'}{record.subdivision_no ? ` / ${record.subdivision_no}` : ''}</strong></div>
                 <div><span>Purpose</span><strong>{portal.key === 'VAO' ? 'Field verification' : 'Field survey'}</strong></div>
                 <div><span>Current plan</span><strong>{when(record.agreed_date, record.agreed_time)}</strong></div>
               </div>

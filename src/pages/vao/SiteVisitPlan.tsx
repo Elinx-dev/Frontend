@@ -29,18 +29,18 @@ function PlanTable({ rows, onManage, portal }: { rows: VaoRecord[]; onManage: (r
         {rows.map((r) => (
           <tr key={r.txn_ref}>
             <td><UlpinCell record={r} /></td>
-            <td>{portal.otherName(r) ?? '—'}</td>
+            <td>{portal.otherName(r) ?? '-'}</td>
             <td className="vao-purpose">{purposeLabel(r.visit_purpose)}</td>
             <td>
               <StagePill record={r} portal={portal} />
               {r.action_required ? <small className="vao-action-needed">Action needed</small> : null}
             </td>
             <td>
-              {r.agreed_date == null ? '—' : (
+              {r.agreed_date == null ? '-' : (
                 <span className="vao-when"><small>{planLabel(r)}:</small> {when(r.agreed_date, r.agreed_time)}</span>
               )}
             </td>
-            <td>{r.visit_status == null ? <span className="muted">—</span> : <CheckIns record={r} portal={portal} />}</td>
+            <td>{r.visit_status == null ? <span className="muted">-</span> : <CheckIns record={r} portal={portal} />}</td>
             <td className="vao-row-action">
               <button className={done(r) ? 'vao-btn-light' : 'vao-btn-navy small'} onClick={() => onManage(r)}>
                 {done(r) ? 'View' : 'Manage'} ›

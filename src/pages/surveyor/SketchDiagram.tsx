@@ -100,7 +100,7 @@ export function SketchDiagram({ rows }: { rows: MeasurementRow[] }) {
       <ul className="sv-sketch-sides">
         {sides.map((s, i) => (
           <li key={`l-${i}`}>
-            <b>{String.fromCharCode(65 + i)}–{String.fromCharCode(65 + ((i + 1) % n))}</b> {s.from} → {s.to}: {s.length} {lengthUnits.find((u) => u.value === s.unit)?.label ?? s.unit}
+            <b>{String.fromCharCode(65 + i)}-{String.fromCharCode(65 + ((i + 1) % n))}</b> {s.from} → {s.to}: {s.length} {lengthUnits.find((u) => u.value === s.unit)?.label ?? s.unit}
           </li>
         ))}
       </ul>

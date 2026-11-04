@@ -12,9 +12,9 @@ import type { SurveyorDashboardData } from './surveyorShared'
 
 const LIFECYCLE = [
   { label: 'Book your survey slot', stages: ['AWAITING_PROPOSAL'] },
-  { label: 'Slot booked — check in at site', stages: ['SLOT_BOOKED', 'CHECK_IN_DUE'] },
+  { label: 'Slot booked, check in at site', stages: ['SLOT_BOOKED', 'CHECK_IN_DUE'] },
   { label: 'Fill the survey verification form', stages: ['SURVEY_DUE', 'CONFLICT_FLAGGED'] },
-  { label: 'Submitted — VAO verification', stages: ['SUBMITTED', 'OBJECTION_PENDING', 'VERIFIED'] },
+  { label: 'Submitted for VAO verification', stages: ['SUBMITTED', 'OBJECTION_PENDING', 'VERIFIED'] },
 ]
 
 export default function SurveyorDashboard() {
@@ -74,7 +74,7 @@ export default function SurveyorDashboard() {
               <ClockIcon />
               <div>
                 <strong>Slot Booking</strong>
-                <small>Book your visit — required before the survey form opens</small>
+                <small>Book your visit before the survey form opens</small>
               </div>
             </Link>
             <Link className="vao-quick" to="/surveyor/field-survey">

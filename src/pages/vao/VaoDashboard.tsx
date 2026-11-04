@@ -72,7 +72,7 @@ export default function VaoDashboard() {
               <ClockIcon />
               <div>
                 <strong>Slot Booking</strong>
-                <small>Book a visit slot — required before you can verify</small>
+                <small>Book a visit slot before you can verify</small>
               </div>
             </Link>
             <Link className="vao-quick" to="/vao/verification">
@@ -86,7 +86,7 @@ export default function VaoDashboard() {
               <CompassIcon />
               <div>
                 <strong>Your jurisdiction</strong>
-                <small>{villages.length > 0 ? villages.join(', ') : '—'}</small>
+                <small>{villages.length > 0 ? villages.join(', ') : '-'}</small>
                 <small>{kpis?.assigned ?? 0} records assigned · {kpis?.actionRequired ?? 0} need attention</small>
               </div>
             </div>

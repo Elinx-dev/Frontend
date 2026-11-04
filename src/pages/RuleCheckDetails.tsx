@@ -66,7 +66,7 @@ const OWNER_LABELS: Record<string, string> = {
 const IDENTITY_LABELS: Record<string, string> = { MATCH: 'Match', MISMATCH: 'Mismatch', MISSING: 'Review: not stated' }
 
 const extentText = (value: unknown, unit: unknown): string =>
-  value === null || value === undefined ? '—' : `${formatCell(value)} ${formatCell(unit)}`
+  value === null || value === undefined ? '-' : `${formatCell(value)} ${formatCell(unit)}`
 
 const label = (labels: Record<string, string>, value: unknown): string => labels[String(value)] ?? formatCell(value)
 
@@ -87,7 +87,7 @@ function RevenueDetails({ revenue }: { revenue: Row }) {
     slateStd: extentText(p.slateStandard, p.standardUnit),
     revenueStd: extentText(p.revenueStandard, p.standardUnit),
     match: label(PARCEL_LABELS, p.matchStatus),
-    extent: p.extentStatus === undefined ? '—' : label(EXTENT_LABELS, p.extentStatus),
+    extent: p.extentStatus === undefined ? '-' : label(EXTENT_LABELS, p.extentStatus),
   }))
   const owners = asRows(payload.owners).map((o) => ({ ...o, result: label(OWNER_LABELS, o.status) }))
   const findings = asRows(payload.findings)
@@ -117,9 +117,9 @@ function RevenueDetails({ revenue }: { revenue: Row }) {
         <dt>Land type</dt>
         <dd>{formatCell(searched.landType)}</dd>
         <dt>Survey / sub-division(s)</dt>
-        <dd>{surveys.length > 0 ? surveys : '—'}</dd>
+        <dd>{surveys.length > 0 ? surveys : '-'}</dd>
         <dt>Patta / record no.</dt>
-        <dd>{records.length > 0 ? `${records} (display only)` : '—'}</dd>
+        <dd>{records.length > 0 ? `${records} (display only)` : '-'}</dd>
         <dt>Property</dt>
         <dd>{label(RESULT_LABELS, payload.propertyResult)}</dd>
         <dt>Owners</dt>
@@ -195,7 +195,7 @@ function EcDetails({ ec }: { ec: Row }) {
   const entries = asRows(payload.entries).map((e) => ({
     ...e,
     parcel: parcel(e.surveyNo, e.subdivisionNo),
-    extentText: e.extent === null || e.extent === undefined ? '—' : `${formatCell(e.extent)} ${formatCell(e.extentUnit)}`,
+    extentText: e.extent === null || e.extent === undefined ? '-' : `${formatCell(e.extent)} ${formatCell(e.extentUnit)}`,
     executantText: joinList(e.executants),
     claimantText: joinList(e.claimants),
     match: MATCH_LABELS[String(e.matchStatus)] ?? formatCell(e.matchStatus),

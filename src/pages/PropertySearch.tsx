@@ -60,7 +60,7 @@ export default function PropertySearch() {
             label: 'Latest registered',
             render: (row) => {
               const value = row.latest_registered_at
-              if (typeof value !== 'string') return '—'
+              if (typeof value !== 'string') return '-'
               const date = new Date(value)
               return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString()
             },

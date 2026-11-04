@@ -88,7 +88,7 @@ export default function BulkUpload() {
         </div>
       </Panel>
       {result !== null ? (
-        <Panel title={result.valid ? (ran ? 'Results' : 'Sheet is valid') : 'Sheet has errors — nothing was created'}>
+        <Panel title={result.valid ? (ran ? 'Results' : 'Sheet is valid') : 'Sheet has errors. Nothing was created'}>
           <div className="stat-row">
             <StatCard label="Cases in sheet" value={result.rowCount} />
             <StatCard label="Sheet errors" value={result.errors.length} tone={result.errors.length > 0 ? 'danger' : 'success'} />
@@ -110,10 +110,10 @@ export default function BulkUpload() {
                   <tr key={r.row}>
                     <td className="num">{r.row}</td>
                     <td>{r.caseId}</td>
-                    <td>{r.propertyRef ? <a href={`/properties/${r.propertyRef}`}>{r.propertyRef}</a> : '—'}</td>
-                    <td>{r.txnRef ? <a href={`/transactions/${r.txnRef}`}>{r.txnRef}</a> : '—'}</td>
+                    <td>{r.propertyRef ? <a href={`/properties/${r.propertyRef}`}>{r.propertyRef}</a> : '-'}</td>
+                    <td>{r.txnRef ? <a href={`/transactions/${r.txnRef}`}>{r.txnRef}</a> : '-'}</td>
                     <td><StatusPill status={r.outcome} /></td>
-                    <td>{r.status ?? '—'}{r.documentNo ? <span className="cell-subtext">Doc {r.documentNo}</span> : null}</td>
+                    <td>{r.status ?? '-'}{r.documentNo ? <span className="cell-subtext">Doc {r.documentNo}</span> : null}</td>
                     <td>
                       {r.message ?? (r.outcome === 'COMPLETED' ? 'Registered and revenue approved' : '')}
                       {r.stoppedAt && r.outcome !== 'COMPLETED' ? <span className="cell-subtext">Stopped at {r.stoppedAt}</span> : null}
