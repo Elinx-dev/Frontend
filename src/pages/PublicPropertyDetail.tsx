@@ -5,6 +5,7 @@ import { ApiError, get } from '../api'
 import type { Row } from '../types'
 import { Banner } from '../ui'
 import PropertyDetailsView from './PropertyDetailsView'
+import PublicShell from './PublicShell'
 
 /** Citizen view: the public record only (no Aadhaar, PAN, mobile, address or consideration). */
 export default function PublicPropertyDetail() {
@@ -26,6 +27,11 @@ export default function PublicPropertyDetail() {
     })()
   }, [propertyRef])
 
-  if (property === null) return <Banner kind="error" message={error.length === 0 ? 'Loading…' : error} />
-  return <PropertyDetailsView property={property} history={history} publicView backTo="/public" backLabel="← Back to search" />
+  return (
+    <PublicShell title="Public Property Record">
+      {property === null
+        ? <Banner kind="error" message={error.length === 0 ? 'Loading…' : error} />
+        : <PropertyDetailsView property={property} history={history} publicView backTo="/public" backLabel="← Back to search" />}
+    </PublicShell>
+  )
 }

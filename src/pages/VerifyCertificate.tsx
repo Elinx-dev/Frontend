@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { get } from '../api'
 import type { Row } from '../types'
 import { Banner, Panel, formatCell } from '../ui'
+import PublicShell from './PublicShell'
 
 const LABELS: Record<string, string> = {
   VERIFIED: 'Verified on blockchain',
@@ -29,6 +30,7 @@ export default function VerifyCertificate() {
   }, [documentNo])
 
   return (
+    <PublicShell title="Certificate Verification">
     <div className="verify-page">
       <Panel title="Verify registration certificate">
         {error ? <Banner kind="error" message={error} /> : null}
@@ -47,5 +49,6 @@ export default function VerifyCertificate() {
         ) : null}
       </Panel>
     </div>
+    </PublicShell>
   )
 }
