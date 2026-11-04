@@ -34,6 +34,9 @@ export default function TransactionQueue() {
   const registered = count(['REGISTERED', 'REVENUE_APPROVED'])
   const feeTotal = rows.reduce((total, row) => total + Number(row.fee_collected ?? row.fee_amount ?? 0), 0)
   const exceptionRows = rows.filter((row) => ['EXCEPTION', 'OBJECTION_PENDING'].includes(String(row.status ?? '').toUpperCase()))
+  const transferred = [...new Map(rows
+    .filter((row) => ['REGISTERED', 'VAO_PENDING', 'SURVEY_PENDING', 'TAHSILDAR_PENDING', 'REVENUE_APPROVED'].includes(String(row.status ?? '').toUpperCase()) && row.property_ref)
+    .map((row) => [String(row.property_ref), row] as const)).values()]
   const ledgerRows = rows.filter((row) => row.block_number !== undefined || row.tx_hash !== undefined).slice(0, 4)
 
   return (
@@ -58,6 +61,13 @@ export default function TransactionQueue() {
       <Panel title="Queue Snapshot">
         <div className="queue-toolbar"><Field label="Status filter" value={status} onChange={setStatus} options={['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING', 'REGISTERED', 'SURVEY_PENDING', 'VAO_PENDING', 'OBJECTION_PENDING', 'TAHSILDAR_PENDING', 'REVENUE_APPROVED', 'WITHDRAWN'].map((s) => ({ value: s, label: s }))} /></div>
         {rows.length === 0 ? <p className="muted">No transactions in this queue.</p> : <table className="grid"><thead><tr><th>Txn ID</th><th>Type</th><th>Property Ref / ULPIN</th><th>Parties</th><th>Value</th><th>Stage</th><th>Status</th></tr></thead><tbody>{rows.map((row, index) => { const reference = row.txn_ref ?? row.txnRef ?? row.id; return <tr key={index} className="clickable" onClick={() => navigate(`/transactions/${encodeURIComponent(String(reference))}`)}><td>{formatCell(reference)}</td><td>{formatCell(row.deed_type_code ?? row.deedTypeCode)}</td><td><strong>{formatCell(row.property_ref ?? row.propertyRef)}</strong><small className="cell-subtext">{formatCell(row.ulpin)}</small></td><td>{formatCell(row.parties ?? row.party_summary)}</td><td>{formatCell(row.declared_consideration ?? row.declaredConsideration ?? row.transaction_value)}</td><td>{formatCell(row.current_stage_code ?? row.currentStageCode ?? row.stage)}</td><td><StatusPill status={String(row.status ?? 'UNKNOWN')} /></td></tr> })}</tbody></table>}
+      </Panel>
+      <Panel title="Transferred Properties">
+        {transferred.length === 0 ? <p className="muted">No registered transfers yet.</p> : <table className="grid"><thead><tr><th>Property Ref</th><th>ULPIN</th><th>Type</th><th>Parties</th><th>Status</th><th>Registered</th></tr></thead><tbody>{transferred.slice(0, 10).map((row) => (
+          <tr key={String(row.property_ref)} className="clickable" onClick={() => navigate(`/properties/${encodeURIComponent(String(row.property_ref))}`)}>
+            <td className="mono">{formatCell(row.property_ref)}</td><td className="mono">{formatCell(row.ulpin ?? null)}</td><td>{formatCell(row.deed_type_code)}</td>
+            <td>{formatCell(row.parties ?? row.first_parties ?? null)}</td><td><StatusPill status={String(row.status ?? '')} /></td><td>{formatCell(row.registered_at ?? null)}</td>
+          </tr>))}</tbody></table>}
       </Panel>
       <div className="dashboard-lower">
         <Panel title="Open Exceptions (Rule Check Engine)">

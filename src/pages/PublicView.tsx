@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { ApiError, get, post, qs } from '../api'
 import { storedToken } from '../api'
@@ -6,6 +7,7 @@ import type { Row } from '../types'
 import { Banner, DataTable, Field, Panel, formatCell } from '../ui'
 
 export default function PublicView() {
+  const navigate = useNavigate()
   const [surveyNo, setSurveyNo] = useState('')
   const [village, setVillage] = useState('')
   const [ulpin, setUlpin] = useState('')
@@ -60,7 +62,7 @@ export default function PublicView() {
         </div>
         <DataTable
           rows={rows}
-          onRowClick={(row) => void loadHistory(String(row.token_ref))}
+          onRowClick={(row) => navigate(`/public/properties/${encodeURIComponent(String(row.property_ref))}`)}
           columns={[
             { key: 'property_ref', label: 'Property' },
             { key: 'ulpin', label: 'ULPIN' },
@@ -69,6 +71,7 @@ export default function PublicView() {
             { key: 'extent_value', label: 'Extent' },
             { key: 'token_ref', label: 'Token' },
             { key: 'token_status', label: 'Token status' },
+            { key: 'history', label: '', render: (row) => (row.token_ref ? <button type="button" className="outline" onClick={(e) => { e.stopPropagation(); void loadHistory(String(row.token_ref)) }}>Token history</button> : null) },
           ]}
           empty="No public records match."
         />

@@ -41,6 +41,7 @@ import TokenisationDemo from './pages/TokenisationDemo'
 import PropertyDetail from './pages/PropertyDetail'
 import PropertySearch from './pages/PropertySearch'
 import PublicView from './pages/PublicView'
+import PublicPropertyDetail from './pages/PublicPropertyDetail'
 import TahsildarDashboard from './pages/tahsildar/TahsildarDashboard'
 import TahsildarRecordDetail from './pages/tahsildar/TahsildarRecordDetail'
 import TahsildarRecords from './pages/tahsildar/TahsildarRecords'
@@ -272,6 +273,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/public" element={<PublicView />} />
+          <Route path="/public/properties/:propertyRef" element={<PublicPropertyDetail />} />
           <Route path="/verify" element={<VerifyCertificate />} />
           <Route path="/certificate/:txnRef" element={<Protected><RegistrationCertificate /></Protected>} />
           <Route path="/ro" element={<Protected><TransactionQueue /></Protected>} />

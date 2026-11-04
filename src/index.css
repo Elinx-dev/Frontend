@@ -6011,3 +6011,10 @@ button.danger:hover:not(:disabled) {
 .txn-choice-card strong { display: block; font-size: 13px; color: var(--ink); }
 .txn-choice-card small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.4; color: var(--muted, #5b6575); }
 .release-owner-check { width: 16px; height: 16px; accent-color: var(--navy); }
+
+/* Shared Property Details page (all portals) */
+.property-details-view { display: grid; gap: 14px; }
+.property-details-card .vao-card-eyebrow + .table-scroll,
+.property-details-card .vao-card-eyebrow { margin-top: 6px; }
+.property-details-location { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .property-details-location { grid-template-columns: 1fr; } }
