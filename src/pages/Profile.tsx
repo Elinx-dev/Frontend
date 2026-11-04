@@ -13,13 +13,13 @@ export default function Profile() {
           <dt>Name</dt>
           <dd>{user.fullName}</dd>
           <dt>Designation</dt>
-          <dd>{user.designation ?? '—'}</dd>
+          <dd>{user.designation ?? '-'}</dd>
           <dt>Department</dt>
-          <dd>{user.department ?? '—'}</dd>
+          <dd>{user.department ?? '-'}</dd>
           <dt>Email</dt>
-          <dd>{user.email ?? '—'}</dd>
+          <dd>{user.email ?? '-'}</dd>
           <dt>Mobile</dt>
-          <dd>{user.mobile ?? '—'}</dd>
+          <dd>{user.mobile ?? '-'}</dd>
           <dt>State</dt>
           <dd>{user.stateCode}</dd>
           <dt>Roles</dt>

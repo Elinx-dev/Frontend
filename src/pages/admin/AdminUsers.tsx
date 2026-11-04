@@ -179,7 +179,7 @@ export default function AdminUsers() {
                         <div><strong>{u.full_name}</strong><span className="cell-subtext">{u.username}{u.designation ? ` · ${u.designation}` : ''}</span></div>
                       </div>
                     </td>
-                    <td>{u.email ?? '—'}<span className="cell-subtext">{u.mobile ?? 'No phone'}</span></td>
+                    <td>{u.email ?? '-'}<span className="cell-subtext">{u.mobile ?? 'No phone'}</span></td>
                     <td>{humanize(u.department)}</td>
                     <td><div className="chips">{u.roles.map((code) => <span className="chip" key={code} title={code}>{roleName.get(code) ?? code}</span>)}</div></td>
                     <td><span className={u.mfa_required ? 'adm-badge on' : 'adm-badge'}>{u.mfa_required ? 'Required' : 'Off'}</span></td>

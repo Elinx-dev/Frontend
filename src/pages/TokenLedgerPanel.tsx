@@ -9,7 +9,7 @@ const ENC_TYPES = ['MORTGAGE', 'LEASE', 'COURT_ATTACHMENT'] as const
 const rows = (value: unknown) => (Array.isArray(value) ? (value as Row[]) : [])
 const short = (value: unknown) => {
   const text = value === null || value === undefined ? '' : String(value)
-  return text.length > 18 ? `${text.slice(0, 10)}…${text.slice(-6)}` : text || '—'
+  return text.length > 18 ? `${text.slice(0, 10)}…${text.slice(-6)}` : text || '-'
 }
 
 /** The parcel NFT on the Hyperledger Fabric ledger: holders, metadata, encumbrances, rule check and ledger history. */
@@ -82,10 +82,10 @@ export default function TokenLedgerPanel({ tokenRef, showDemo = false }: { token
         <div className="form-grid three">
           <Field label="Token (NFT id)" value={tokenRef} onChange={() => undefined} readOnly />
           <Field label="Ledger" value={view.connected ? `channel ${str(view, 'channel')} · chaincode ${str(view, 'chaincode')} · block height ${str(view, 'blockHeight')}` : 'Not connected'} onChange={() => undefined} readOnly />
-          <Field label="Custody" value={String(parcel?.custodian ?? meta?.custody ?? '—')} onChange={() => undefined} readOnly />
+          <Field label="Custody" value={String(parcel?.custodian ?? meta?.custody ?? '-')} onChange={() => undefined} readOnly />
           <Field label="Status on ledger" value={String(parcel?.status ?? 'Not on ledger yet')} onChange={() => undefined} readOnly />
-          <Field label="Version (ledger / SLATE)" value={`${String(parcel?.version ?? '—')} / ${str(view, 'dbStateVersion')}`} onChange={() => undefined} readOnly />
-          <Field label="Last operation" value={parcel ? `${String(parcel.lastOperation ?? '')} by ${String(parcel.lastOrg ?? '')}` : '—'} onChange={() => undefined} readOnly />
+          <Field label="Version (ledger / SLATE)" value={`${String(parcel?.version ?? '-')} / ${str(view, 'dbStateVersion')}`} onChange={() => undefined} readOnly />
+          <Field label="Last operation" value={parcel ? `${String(parcel.lastOperation ?? '')} by ${String(parcel.lastOrg ?? '')}` : '-'} onChange={() => undefined} readOnly />
           <Field label="State hash" value={short(parcel?.stateHash ?? view.dbStateHash)} onChange={() => undefined} readOnly />
           <Field label="Metadata hash (title, owners, survey)" value={short(parcel?.metadataHash)} onChange={() => undefined} readOnly />
           <Field label="Geo-location hash" value={short(parcel?.geoHash)} onChange={() => undefined} readOnly />

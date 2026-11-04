@@ -90,7 +90,7 @@ export default function VerificationDetail() {
         <div className="vao-detail-meta">
           <span>Type: <b>{deedLabel(record.deed_type_code)}</b></span>
           <span>Amount: <b>{rupees(record.declared_consideration)}</b></span>
-          <span>ULPIN: <b className="mono">{record.ulpin ?? '—'}</b></span>
+          <span>ULPIN: <b className="mono">{record.ulpin ?? '-'}</b></span>
           <span>Registered: <b>{formatTimestamp(record.registered_at)}</b></span>
           <span>Property: <b className="mono">{record.property_ref}</b></span>
         </div>

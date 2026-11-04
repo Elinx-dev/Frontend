@@ -55,10 +55,10 @@ export default function TokenisationDemo() {
 
       {tab === 0 && metrics ? <>
         <div className="stat-grid">
-          <div className="stat-card"><span>Ledger</span><strong>{metrics.connected ? 'Connected' : 'Not connected'}</strong><small>block height {String(metrics.blockHeight ?? '—')}</small></div>
+          <div className="stat-card"><span>Ledger</span><strong>{metrics.connected ? 'Connected' : 'Not connected'}</strong><small>block height {String(metrics.blockHeight ?? '-')}</small></div>
           <div className="stat-card"><span>Parcel NFTs</span><strong>{String(tokens.total ?? 0)}</strong><small>{String(tokens.active ?? 0)} active · {String(tokens.child_tokens ?? 0)} from splits</small></div>
           <div className="stat-card"><span>Fractional parcels</span><strong>{String(tokens.fractional ?? 0)}</strong><small>more than one holder</small></div>
-          <div className="stat-card"><span>Avg time to ledger</span><strong>{String(metrics.avgAnchorSeconds ?? '—')} s</strong><small>queue to committed block</small></div>
+          <div className="stat-card"><span>Avg time to ledger</span><strong>{String(metrics.avgAnchorSeconds ?? '-')} s</strong><small>queue to committed block</small></div>
         </div>
         <div className="form-grid two">
           <Panel title="Ledger transactions by status">

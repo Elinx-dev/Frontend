@@ -263,7 +263,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
         <header className="vao-modal-head">
           <div>
             <h2>Survey Verification Form</h2>
-            <small className="sv-sub">{record.ulpin ?? record.property_ref} · {record.txn_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.village_name ?? record.village_code ?? '—'}</small>
+            <small className="sv-sub">{record.ulpin ?? record.property_ref} · {record.txn_ref} · S.No. {record.survey_no ?? '-'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.village_name ?? record.village_code ?? '-'}</small>
           </div>
           <button className="vao-modal-close" onClick={onClose} aria-label="Close">×</button>
         </header>
@@ -289,7 +289,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                   </section>
                   <section className="sv-section">
                     <h3><ListIcon /> Extent Area</h3>
-                    <p className="sv-hint">Recorded extent: <b>{record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></p>
+                    <p className="sv-hint">Recorded extent: <b>{record.extent_value ?? '-'} {areaUnitLabel(record.extent_unit, areaUnits)}</b></p>
                     <div className="sv-grid-extent">
                       <label><span>Measured extent</span><input type="number" step="any" min="0" value={extent} onChange={(e) => setExtent(e.target.value)} /></label>
                       <label><span>Unit</span>
@@ -380,14 +380,14 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                 <>
                   <section className="sv-section">
                     <h3><PinIcon /> New property {activeParcel + 1} of {parcels.length} created at registration</h3>
-                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '—'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '—'} {areaUnitLabel(record.extent_unit, areaUnits)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of this property.</p>
+                    <p className="sv-hint">Parent {record.property_ref} · S.No. {record.survey_no ?? '-'}{record.subdivision_no ? `/${record.subdivision_no}` : ''} · {record.extent_value ?? '-'} {areaUnitLabel(record.extent_unit, areaUnits)} (now inactive). Owners come from the transaction and can't be changed here. Update the survey number, subdivision, extent and boundaries of this property.</p>
                     {parcels.map((pc, i) => i !== activeParcel ? null : (
                       <div key={pc.propertyRef} className="sv-parcel">
                         <div className="sv-section-head">
                           <h4>Property {i + 1} · {pc.propertyRef}{pc.surveyNo ? ` · S.No. ${pc.surveyNo}${pc.subdivisionNo ? `/${pc.subdivisionNo}` : ''}` : ''}</h4>
                           <span className={`sv-side ${pc.side === 'SIDE_2' ? 'buyer' : 'seller'}`}>{partySideLabel(pc.side)}</span>
                         </div>
-                        <p className="sv-hint">Owner: <b>{pc.owners || '—'}</b>{pc.tokenRef ? ` · Token ${pc.tokenRef}` : ''}</p>
+                        <p className="sv-hint">Owner: <b>{pc.owners || '-'}</b>{pc.tokenRef ? ` · Token ${pc.tokenRef}` : ''}</p>
                         <div className="sv-grid4">
                           <label><span>Survey no</span><input value={pc.surveyNo} onChange={(e) => updateParcel(i, { surveyNo: e.target.value })} /></label>
                           <label><span>Subdivision no</span><input value={pc.subdivisionNo} placeholder="e.g. 2A" onChange={(e) => updateParcel(i, { subdivisionNo: e.target.value })} /></label>
@@ -411,7 +411,7 @@ export function SurveyForm({ record, onClose, onSubmitted }: { record: SurveyorR
                       </div>
                     ))}
                     <div className="sv-parcel-total">
-                      <span>New properties total: <b>{parcelTotal == null ? '—' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit, areaUnits)}`}</b> · measured {extentNum ?? '—'} {areaUnitLabel(unit, areaUnits)}</span>
+                      <span>New properties total: <b>{parcelTotal == null ? '-' : `${Number(parcelTotal.toFixed(4))} ${areaUnitLabel(unit, areaUnits)}`}</b> · measured {extentNum ?? '-'} {areaUnitLabel(unit, areaUnits)}</span>
                     </div>
                   </section>
                 </>

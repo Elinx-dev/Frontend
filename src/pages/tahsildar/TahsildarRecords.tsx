@@ -83,9 +83,9 @@ export default function TahsildarRecords({ view }: { view: 'approvals' | 'transa
               {rows.map((r) => (
                 <tr key={r.txn_ref} className="clickable" onClick={() => navigate(recordPath(r.txn_ref))}>
                   <td className="mono strong">{r.txn_ref}</td>
-                  <td className="mono faint">{r.ulpin ?? r.property_ref}<br /><small>S.No. {r.survey_no ?? '—'}{r.subdivision_no == null ? '' : `/${r.subdivision_no}`}</small></td>
+                  <td className="mono faint">{r.ulpin ?? r.property_ref}<br /><small>S.No. {r.survey_no ?? '-'}{r.subdivision_no == null ? '' : `/${r.subdivision_no}`}</small></td>
                   <td><span className="vao-type">{deedLabel(r.deed_type_code)}</span></td>
-                  <td className="vao-parties">{r.sellers ?? '—'} → {r.buyers ?? '—'}</td>
+                  <td className="vao-parties">{r.sellers ?? '-'} → {r.buyers ?? '-'}</td>
                   <td>{r.village_name ?? r.village_code}</td>
                   <td className="vao-amount">{rupees(r.declared_consideration)}</td>
                   <td>{formatTimestamp(view === 'approvals' ? (r.vao_verified_at ?? r.forwarded_at) : r.registered_at)}</td>

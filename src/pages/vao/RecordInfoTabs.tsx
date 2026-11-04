@@ -157,7 +157,7 @@ export function RecordInfoTabs({ record, tab }: { record: object; tab: InfoTab }
             <Fact label="Recorded extent" value={extent(survey.authoritative_recorded_extent, property.extent_unit)} />
             <Fact label="Measured extent" value={extent(survey.measured_extent, survey.extent_unit)} />
             <Fact label="Variance / tolerance" value={survey.variance_pct == null ? null : `${Number(survey.variance_pct).toFixed(2)}% / ${formatCell(survey.tolerance_pct ?? null)}%`} />
-            <Fact label="Within tolerance" value={survey.within_tolerance == null ? null : survey.within_tolerance === true ? 'Yes' : 'No — conflict flagged'} />
+            <Fact label="Within tolerance" value={survey.within_tolerance == null ? null : survey.within_tolerance === true ? 'Yes' : 'No, conflict flagged'} />
             <Fact label="GPS centroid" value={survey.centroid_lat == null ? null : `${formatCell(survey.centroid_lat)}, ${formatCell(survey.centroid_lon ?? null)}`} mono />
             <Fact label="Boundaries (N / S / E / W)" value={[survey.boundary_north, survey.boundary_south, survey.boundary_east, survey.boundary_west].map((v) => formatCell(v ?? null)).join(' / ')} />
             <Fact label="Site notes" value={survey.site_notes} />

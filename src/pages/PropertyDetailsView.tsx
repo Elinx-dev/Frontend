@@ -74,7 +74,7 @@ export default function PropertyDetailsView({ property, lineage = null, publicVi
         <div className="vao-detail-head">
           {backTo ? <Link className="vao-back" to={backTo}>{backLabel}</Link> : <button type="button" className="vao-back" onClick={() => navigate(-1)}>{backLabel}</button>}
           <strong className="mono">{text(property.property_ref)}</strong>
-          <span className="vao-detail-parties">{owners.map((owner) => String(owner.owner_name ?? '')).filter(Boolean).join(', ') || '—'}</span>
+          <span className="vao-detail-parties">{owners.map((owner) => String(owner.owner_name ?? '')).filter(Boolean).join(', ') || '-'}</span>
           <span className="vao-detail-spacer" />
           {status ? <StatusPill status={status} /> : null}
           {actions}

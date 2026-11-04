@@ -75,7 +75,7 @@ export default function Login() {
     <AuthShell>
       <div className="login-card">
         <h1>Sign in to SLATE</h1>
-        <p className="muted">Secure Land Administration &amp; Title Exchange — pilot environment</p>
+        <p className="muted">Secure Land Administration &amp; Title Exchange, pilot environment</p>
         <Banner kind="error" message={error} />
         {challenge === null ? (
           <>
@@ -95,7 +95,7 @@ export default function Login() {
                     <button className="link" onClick={() => setLoginId(name)}>
                       {name}
                     </button>{' '}
-                    — {role}
+                    ({role})
                   </li>
                 ))}
               </ul>

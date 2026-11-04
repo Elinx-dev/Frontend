@@ -624,7 +624,7 @@ export default function TransactionDetail({
     return (
       <>
         <div className="owner-type-select">
-          <Field label={`${title} type`} value={typeCode ? labelFor(buyerTypeOptions, typeCode) : '—'} onChange={() => undefined} readOnly />
+          <Field label={`${title} type`} value={typeCode ? labelFor(buyerTypeOptions, typeCode) : '-'} onChange={() => undefined} readOnly />
         </div>
         {buyers.map((party, index) => (
           <section className="owner-entry" key={String(party.id ?? index)}>
@@ -836,7 +836,7 @@ export default function TransactionDetail({
                         : txn.deedType.side2_role
                       const role = formatCell(party?.role ?? sideRole ?? 'Party').replaceAll('_', ' ')
                       const name = party === undefined ? `#${formatCell(c.party_id)}` : formatCell(party.name)
-                      return `${role}: ${name} — ${formatCell(c.status)}`
+                      return `${role}: ${name} (${formatCell(c.status)})`
                     })()}
                   </span>
                   {mockOtpByParty[formatCell(c.party_id)] && formatCell(c.status) === 'PENDING' ? (

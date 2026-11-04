@@ -73,11 +73,11 @@ export default function SurveyorVerification() {
                 <tr key={r.txn_ref} className="clickable" onClick={() => navigate(`/surveyor/verification/${encodeURIComponent(r.txn_ref)}`)}>
                   <td className="mono strong">{r.txn_ref}</td>
                   <td className="mono faint">{r.ulpin ?? r.property_ref}</td>
-                  <td>{r.village_name ?? r.village_code ?? '—'}</td>
-                  <td>{r.measured_extent ?? '—'} {areaUnitLabel(r.measured_unit, areaUnits)} / {r.extent_value ?? '—'} {areaUnitLabel(r.extent_unit, areaUnits)}</td>
-                  <td className={r.within_tolerance === false ? 'sv-variance bad' : 'sv-variance'}>{r.variance_pct == null ? '—' : `${Number(r.variance_pct).toFixed(2)}%`}</td>
+                  <td>{r.village_name ?? r.village_code ?? '-'}</td>
+                  <td>{r.measured_extent ?? '-'} {areaUnitLabel(r.measured_unit, areaUnits)} / {r.extent_value ?? '-'} {areaUnitLabel(r.extent_unit, areaUnits)}</td>
+                  <td className={r.within_tolerance === false ? 'sv-variance bad' : 'sv-variance'}>{r.variance_pct == null ? '-' : `${Number(r.variance_pct).toFixed(2)}%`}</td>
                   <td>{formatTimestamp(r.submitted_at)}</td>
-                  <td>{r.assigned_vao_name ?? '—'}</td>
+                  <td>{r.assigned_vao_name ?? '-'}</td>
                   <td><StagePill record={r} portal={SURVEYOR_PORTAL} /></td>
                   <td className="vao-row-action"><button className="vao-btn-review"><ShieldCheckIcon /> View</button></td>
                 </tr>

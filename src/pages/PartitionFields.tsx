@@ -651,7 +651,7 @@ export function PartitionWorkspace({
                     readOnly={schedulesReadOnly}
                     required
                   />
-                  <Field label="ULPIN" value={text(parcel?.ulpin) || '—'} onChange={() => undefined} readOnly />
+                  <Field label="ULPIN" value={text(parcel?.ulpin) || '-'} onChange={() => undefined} readOnly />
                   <Field label="Extent allotted" type="number" value={line.extent} onChange={(v) => updateLine(index, lineIndex, { extent: v })} readOnly={schedulesReadOnly} required />
                   <Field label="Unit" value={line.extentUnit} options={unitOptions} onChange={(v) => updateLine(index, lineIndex, { extentUnit: v })} readOnly={schedulesReadOnly} required />
                   <Field label="Value (₹)" type="number" value={line.value} onChange={(v) => updateLine(index, lineIndex, { value: v })} readOnly={schedulesReadOnly} />

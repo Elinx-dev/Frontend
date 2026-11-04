@@ -53,9 +53,9 @@ export default function FieldSurvey() {
               {rows.map((r) => (
                 <tr key={r.txn_ref}>
                   <td><UlpinCell record={r} /></td>
-                  <td>{r.survey_no ?? '—'}{r.subdivision_no ? ` / ${r.subdivision_no}` : ''}</td>
-                  <td>{r.village_name ?? r.village_code ?? '—'}</td>
-                  <td>{r.extent_value ?? '—'} {areaUnitLabel(r.extent_unit, areaUnits)}</td>
+                  <td>{r.survey_no ?? '-'}{r.subdivision_no ? ` / ${r.subdivision_no}` : ''}</td>
+                  <td>{r.village_name ?? r.village_code ?? '-'}</td>
+                  <td>{r.extent_value ?? '-'} {areaUnitLabel(r.extent_unit, areaUnits)}</td>
                   <td>{r.slot_booked ? when(r.agreed_date, r.agreed_time) : <span className="vao-not-booked">Not booked</span>}</td>
                   <td><StagePill record={r} portal={SURVEYOR_PORTAL} /></td>
                   <td className="vao-row-action">

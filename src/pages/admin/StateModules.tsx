@@ -137,7 +137,7 @@ function ModuleCard({ module, onSaved }: { module: ModuleConfig; onSaved: (messa
               <input inputMode="numeric" value={draft.slaDays} placeholder="No SLA" aria-invalid={slaInvalid} onChange={(e) => change('slaDays', e.target.value)} />
               <em>days</em>
             </div>
-            {slaInvalid ? <span className="field-error">Enter whole days (0–999).</span> : null}
+            {slaInvalid ? <span className="field-error">Enter whole days (0 to 999).</span> : null}
           </label>
         </div>
         <label className="field">
