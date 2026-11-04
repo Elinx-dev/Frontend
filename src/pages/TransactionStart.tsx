@@ -15,7 +15,6 @@ import { PartitionWorkspace } from './PartitionFields'
 import {
   emptySchedule,
   paidAtFrom,
-  relationshipCategoryOptions,
   schedulePayload,
   schedulesFromRows,
   today,
@@ -42,6 +41,36 @@ type WitnessField = keyof WitnessForm
 type WitnessErrors = Record<number, Partial<Record<WitnessField, string>>>
 
 const emptyParty = (side: string): PartyForm => ({ side, relationshipCode: '', ...emptyOwner() })
+
+const TRANSACTION_TYPE_HELP: Record<string, string> = {
+  SALE: 'Ownership is transferred for a price (the declared value).',
+  GIFT: 'Ownership is given without payment. Fees use the non-family rate.',
+  SETTLEMENT: 'Ownership is settled on a blood relative. Fees use the family rate.',
+  RELEASE: 'A co-owner gives up their share to the other co-owners.',
+  PARTITION: 'The property is divided among co-owners or legal heirs. Always surveyed.',
+}
+
+function ChoiceCards({ name, value, options, onChange, disabled }: {
+  name: string
+  value: string
+  options: Array<{ value: string; title: string; help: string }>
+  onChange: (value: string) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="txn-choice-cards" role="radiogroup">
+      {options.map((option) => (
+        <label key={option.value} className={`txn-choice-card${value === option.value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}>
+          <input type="radio" name={name} value={option.value} checked={value === option.value} disabled={disabled} onChange={() => onChange(option.value)} />
+          <span>
+            <strong>{option.title}</strong>
+            {option.help ? <small>{option.help}</small> : null}
+          </span>
+        </label>
+      ))}
+    </div>
+  )
+}
 
 
 const valueOf = (row: Row | null | undefined, ...keys: string[]): string => {
@@ -142,20 +171,14 @@ export default function TransactionStart() {
   const [subdivisionRequired, setSubdivisionRequired] = useState('')
   const [surveyRequiredByParty, setSurveyRequiredByParty] = useState('NO')
   const [surveyorUserId, setSurveyorUserId] = useState('')
-  const [surveyLocationType, setSurveyLocationType] = useState('')
   const [surveyors, setSurveyors] = useState<Row[]>([])
   const [partyErrors, setPartyErrors] = useState<PartyErrors>({})
-  const [transferScope, setTransferScope] = useState('FULL_PROPERTY')
   const [declaredConsideration, setDeclaredConsideration] = useState('')
-  const [modeOfConsideration, setModeOfConsideration] = useState('BANK_TRANSFER')
   const [extentOrShareTransferred, setExtentOrShareTransferred] = useState('')
   const [extentUnit, setExtentUnit] = useState('SQ_FT')
   const [relationshipCategory, setRelationshipCategory] = useState('')
   const [guidelineValue, setGuidelineValue] = useState('')
   const [guidelineValueReference, setGuidelineValueReference] = useState('')
-  const [basisOfSettlement, setBasisOfSettlement] = useState('')
-  const [shareBeingReleased, setShareBeingReleased] = useState('')
-  const [resultingSubparcelCount, setResultingSubparcelCount] = useState('')
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [dialog, setDialog] = useState<ActionDialogRequest | null>(null)
@@ -167,6 +190,8 @@ export default function TransactionStart() {
   const [activeStage, setActiveStage] = useState(0)
   const [createdTransactionRef, setCreatedTransactionRef] = useState(() => searchParams.get('txnRef') ?? '')
   const [parties, setParties] = useState<PartyForm[]>([emptyParty('SIDE_2')])
+  const [releasorIds, setReleasorIds] = useState<string[]>([])
+  const [releaseeIds, setReleaseeIds] = useState<string[]>([])
   const [buyerTypeCode, setBuyerTypeCode] = useState('')
   const [buyerDetailsSaved, setBuyerDetailsSaved] = useState(false)
   const [witnesses, setWitnesses] = useState<WitnessForm[]>([emptyWitness(), emptyWitness()])
@@ -192,13 +217,14 @@ export default function TransactionStart() {
   const selectedTypeCode = deedTypeCode || String(txn?.deed_type_code ?? '')
   const selectedType = transactionTypes.find((type) => type.code === selectedTypeCode)
   const isPartition = selectedTypeCode === 'PARTITION'
+  const isRelease = selectedTypeCode === 'RELEASE'
   const subdivisionAllowed = selectedType?.subdivision_allowed === true
   const subdivisionYes = subdivisionAllowed && subdivisionRequired === 'YES'
   const surveyNeeded = isPartition || subdivisionYes || surveyRequiredByParty === 'YES'
+  const transferScope = subdivisionYes ? 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION' : 'FULL_PROPERTY'
   const bloodRelationRequired = selectedType?.blood_relation_required === true
   const relationshipRequired = !bloodRelationRequired && selectedDeed?.requires_relationship_category === true
   const scheduleValuation = selectedType?.schedule_valuation === true && !isPartition
-  const relationshipOptions = relationshipCategoryOptions(bootstrap?.feeRelationshipCategories, selectedTypeCode)
   const firstPartyLabel = String(selectedType?.first_party_label ?? txn?.deedType?.first_party_label ?? 'Seller')
   const secondPartyLabel = String(selectedType?.second_party_label ?? txn?.deedType?.second_party_label ?? 'Buyer')
   const sideTwoTitle = secondPartyLabel
@@ -212,7 +238,9 @@ export default function TransactionStart() {
   const defaultSurveyLocation = String(
     surveyFees.find((fee) => fee.land_type_code === valueOf(property, 'land_type_code', 'landTypeCode'))?.location_type ?? '',
   )
-  const effectiveSurveyLocation = surveyLocationType || defaultSurveyLocation
+  const effectiveSurveyLocation = defaultSurveyLocation
+  const surveyFeeRow = surveyFees.find((fee) => fee.location_type === effectiveSurveyLocation)
+  const surveyFeeText = surveyFeeRow ? ` (₹${String(surveyFeeRow.fee)} for ${String(surveyFeeRow.location_name ?? surveyFeeRow.location_type).toLowerCase()} land)` : ''
   const surveyDecision = isPartition
     ? 'Mandatory (Partition is surveyed after Registration)'
     : subdivisionYes
@@ -224,9 +252,8 @@ export default function TransactionStart() {
     index === 2 ? (isPartition ? 'Partition parties & schedules' : `${secondPartyLabel} details`) : stage)
   const transactionDetailsComplete = Boolean(
     deedTypeCode
-    && transferScope
     && (!subdivisionAllowed || subdivisionRequired)
-    && (!surveyNeeded || (surveyorUserId && effectiveSurveyLocation)),
+    && (!surveyNeeded || surveyorUserId),
   )
   const txnStatus = txn?.status ?? ''
   const consentCompleted = txn !== null && hasStatus(txnStatus, CONSENT_COMPLETE_STATUSES)
@@ -281,21 +308,22 @@ export default function TransactionStart() {
         const saved = result as Row
         const text = (value: unknown) => (value == null ? '' : String(value))
         setDeedTypeCode(normalized.deed_type_code)
-        setTransferScope(text(saved.transfer_scope) || 'FULL_PROPERTY')
         setSubdivisionRequired(saved.subdivision_required === true ? 'YES' : saved.subdivision_required === false ? 'NO' : '')
         setSurveyRequiredByParty(saved.survey_required_by_party === true ? 'YES' : 'NO')
         setSurveyorUserId(text(saved.assigned_surveyor_id))
-        setSurveyLocationType(text(saved.survey_location_type))
         setDeclaredConsideration(text(saved.declared_consideration))
-        setModeOfConsideration(text(saved.mode_of_consideration))
         setExtentOrShareTransferred(text(saved.extent_or_share_transferred))
         setExtentUnit(text(saved.extent_unit) || 'SQ_FT')
         setRelationshipCategory(text(saved.relationship_category))
         setGuidelineValue(text(saved.guideline_value))
         setGuidelineValueReference(text(saved.guideline_value_reference))
-        setBasisOfSettlement(text(saved.basis_of_settlement))
-        setShareBeingReleased(text(saved.share_being_released))
-        setResultingSubparcelCount(text(saved.resulting_subparcel_count))
+        if (normalized.deed_type_code === 'RELEASE') {
+          const ownerIds = (side: string) => normalized.parties
+            .filter((party) => party.side === side && party.property_owner_id != null)
+            .map((party) => String(party.property_owner_id))
+          setReleasorIds(ownerIds('SIDE_1'))
+          setReleaseeIds(ownerIds('SIDE_2'))
+        }
       }
       if (Array.isArray(result.schedules) && result.schedules.length > 0) setSchedules(schedulesFromRows(result.schedules))
       return normalized
@@ -671,7 +699,7 @@ export default function TransactionStart() {
           ? 'Select the transaction type.'
           : subdivisionAllowed && !subdivisionRequired
             ? 'Select whether subdivision is required.'
-            : 'A survey is needed: select the surveyor and the survey location type.',
+            : 'A survey is needed: select the surveyor.',
       )
       return
     }
@@ -692,18 +720,14 @@ export default function TransactionStart() {
         subdivisionRequired: subdivisionYes,
         surveyRequiredByParty: surveyRequiredByParty === 'YES',
         surveyorUserId: surveyNeeded ? Number(surveyorUserId) : undefined,
-        surveyLocationType: surveyNeeded ? effectiveSurveyLocation : undefined,
+        surveyLocationType: surveyNeeded && effectiveSurveyLocation ? effectiveSurveyLocation : undefined,
         sroCode: String(property?.sroCode ?? property?.sro_code ?? ''),
         declaredConsideration: declaredConsideration ? Number(declaredConsideration) : undefined,
-        modeOfConsideration: Number(declaredConsideration) > 0 ? modeOfConsideration : undefined,
         extentOrShareTransferred: extentOrShareTransferred ? Number(extentOrShareTransferred) : undefined,
         extentUnit: extentOrShareTransferred ? extentUnit : undefined,
         relationshipCategory: relationshipCategory || undefined,
         guidelineValue: guidelineValue ? Number(guidelineValue) : undefined,
         guidelineValueReference: guidelineValueReference || undefined,
-        basisOfSettlement: basisOfSettlement || undefined,
-        shareBeingReleased: shareBeingReleased ? Number(shareBeingReleased) : undefined,
-        resultingSubparcelCount: resultingSubparcelCount ? Number(resultingSubparcelCount) : undefined,
       }, true)
       const transactionRef = String(created.txn_ref ?? created.id)
       setCreatedTransactionRef(transactionRef)
@@ -777,6 +801,56 @@ export default function TransactionStart() {
     setWitnessesSaved(false)
     setError('')
     setInfo('')
+  }
+
+  const toggleReleaseOwner = (side: 'SIDE_1' | 'SIDE_2', id: string) => {
+    const [setThis, setOther] = side === 'SIDE_1' ? [setReleasorIds, setReleaseeIds] : [setReleaseeIds, setReleasorIds]
+    setThis((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+    setOther((current) => current.filter((item) => item !== id))
+    setBuyerDetailsSaved(false)
+    setWitnessesSaved(false)
+    setError('')
+    setInfo('')
+  }
+
+  const saveReleaseParties = async () => {
+    if (releasorIds.length === 0 || releaseeIds.length === 0) {
+      setInfo('')
+      setError(`Select at least one ${firstPartyLabel.toLowerCase()} and one ${secondPartyLabel.toLowerCase()} from the co-owners.`)
+      return
+    }
+    setError('')
+    setInfo('')
+    setPartyBusy(true)
+    try {
+      await put(`/api/transactions/${createdTransactionRef}/parties`, [
+        ...releasorIds.map((id) => ({ side: 'SIDE_1', propertyOwnerId: Number(id) })),
+        ...releaseeIds.map((id) => ({ side: 'SIDE_2', propertyOwnerId: Number(id) })),
+      ])
+      await loadTransaction(createdTransactionRef, true)
+      setBuyerDetailsSaved(true)
+      setActiveStage(3)
+      setInfo(`${firstPartyLabel} and ${secondPartyLabel.toLowerCase()} saved. Continue with witness details.`)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e))
+    } finally {
+      setPartyBusy(false)
+    }
+  }
+
+  const selectTransactionType = (value: string) => {
+    const type = transactionTypes.find((item) => item.code === value)
+    setDeedTypeCode(value)
+    setSubdivisionRequired(value === 'PARTITION' ? 'YES' : type?.subdivision_allowed === true ? '' : 'NO')
+    setSurveyRequiredByParty('NO')
+    setRelationshipCategory(String(type?.default_relationship_category ?? ''))
+    if (value === 'GIFT' || value === 'SETTLEMENT') setDeclaredConsideration('0')
+    if (value === 'RELEASE') setDeclaredConsideration('')
+  }
+
+  const changeSubdivision = (value: string) => {
+    setSubdivisionRequired(value)
+    if (value === 'YES') setSurveyRequiredByParty('NO')
   }
 
   const saveParties = async () => {
@@ -1104,15 +1178,11 @@ export default function TransactionStart() {
       const reference = encodeURIComponent(createdTransactionRef)
       await put(`/api/transactions/${reference}/details`, {
         declaredConsideration: declaredConsideration ? Number(declaredConsideration) : undefined,
-        modeOfConsideration: Number(declaredConsideration) > 0 ? modeOfConsideration : undefined,
         extentOrShareTransferred: extentOrShareTransferred ? Number(extentOrShareTransferred) : undefined,
         extentUnit: extentOrShareTransferred ? extentUnit : undefined,
         relationshipCategory: relationshipCategory || undefined,
         guidelineValue: guidelineValue ? Number(guidelineValue) : undefined,
         guidelineValueReference: guidelineValueReference || undefined,
-        basisOfSettlement: basisOfSettlement || undefined,
-        shareBeingReleased: shareBeingReleased ? Number(shareBeingReleased) : undefined,
-        resultingSubparcelCount: resultingSubparcelCount ? Number(resultingSubparcelCount) : undefined,
       })
       if (scheduleValuation) await put(`/api/transactions/${reference}/schedules`, schedulePayload(schedules))
       const updated = await loadTransaction(createdTransactionRef, true)
@@ -1766,109 +1836,78 @@ export default function TransactionStart() {
             ) : null}
             {activeStage === 1 ? (
               <Panel title="" actions={<span className="stage-label">Required</span>}>
-                <div className="form-grid three">
-                  <Field
-                    label="Transaction Type"
-                      readOnly={transactionCreated}
+                <div className="txn-detail-section">
+                  <h3>Transaction type <span className="req">*</span></h3>
+                  <ChoiceCards
+                    name="txn-type"
                     value={deedTypeCode}
-                    onChange={(value) => {
-                      const type = transactionTypes.find((item) => item.code === value)
-                      setDeedTypeCode(value)
-                      setSubdivisionRequired(value === 'PARTITION' ? 'YES' : type?.subdivision_allowed === true ? '' : 'NO')
-                      if (value === 'PARTITION') setTransferScope('PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')
-                      else if (transferScope === 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION') setTransferScope('FULL_PROPERTY')
-                      setRelationshipCategory(String(type?.default_relationship_category ?? ''))
-                      if (value === 'GIFT' || value === 'SETTLEMENT') {
-                        setDeclaredConsideration('0')
-                        setModeOfConsideration('')
-                      }
-                    }}
+                    disabled={transactionCreated}
+                    onChange={selectTransactionType}
                     options={availableTransactionTypes.map((type) => ({
                       value: String(type.code),
-                      label: `${String(type.code)}${type.individuals_only === true ? ' (Only for individuals)' : ''}`,
+                      title: `${String(type.name ?? type.code)}${type.individuals_only === true ? ' (only for individuals)' : ''}`,
+                      help: TRANSACTION_TYPE_HELP[String(type.code)] ?? '',
                     }))}
-                    required
                   />
-                  {subdivisionAllowed && !isPartition ? (
-                    <Field
-                      label="Subdivision Required?"
-                      readOnly={transactionCreated}
+                </div>
+                {selectedType && isPartition ? (
+                  <div className="txn-detail-section">
+                    <h3>Subdivision</h3>
+                    <p className="helper">A partition always subdivides the property. The surveyor measures each share after registration and the survey fee{surveyFeeText} is added to the fees.</p>
+                  </div>
+                ) : null}
+                {selectedType && subdivisionAllowed && !isPartition ? (
+                  <div className="txn-detail-section">
+                    <h3>Is subdivision required? <span className="req">*</span></h3>
+                    <ChoiceCards
+                      name="txn-subdivision"
                       value={subdivisionRequired}
-                      onChange={(value) => {
-                        setSubdivisionRequired(value)
-                        if (value === 'YES') setTransferScope('PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')
-                        else if (transferScope === 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION') setTransferScope('FULL_PROPERTY')
-                      }}
-                      options={optionsFrom(bootstrap, 'YES_NO')}
+                      disabled={transactionCreated}
+                      onChange={changeSubdivision}
+                      options={[
+                        { value: 'YES', title: 'Yes, subdivide', help: `Only part of the property is transferred. A surveyor measures it and the new subdivision number is given after the survey. The survey fee${surveyFeeText} is added to the fees.` },
+                        { value: 'NO', title: 'No subdivision', help: 'The property is transferred as it is, without splitting it.' },
+                      ]}
+                    />
+                  </div>
+                ) : null}
+                {selectedType && !isPartition && !subdivisionYes && (!subdivisionAllowed || subdivisionRequired === 'NO') ? (
+                  <div className="txn-detail-section">
+                    <h3>Does the party need a survey?</h3>
+                    <ChoiceCards
+                      name="txn-survey"
+                      value={surveyRequiredByParty}
+                      disabled={transactionCreated}
+                      onChange={setSurveyRequiredByParty}
+                      options={[
+                        { value: 'YES', title: 'Yes, survey the parcel', help: `A surveyor verifies the boundary after registration, before VAO verification. The survey fee${surveyFeeText} is added to the fees.` },
+                        { value: 'NO', title: 'No survey', help: 'After registration the record goes straight to VAO verification.' },
+                      ]}
+                    />
+                  </div>
+                ) : null}
+                <div className="form-grid three">
+                  {surveyNeeded ? (
+                    <Field
+                      label="Surveyor"
+                      readOnly={transactionCreated}
+                      value={surveyorUserId}
+                      onChange={setSurveyorUserId}
+                      options={surveyors.map((surveyor) => ({
+                        value: String(surveyor.id),
+                        label: `${String(surveyor.full_name ?? surveyor.username)} (${String(surveyor.username)})`,
+                      }))}
                       required
                     />
                   ) : null}
-                  {subdivisionYes ? null : (
-                    <Field
-                      label="Survey Required by Party?"
-                      readOnly={transactionCreated}
-                      value={surveyRequiredByParty}
-                      onChange={setSurveyRequiredByParty}
-                      options={optionsFrom(bootstrap, 'YES_NO')}
-                    />
+                  {isRelease ? null : (
+                    <Field label="Declared value" readOnly={!detailsEditable} value={declaredConsideration} onChange={setDeclaredConsideration} type="number" />
                   )}
-                  <Field
-                    label="Transfer scope"
-                    value={transferScope}
-                    onChange={setTransferScope}
-                    options={optionsFrom(bootstrap, 'TRANSFER_SCOPE').filter((o) => subdivisionYes || o.value !== 'PHYSICAL_PARTIAL_EXTENT_SUBDIVISION')}
-                    readOnly={subdivisionYes || transactionCreated}
-                    required
-                  />
-                  {surveyNeeded ? (
-                    <>
-                      <Field
-                        label="Surveyor"
-                      readOnly={transactionCreated}
-                        value={surveyorUserId}
-                        onChange={setSurveyorUserId}
-                        options={surveyors.map((surveyor) => ({
-                          value: String(surveyor.id),
-                          label: `${String(surveyor.full_name ?? surveyor.username)} (${String(surveyor.username)})`,
-                        }))}
-                        required
-                      />
-                      <Field
-                        label="Survey location type"
-                      readOnly={transactionCreated}
-                        value={effectiveSurveyLocation}
-                        onChange={setSurveyLocationType}
-                        options={surveyFees.map((fee) => ({
-                          value: String(fee.location_type),
-                          label: String(fee.location_name ?? fee.location_type),
-                        }))}
-                        required
-                      />
-                    </>
-                  ) : null}
-                  <Field label="Declared consideration" readOnly={!detailsEditable} value={declaredConsideration} onChange={setDeclaredConsideration} type="number" />
-                  <Field
-                    label="Mode of consideration" readOnly={!detailsEditable}
-                    value={modeOfConsideration}
-                    onChange={setModeOfConsideration}
-                    options={optionsFrom(bootstrap, 'MODE_OF_CONSIDERATION')}
-                  />
-                  {bloodRelationRequired || relationshipOptions.length === 0 ? null : (
-                    <Field
-                      label="Relationship category" readOnly={!detailsEditable}
-                      value={relationshipCategory}
-                      onChange={setRelationshipCategory}
-                      options={relationshipOptions}
-                      required={relationshipRequired}
-                    />
-                  )}
-                  <Field label="Basis of settlement" readOnly={!detailsEditable} value={basisOfSettlement} onChange={setBasisOfSettlement} placeholder="Gift, family settlement, etc." />
                   <Field label="Extent / share transferred" readOnly={!detailsEditable} value={extentOrShareTransferred} onChange={setExtentOrShareTransferred} type="number" />
                   <Field label="Extent unit" readOnly={!detailsEditable} value={extentUnit} onChange={setExtentUnit} options={optionsFrom(bootstrap, 'TRANSACTION_EXTENT_UNIT')} />
-                  <Field label="Guideline value" readOnly={!detailsEditable} value={guidelineValue} onChange={setGuidelineValue} type="number" />
-                  <Field label="Guideline reference" readOnly={!detailsEditable} value={guidelineValueReference} onChange={setGuidelineValueReference} />
-                  <Field label="Share being released" readOnly={!detailsEditable} value={shareBeingReleased} onChange={setShareBeingReleased} type="number" />
-                  <Field label="Resulting subparcel count" readOnly={!detailsEditable} value={resultingSubparcelCount} onChange={setResultingSubparcelCount} type="number" />
+                  {isRelease ? null : (
+                    <Field label="Guideline value" readOnly={!detailsEditable} value={guidelineValue} onChange={setGuidelineValue} type="number" />
+                  )}
                 </div>
                 {scheduleValuation ? (
                   <ScheduleEditor schedules={schedules} onChange={setSchedules} readOnly={!detailsEditable} />
@@ -1899,6 +1938,49 @@ export default function TransactionStart() {
                         setBuyerDetailsSaved(true)
                       }}
                     />
+                  </div>
+                </section>
+              </div>
+            ) : activeStage === 2 && createdTransactionRef.length > 0 && isRelease ? (
+              <div ref={detailRef}>
+                <section className="panel">
+                  <header className="panel-head">
+                    <h2>{firstPartyLabel} &amp; {secondPartyLabel.toLowerCase()}</h2>
+                  </header>
+                  <div className="panel-body">
+                    <p className="helper">
+                      A release is between the current co-owners only. Tick the co-owner(s) giving up their share as {firstPartyLabel.toLowerCase()} and the co-owner(s) who receive it as {secondPartyLabel.toLowerCase()}. No new person can be added.
+                    </p>
+                    <DataTable
+                      rows={registeredOwners}
+                      empty="This property has no recorded owners."
+                      columns={[
+                        { key: 'owner_name', label: 'Co-owner', render: (row) => String(row.owner_name ?? row.ownerName ?? '—') },
+                        ...(['SIDE_1', 'SIDE_2'] as const).map((side) => ({
+                          key: side,
+                          label: side === 'SIDE_1' ? firstPartyLabel : secondPartyLabel,
+                          render: (row: Row) => {
+                            const id = String(row.id)
+                            const ids = side === 'SIDE_1' ? releasorIds : releaseeIds
+                            return (
+                              <input
+                                type="checkbox"
+                                className="release-owner-check"
+                                aria-label={`${String(row.owner_name ?? '')} as ${side === 'SIDE_1' ? firstPartyLabel : secondPartyLabel}`}
+                                checked={ids.includes(id)}
+                                disabled={txnStatus !== '' && txnStatus !== 'DRAFT'}
+                                onChange={() => toggleReleaseOwner(side, id)}
+                              />
+                            )
+                          },
+                        })),
+                      ]}
+                    />
+                    <div className="form-submit-row">
+                      <button className="primary" disabled={partyBusy || (txnStatus !== '' && txnStatus !== 'DRAFT')} onClick={() => void saveReleaseParties()}>
+                        {partyBusy ? 'Saving…' : `Save ${firstPartyLabel.toLowerCase()} & ${secondPartyLabel.toLowerCase()}`}
+                      </button>
+                    </div>
                   </div>
                 </section>
               </div>

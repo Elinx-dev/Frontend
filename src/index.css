@@ -5990,3 +5990,24 @@ button.danger:hover:not(:disabled) {
 .stat-card small { color: #7a8394; }
 .inline-actions { display: flex; gap: 6px; align-items: center; }
 .inline-actions input { min-width: 140px; }
+
+/* Initiate Transaction -> Transaction details: radio cards */
+.txn-detail-section { margin-bottom: 18px; }
+.txn-detail-section h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.txn-choice-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.txn-choice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.txn-choice-card.selected { border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy); background: #f5f8fd; }
+.txn-choice-card.disabled { cursor: default; opacity: 0.75; }
+.txn-choice-card input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--navy); flex: none; }
+.txn-choice-card strong { display: block; font-size: 13px; color: var(--ink); }
+.txn-choice-card small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.4; color: var(--muted, #5b6575); }
+.release-owner-check { width: 16px; height: 16px; accent-color: var(--navy); }
