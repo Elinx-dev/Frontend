@@ -759,7 +759,6 @@ export default function TransactionStart() {
     setPartyErrors((current) => (current[index]?.[field] === undefined ? current : { ...current, [index]: { ...current[index], [field]: undefined } }))
     setParties((current) => current.map((party, i) => (i === index ? { ...party, [field]: value } : party)))
     setBuyerDetailsSaved(false)
-    setWitnessesSaved(false)
     setError('')
     setInfo('')
   }
@@ -767,7 +766,6 @@ export default function TransactionStart() {
   const addParty = (side: string) => {
     setParties((current) => [...current, emptyParty(side)])
     setBuyerDetailsSaved(false)
-    setWitnessesSaved(false)
     setError('')
     setInfo('')
   }
@@ -780,7 +778,6 @@ export default function TransactionStart() {
     }
     setParties((current) => current.filter((_, currentIndex) => currentIndex !== index))
     setBuyerDetailsSaved(false)
-    setWitnessesSaved(false)
     setError('')
     setInfo('')
   }
@@ -795,7 +792,6 @@ export default function TransactionStart() {
     }
     setPartyErrors({})
     setBuyerDetailsSaved(false)
-    setWitnessesSaved(false)
     setError('')
     setInfo('')
   }
@@ -805,7 +801,6 @@ export default function TransactionStart() {
     setThis((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
     setOther((current) => current.filter((item) => item !== id))
     setBuyerDetailsSaved(false)
-    setWitnessesSaved(false)
     setError('')
     setInfo('')
   }
@@ -1352,7 +1347,7 @@ export default function TransactionStart() {
     ? `Transaction ${createdTransactionRef} has been created. Continue using the tabs below.`
     : 'Select a registered property and capture the transaction instruction. To add a property, use Mint Property.'
   const maxAvailableStage = transactionCreated
-    ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted ? 5 : witnessesSaved ? 4 : buyerDetailsSaved ? 3 : 2)
+    ? (registrationCompleted ? 7 : paymentCompleted ? 7 : rulesCompleted ? 6 : consentCompleted ? 5 : witnessesSaved ? 4 : 3)
     : 1
   const detailsEditable = !transactionCreated
     || (['DRAFT', 'CONSENT_PENDING', 'RULE_CHECK_PENDING', 'EXCEPTION', 'FEE_PAYMENT_PENDING'].includes(txnStatus) && (txn?.payments.length ?? 0) === 0)
@@ -2066,7 +2061,7 @@ export default function TransactionStart() {
                     <h2>3. Witness details</h2>
                   </header>
                   <div className="panel-body">
-                    <p className="helper">Capture witness information before moving on to Aadhaar consent.</p>
+                    <p className="helper">Validate each witness's Aadhaar with OTP; name, address and mobile are filled from Aadhaar.</p>
                     {renderWitnessRows()}
                     <div className="form-submit-row">
                       <button className="primary" disabled={witnessBusy} onClick={() => void saveWitnesses()}>
